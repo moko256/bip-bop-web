@@ -32,4 +32,4 @@ After completing the code, ask the user if they want a playground link. Only cal
 
 ## Cloud Agent
 
-- When sharing or analyzing, if Playwright can operate the page and take the screenshots, do that by copying an existing test. For a full-page screenshot, copy `e2e/full-page-screenshot.e2e.ts` and save shared images under `/opt/cursor/artifacts/`.
+When sharing or analyzing, if Playwright can operate the page and take the screenshots, do that by copying an existing test. For a full-page screenshot, copy `e2e/full-page-screenshot.e2e.ts` and save shared images under `/opt/cursor/artifacts/`.
