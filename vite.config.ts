@@ -7,6 +7,18 @@ import inlangSettings from './project.inlang/settings.json' with { type: 'json' 
 import { siteBase, siteHost, siteProtocol } from './site-url.ts';
 
 export default defineConfig({
+	css: {
+		transformer: 'lightningcss',
+		preprocessorOptions: {
+			scss: {
+				// Pico's Sass `if()` calls warn on modern Sass.
+				quietDeps: true
+			}
+		}
+	},
+	build: {
+		cssMinify: 'lightningcss'
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {
