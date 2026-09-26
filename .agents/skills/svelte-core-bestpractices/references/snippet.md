@@ -150,7 +150,7 @@ Within the template, snippets are values just like any other. As such, they can 
 	<td>{d.qty * d.price}</td>
 {/snippet}
 
-<Table data={fruits} +++{header} {row} +++ />
+<Table data={fruits} +++{header} {row}+++ />
 ```
 
 ```svelte
@@ -179,12 +179,11 @@ Within the template, snippets are values just like any other. As such, they can 
 		border-spacing: 0;
 	}
 
-	tbody tr:nth-child(2n + 1) {
+	tbody tr:nth-child(2n+1) {
 		background: ButtonFace;
 	}
 
-	table :global(th),
-	table :global(td) {
+	table :global(th), table :global(td) {
 		padding: 0.5em;
 	}
 </style>
@@ -255,12 +254,11 @@ As an authoring convenience, snippets declared directly _inside_ a component imp
 		border-spacing: 0;
 	}
 
-	tbody tr:nth-child(2n + 1) {
+	tbody tr:nth-child(2n+1) {
 		background: ButtonFace;
 	}
 
-	table :global(th),
-	table :global(td) {
+	table :global(th), table :global(td) {
 		padding: 0.5em;
 	}
 </style>
@@ -303,7 +301,7 @@ You can declare snippet props as being optional. You can either use optional cha
 
 ```svelte
 <script>
-	let { children } = $props();
+    let { children } = $props();
 </script>
 
 {@render children?.()}
@@ -313,13 +311,13 @@ You can declare snippet props as being optional. You can either use optional cha
 
 ```svelte
 <script>
-	let { children } = $props();
+    let { children } = $props();
 </script>
 
 {#if children}
-	{@render children()}
+    {@render children()}
 {:else}
-	fallback content
+    fallback content
 {/if}
 ```
 
@@ -374,6 +372,7 @@ Snippets declared at the top level of a `.svelte` file can be exported from a `<
 </script>
 
 {@render add(1, 2)}
+
 ```
 
 ```svelte
