@@ -29,3 +29,8 @@ You MUST use this tool whenever writing Svelte code before sending it to the use
 
 Generates a Svelte Playground link with the provided code.
 After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+
+## Cloud Agent
+
+- 共有・分析で画面を操作して撮るときは、Playwright で完結するなら Playwright で操作し、`e2e/full-page-screenshot.e2e.ts` をコピーしてページ全体を撮影する。共有する画像は `/opt/cursor/artifacts/` に保存する。
+- テストは既存ファイルをコピーして作る。
