@@ -32,33 +32,10 @@
 	};
 </script>
 
-<div class="stage">
-	<canvas {@attach play} aria-label="Bip-Bop preview"></canvas>
-</div>
+<canvas {@attach play} width="1920" height="1080" aria-label="Bip-Bop preview"></canvas>
 
 <style>
-	:global(html),
-	:global(body) {
-		margin: 0;
-		background: #000;
-		overflow: hidden;
-	}
-
-	.stage {
-		display: grid;
-		width: 100vw;
-		height: 100vh;
-		height: 100dvh;
-		place-items: center;
-		background: #000;
-	}
-
 	canvas {
-		display: block;
-		width: min(100vw, calc(100vh * 16 / 9));
-		width: min(100vw, calc(100dvh * 16 / 9));
-		height: min(100vh, calc(100vw * 9 / 16));
-		height: min(100dvh, calc(100vw * 9 / 16));
-		background: #000;
+		width: 100%;
 	}
 </style>
