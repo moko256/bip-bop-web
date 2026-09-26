@@ -5,11 +5,24 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	css: {
+		transformer: 'lightningcss',
+		preprocessorOptions: {
+			scss: {
+				// Pico's Sass `if()` calls warn on modern Sass.
+				quietDeps: true
+			}
+		}
+	},
+	build: {
+		cssMinify: 'lightningcss'
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
-				runes: ({ filename }) => filename.split(/[/\\]/).includes('node_modules') ? undefined : true
+				runes: ({ filename }) =>
+					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter()
 		}),
