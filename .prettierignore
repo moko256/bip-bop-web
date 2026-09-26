@@ -10,5 +10,3 @@ bun.lockb
 
 # Agent skills (vendored; not project source)
 .agents/skills/
-.claude/skills/
-.cursor/skills/
