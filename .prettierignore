@@ -7,3 +7,6 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# Agent skills (vendored; not project source)
+.agents/skills/
