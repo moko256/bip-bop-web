@@ -1,6 +1,6 @@
 {
 	"name": "bip-bop-web",
-	"install": "pnpm install --frozen-lockfile && pnpm exec playwright install --with-deps chromium",
+	"install": "pnpm install --frozen-lockfile && pnpm exec paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide && pnpm exec playwright install --with-deps chromium",
 	"terminals": [
 		{
 			"name": "dev-server",
