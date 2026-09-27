@@ -68,11 +68,8 @@
 	<div class="media placeholder" role="img" aria-label="動画のプレースホルダー"></div>
 {/snippet}
 
-{#snippet actions(pending, error)}
+{#snippet actions(pending)}
 	<button type="button" disabled={pending} onclick={start}>生成</button>
-	{#if error}
-		<p role="alert">{error}</p>
-	{/if}
 {/snippet}
 
 <div class="stage" {@attach release}>
@@ -123,14 +120,15 @@
 </div>
 {#if playback}
 	{#await playback}
-		{@render actions(true, null)}
+		{@render actions(true)}
 	{:then _url}
-		{@render actions(false, null)}
+		{@render actions(false)}
 	{:catch error}
-		{@render actions(false, errorMessage(error))}
+		{@render actions(false)}
+		<p role="alert">{errorMessage(error)}</p>
 	{/await}
 {:else}
-	{@render actions(false, null)}
+	{@render actions(false)}
 {/if}
 
 <style>
