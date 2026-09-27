@@ -10,8 +10,9 @@
 		{/each}
 	</select>
 </label>
-<div role="group">
-	<input type="url" readonly aria-label="URL" placeholder="URL" />
-	<button type="button">コピー</button>
-</div>
+<label>
+	URL
+	<input type="url" readonly placeholder="URL" />
+</label>
+<button type="button">コピー</button>
 <button type="button">開く</button>
