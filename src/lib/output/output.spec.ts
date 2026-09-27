@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { outputCategory } from './output';
+import {
+	isVideoOutputType,
+	outputCategory,
+	parseResolution,
+	supportedVideoCodecs,
+	videoOutputFormat
+} from './output';
 
 describe('outputCategory', () => {
 	it('keeps page as page', () => {
@@ -13,5 +19,26 @@ describe('outputCategory', () => {
 
 	it('keeps a fullscreen url as a fullscreen url', () => {
 		expect(outputCategory('fullscreen-url')).toBe('fullscreen-url');
+	});
+});
+
+describe('videoOutputFormat', () => {
+	it('derives a mime type from the video OutputType', () => {
+		expect(isVideoOutputType('mp4')).toBe(true);
+		expect(isVideoOutputType('page')).toBe(false);
+		expect(videoOutputFormat('mp4').mimeType).toBe('video/mp4');
+		expect(videoOutputFormat('webm').mimeType).toBe('video/webm');
+	});
+
+	it('lists the codecs the format can contain', () => {
+		expect(supportedVideoCodecs('mp4')).toEqual(['avc', 'hevc', 'vp9', 'av1', 'vp8', 'prores']);
+		expect(supportedVideoCodecs('webm')).toEqual(['vp9', 'av1', 'vp8']);
+	});
+});
+
+describe('parseResolution', () => {
+	it('reads the selected pixel size', () => {
+		expect(parseResolution('1920x1080')).toEqual({ width: 1920, height: 1080 });
+		expect(parseResolution('720x480')).toEqual({ width: 720, height: 480 });
 	});
 });
