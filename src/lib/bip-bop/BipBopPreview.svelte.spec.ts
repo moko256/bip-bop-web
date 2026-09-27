@@ -1,42 +1,50 @@
 import { page } from 'vitest/browser';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import BipBopPreview from './BipBopPreview.svelte';
 
-function deviceContentBox(element: Element): Promise<ResizeObserverSize> {
-	return new Promise((resolve, reject) => {
-		const observer = new ResizeObserver((entries) => {
-			const box = entries[0]?.devicePixelContentBoxSize?.[0];
-			observer.disconnect();
-			if (!box) {
-				reject(new Error('devicePixelContentBoxSize was empty'));
-				return;
-			}
-			resolve(box);
-		});
-		observer.observe(element, { box: 'device-pixel-content-box' });
+const originalDevicePixelRatio = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio');
+
+function useDevicePixelRatio(value: number): void {
+	Object.defineProperty(window, 'devicePixelRatio', {
+		configurable: true,
+		get: () => value
 	});
 }
 
 describe('BipBopPreview', () => {
-	it('creates a canvas at the host device-pixel size, draws it, and places it in the host', async () => {
+	afterEach(() => {
+		if (originalDevicePixelRatio) {
+			Object.defineProperty(window, 'devicePixelRatio', originalDevicePixelRatio);
+		}
+	});
+
+	it('creates a canvas at the host size times devicePixelRatio, draws it, and places it in the host', async () => {
+		useDevicePixelRatio(2);
 		render(BipBopPreview);
 
 		const canvas = page.getByLabelText('Bip-Bop preview');
 		await expect.element(canvas).toBeVisible();
-		await expect.poll(() => (canvas.element() as HTMLCanvasElement).width).toBeGreaterThan(0);
+		await expect
+			.poll(() => {
+				const element = canvas.element() as HTMLCanvasElement;
+				const host = element.parentElement;
+				if (!host || host.clientWidth <= 0) return false;
+				return (
+					element.width === Math.round(host.clientWidth * 2) &&
+					element.height === Math.round(host.clientHeight * 2)
+				);
+			})
+			.toBe(true);
 
 		const element = canvas.element() as HTMLCanvasElement;
-		const host = element.parentElement;
-		expect(host).toBeTruthy();
-		const box = await deviceContentBox(host!);
+		const host = element.parentElement!;
 
 		expect(element.isConnected).toBe(true);
-		expect(host!.contains(element)).toBe(true);
-		expect(element.width).toBe(Math.round(box.inlineSize));
-		expect(element.height).toBe(Math.round(box.blockSize));
-		expect(element.clientWidth).toBe(host!.clientWidth);
-		expect(element.clientHeight).toBe(host!.clientHeight);
+		expect(host.contains(element)).toBe(true);
+		expect(element.clientWidth).toBe(host.clientWidth);
+		expect(element.clientHeight).toBe(host.clientHeight);
+		expect(element.width).toBeGreaterThan(element.clientWidth);
 		expect(element.getContext('2d', { alpha: false })?.imageSmoothingEnabled).toBe(false);
 		expect(getComputedStyle(element).imageRendering).toBe('pixelated');
 	});

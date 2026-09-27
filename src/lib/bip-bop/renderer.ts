@@ -137,7 +137,7 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
  * The circle diameter is `round(shortSide * 1/3)`.
- * Image smoothing is off, so canvas and video frames are not anti-aliased.
+ * Image smoothing is off for every canvas and video frame.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
