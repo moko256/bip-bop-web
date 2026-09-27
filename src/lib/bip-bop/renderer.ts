@@ -48,44 +48,70 @@ export const BIP_BOP_RENDERED_TEXTS = [
 	CLOCK_FRACTION_SEPARATOR
 ];
 
-/** Layout shared by the web preview and a future video exporter. */
+/**
+ * Layout shared by the web preview and the video exporter.
+ * Every drawn length is `round(shortSide * fraction)` in whole pixels, where
+ * `shortSide` is the lesser of the canvas width and height.
+ */
 export type BipBopDimensions = {
 	width: number;
 	height: number;
 	centerX: number;
 	centerY: number;
-	/** Backing circle and sector. Diameter is one third of the canvas height. */
+	/** Backing circle and sector. Diameter is `round(shortSide * 1/3)`. */
 	radius: number;
-	fontSize: number;
-	/** Elapsed clock burned into the top-left corner. */
+	/** Frame counter. Height is `round(shortSide * 1/16)`. */
+	frameFontSize: number;
+	/** Top of the frame counter. The gap below center is `round(shortSide * 1/64)`. */
+	frameCountY: number;
+	/** `Bip!` / `Bop!`. Height is `round(shortSide * 1/12)`. */
+	labelFontSize: number;
+	/** Bottom of `Bip!` / `Bop!`. The gap above center is `round(shortSide * 1/64)`. */
+	labelY: number;
+	/** Elapsed clock. Height is `round(shortSide * 1/16)`. */
 	clockFontSize: number;
+	/** Left inset of the clock. `round(shortSide * 1/32)`. */
 	clockX: number;
+	/** Top inset of the clock. `round(shortSide * 1/32)`. */
 	clockY: number;
-	/** Side of each bottom-left 75% color-bar square: 1/32 of the short side, rounded to a whole pixel. */
+	/** Side of each 75% color-bar square. Height is `round(shortSide * 1/16)`. */
 	colorBarSize: number;
-	/** Left edge of the color bar. */
+	/** Left inset of the color bar. `round(shortSide * 1/32)`. */
 	colorBarX: number;
-	/** Top edge of the color bar. The row sits on the bottom edge. */
+	/** Top of the color bar. The bottom inset is `round(shortSide * 1/32)`. */
 	colorBarY: number;
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
-	const colorBarSize = Math.round(Math.min(width, height) / 32);
+	const shortSide = Math.min(width, height);
+	const inset = pixelsAlongShortSide(shortSide, 1, 32);
+	const centerGap = pixelsAlongShortSide(shortSide, 1, 64);
+	const textHeight = pixelsAlongShortSide(shortSide, 1, 16);
+	const diameter = pixelsAlongShortSide(shortSide, 1, 3);
+	const centerY = height / 2;
 
 	return {
 		width,
 		height,
 		centerX: width / 2,
-		centerY: height / 2,
-		radius: height / 6,
-		fontSize: height / 12,
-		clockFontSize: height / 24,
-		clockX: height / 36,
-		clockY: height / 36,
-		colorBarSize,
-		colorBarX: 0,
-		colorBarY: height - colorBarSize
+		centerY,
+		radius: diameter / 2,
+		frameFontSize: textHeight,
+		frameCountY: centerY + centerGap,
+		labelFontSize: pixelsAlongShortSide(shortSide, 1, 12),
+		labelY: centerY - centerGap,
+		clockFontSize: textHeight,
+		clockX: inset,
+		clockY: inset,
+		colorBarSize: textHeight,
+		colorBarX: inset,
+		colorBarY: height - inset - textHeight
 	};
+}
+
+/** `Math.round(shortSide * numerator / denominator)`, in whole pixels. */
+function pixelsAlongShortSide(shortSide: number, numerator: number, denominator: number): number {
+	return Math.round((shortSide * numerator) / denominator);
 }
 
 type BipBopCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -100,11 +126,17 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * and the sector and backing circle swap white and gray. On each turn boundary the
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
- * The center counter is the frame index, zero-padded to 6 digits.
+ * The center counter is the frame index, zero-padded to 6 digits. Its top sits
+ * `round(shortSide * 1/64)` below center, and its height is `round(shortSide * 1/16)`.
+ * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
+ * `round(shortSide * 1/12)`.
+ * The corner clock uses the frame-counter height, inset from the top and left by
+ * `round(shortSide * 1/32)`.
  * The counter, the Bip!/Bop! label, and the clock use {@link BIP_BOP_FONT_FAMILY}.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
- * whose side is 1/32 of the short side, rounded to a whole pixel.
+ * of that same height, inset from the left and bottom by that same inset.
+ * The circle diameter is `round(shortSide * 1/3)`.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
@@ -120,7 +152,10 @@ export function BipBopRenderer(
 		centerX,
 		centerY,
 		radius,
-		fontSize,
+		frameFontSize,
+		frameCountY,
+		labelFontSize,
+		labelY,
 		clockFontSize,
 		clockX,
 		clockY,
@@ -152,15 +187,16 @@ export function BipBopRenderer(
 	ctx.fill();
 
 	ctx.fillStyle = BLACK;
-	ctx.font = monospaceFont(fontSize);
+	ctx.font = monospaceFont(frameFontSize);
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'top';
-	ctx.fillText(formatFrameCount(frame), centerX, centerY);
+	ctx.fillText(formatFrameCount(frame), centerX, frameCountY);
 
 	if (cycleFrame === 0) {
+		ctx.font = monospaceFont(labelFontSize);
 		ctx.textBaseline = 'bottom';
 		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
-		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, centerY);
+		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, labelY);
 	}
 
 	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, BIP_BOP_CYCLE_FRAMES);

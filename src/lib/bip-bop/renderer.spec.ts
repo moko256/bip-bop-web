@@ -16,8 +16,15 @@ class MockContext {
 	textBaseline = '';
 	arcs: ArcCall[] = [];
 	fills: string[] = [];
-	texts: { text: string; baseline: string; align: string; fill: string; x: number; y: number }[] =
-		[];
+	texts: {
+		text: string;
+		baseline: string;
+		align: string;
+		fill: string;
+		x: number;
+		y: number;
+		font: string;
+	}[] = [];
 
 	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 	fonts: string[] = [];
@@ -51,7 +58,8 @@ class MockContext {
 			align: this.textAlign,
 			fill: this.fillStyle,
 			x,
-			y
+			y,
+			font: this.font
 		});
 	}
 }
@@ -72,31 +80,42 @@ function radiansFromTop(degrees: number): number {
 }
 
 describe('createBipBopDimensions', () => {
-	it('centers a circle whose diameter is one third of the height', () => {
+	it('sizes every drawn length as round(shortSide * fraction) on a 1920×1080 canvas', () => {
 		const dimensions = createBipBopDimensions(1920, 1080);
 
 		expect(dimensions.centerX).toBe(960);
 		expect(dimensions.centerY).toBe(540);
 		expect(dimensions.radius).toBe(180);
-		expect(dimensions.fontSize).toBe(90);
-		expect(dimensions.clockFontSize).toBe(45);
-		expect(dimensions.clockX).toBe(30);
-		expect(dimensions.clockY).toBe(30);
+		expect(dimensions.frameFontSize).toBe(68);
+		expect(dimensions.frameCountY).toBe(557);
+		expect(dimensions.labelFontSize).toBe(90);
+		expect(dimensions.labelY).toBe(523);
+		expect(dimensions.clockFontSize).toBe(68);
+		expect(dimensions.clockX).toBe(34);
+		expect(dimensions.clockY).toBe(34);
+		expect(dimensions.colorBarSize).toBe(68);
+		expect(dimensions.colorBarX).toBe(34);
+		expect(dimensions.colorBarY).toBe(978);
 	});
 
-	it('rounds the color-bar side to a whole pixel after dividing the short side by 32', () => {
-		const landscape = createBipBopDimensions(1920, 1080);
+	it('uses the short side and rounds half pixels, including an odd diameter', () => {
 		const portrait = createBipBopDimensions(720, 1280);
-		const roundsDown = createBipBopDimensions(1000, 2000);
+		const uneven = createBipBopDimensions(1000, 2000);
 
-		expect(landscape.colorBarSize).toBe(34);
-		expect(landscape.colorBarX).toBe(0);
-		expect(landscape.colorBarY).toBe(1046);
-		expect(portrait.colorBarSize).toBe(23);
-		expect(portrait.colorBarX).toBe(0);
-		expect(portrait.colorBarY).toBe(1257);
-		expect(roundsDown.colorBarSize).toBe(31);
-		expect(roundsDown.colorBarY).toBe(1969);
+		expect(portrait.radius).toBe(120);
+		expect(portrait.frameFontSize).toBe(45);
+		expect(portrait.frameCountY).toBe(651);
+		expect(portrait.labelFontSize).toBe(60);
+		expect(portrait.labelY).toBe(629);
+		expect(portrait.clockX).toBe(23);
+		expect(portrait.clockY).toBe(23);
+		expect(portrait.colorBarSize).toBe(45);
+		expect(portrait.colorBarX).toBe(23);
+		expect(portrait.colorBarY).toBe(1212);
+		expect(uneven.radius).toBe(166.5);
+		expect(uneven.colorBarSize).toBe(63);
+		expect(uneven.colorBarX).toBe(31);
+		expect(uneven.colorBarY).toBe(1906);
 	});
 });
 
@@ -128,20 +147,56 @@ describe('BipBopRenderer', () => {
 	});
 
 	it('draws the counter below center and alternates Bip! and Bop! above center each second', () => {
-		const atZero = draw(0).context.texts.filter((text) => text.x === 960);
-		const atOne = draw(1).context.texts.filter((text) => text.x === 960);
-		const atSixty = draw(60).context.texts.filter((text) => text.x === 960);
-		const atOneTwenty = draw(120).context.texts.filter((text) => text.x === 960);
+		const atZero = draw(0);
+		const centered = (frame: ReturnType<typeof draw>) =>
+			frame.context.texts.filter((text) => text.x === frame.dimensions.centerX);
+		const atZeroCentered = centered(atZero);
+		const atOne = centered(draw(1));
+		const atSixty = centered(draw(60));
+		const atOneTwenty = centered(draw(120));
 
-		expect(atZero).toEqual([
-			{ text: '000000', baseline: 'top', align: 'center', fill: '#000000', x: 960, y: 540 },
-			{ text: 'Bip!', baseline: 'bottom', align: 'center', fill: '#000000', x: 960, y: 540 }
+		expect(atZeroCentered).toEqual([
+			{
+				text: '000000',
+				baseline: 'top',
+				align: 'center',
+				fill: '#000000',
+				x: 960,
+				y: atZero.dimensions.frameCountY,
+				font: '68px "JetBrains Mono", monospace'
+			},
+			{
+				text: 'Bip!',
+				baseline: 'bottom',
+				align: 'center',
+				fill: '#000000',
+				x: 960,
+				y: atZero.dimensions.labelY,
+				font: '90px "JetBrains Mono", monospace'
+			}
 		]);
 		expect(atOne.map((text) => text.text)).toEqual(['000001']);
 		expect(atOne[0]?.baseline).toBe('top');
+		expect(atOne[0]?.y).toBe(atZero.dimensions.frameCountY);
 		expect(atSixty).toEqual([
-			{ text: '000060', baseline: 'top', align: 'center', fill: '#000000', x: 960, y: 540 },
-			{ text: 'Bop!', baseline: 'bottom', align: 'center', fill: '#ffffff', x: 960, y: 540 }
+			{
+				text: '000060',
+				baseline: 'top',
+				align: 'center',
+				fill: '#000000',
+				x: 960,
+				y: atZero.dimensions.frameCountY,
+				font: '68px "JetBrains Mono", monospace'
+			},
+			{
+				text: 'Bop!',
+				baseline: 'bottom',
+				align: 'center',
+				fill: '#ffffff',
+				x: 960,
+				y: atZero.dimensions.labelY,
+				font: '90px "JetBrains Mono", monospace'
+			}
 		]);
 		expect(atOneTwenty.map((text) => text.text)).toEqual(['000120', 'Bip!']);
 		expect(atOneTwenty[1]?.fill).toBe('#000000');
@@ -163,10 +218,11 @@ describe('BipBopRenderer', () => {
 
 	it('draws the counter, the labels, and the clock in JetBrains Mono', () => {
 		const { context, dimensions } = draw(0);
-		const label = `${dimensions.fontSize}px "JetBrains Mono", monospace`;
+		const counter = `${dimensions.frameFontSize}px "JetBrains Mono", monospace`;
+		const label = `${dimensions.labelFontSize}px "JetBrains Mono", monospace`;
 		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
 
-		expect(context.fonts).toEqual([label, label, clock]);
+		expect(context.fonts).toEqual([counter, label, clock]);
 	});
 
 	it('lists every character the renderer paints', () => {
@@ -188,7 +244,8 @@ describe('BipBopRenderer', () => {
 			align: 'left',
 			fill: '#ffffff',
 			x: dimensions.clockX,
-			y: dimensions.clockY
+			y: dimensions.clockY,
+			font: `${dimensions.clockFontSize}px "JetBrains Mono", monospace`
 		});
 		expect(draw(1).context.texts.at(-1)?.text).toBe('00:00:00.01');
 		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
@@ -201,20 +258,20 @@ describe('BipBopRenderer', () => {
 		const squares = context.rects.slice(1);
 
 		expect(squares).toEqual([
-			{ x: 0, y: 1046, w: 34, h: 34, fill: '#bfbfbf' },
-			{ x: 34, y: 1046, w: 34, h: 34, fill: '#bfbf00' },
-			{ x: 68, y: 1046, w: 34, h: 34, fill: '#00bfbf' },
-			{ x: 102, y: 1046, w: 34, h: 34, fill: '#00bf00' },
-			{ x: 136, y: 1046, w: 34, h: 34, fill: '#bf00bf' },
-			{ x: 170, y: 1046, w: 34, h: 34, fill: '#bf0000' },
-			{ x: 204, y: 1046, w: 34, h: 34, fill: '#0000bf' }
+			{ x: 34, y: 978, w: 68, h: 68, fill: '#bfbfbf' },
+			{ x: 102, y: 978, w: 68, h: 68, fill: '#bfbf00' },
+			{ x: 170, y: 978, w: 68, h: 68, fill: '#00bfbf' },
+			{ x: 238, y: 978, w: 68, h: 68, fill: '#00bf00' },
+			{ x: 306, y: 978, w: 68, h: 68, fill: '#bf00bf' },
+			{ x: 374, y: 978, w: 68, h: 68, fill: '#bf0000' },
+			{ x: 442, y: 978, w: 68, h: 68, fill: '#0000bf' }
 		]);
 	});
 
 	it('uses the width as the short side when the canvas is portrait', () => {
 		const squares = draw(0, 720, 1280).context.rects.slice(1);
 
-		expect(squares[0]).toEqual({ x: 0, y: 1257, w: 23, h: 23, fill: '#bfbfbf' });
-		expect(squares[6]).toEqual({ x: 138, y: 1257, w: 23, h: 23, fill: '#0000bf' });
+		expect(squares[0]).toEqual({ x: 23, y: 1212, w: 45, h: 45, fill: '#bfbfbf' });
+		expect(squares[6]).toEqual({ x: 293, y: 1212, w: 45, h: 45, fill: '#0000bf' });
 	});
 });
