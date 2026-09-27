@@ -1,13 +1,16 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
+	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
 
 	const play: Attachment<HTMLCanvasElement> = (canvas) => {
 		// The template never reads the counter, so it stays a plain number.
 		let frame = 0;
 		let rafId = 0;
+		let stopped = false;
 
 		const tick = () => {
+			if (stopped) return;
 			const width = Math.round(canvas.clientWidth * window.devicePixelRatio);
 			const height = Math.round(canvas.clientHeight * window.devicePixelRatio);
 
@@ -24,9 +27,12 @@
 			rafId = requestAnimationFrame(tick);
 		};
 
-		rafId = requestAnimationFrame(tick);
+		void loadBipBopFont().finally(() => {
+			if (!stopped) rafId = requestAnimationFrame(tick);
+		});
 
 		return () => {
+			stopped = true;
 			cancelAnimationFrame(rafId);
 		};
 	};

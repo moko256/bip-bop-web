@@ -24,6 +24,30 @@ const COLOR_BAR_75 = [
 	'#0000bf'
 ] as const;
 
+/** Digits the frame counter and the elapsed clock can draw. */
+const FRAME_COUNT_TEXT = '0123456789';
+/** Label above center on even seconds. */
+const BIP_LABEL = 'Bip!';
+/** Label above center on odd seconds. */
+const BOP_LABEL = 'Bop!';
+const CLOCK_TIME_SEPARATOR = ':';
+const CLOCK_FRACTION_SEPARATOR = '.';
+
+/** Family for every canvas and video label. Subset files live in `$lib/fonts`. */
+export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
+
+/**
+ * Strings whose characters {@link BipBopRenderer} can paint.
+ * `scripts/download-jetbrains-mono.mjs` subsets {@link BIP_BOP_FONT_FAMILY} to this list.
+ */
+export const BIP_BOP_RENDERED_TEXTS = [
+	FRAME_COUNT_TEXT,
+	BIP_LABEL,
+	BOP_LABEL,
+	CLOCK_TIME_SEPARATOR,
+	CLOCK_FRACTION_SEPARATOR
+];
+
 /**
  * Layout shared by the web preview and the video exporter.
  * Every drawn length is `round(shortSide * fraction)` in whole pixels, where
@@ -108,6 +132,7 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * `round(shortSide * 1/12)`.
  * The corner clock uses the frame-counter height, inset from the top and left by
  * `round(shortSide * 1/32)`.
+ * The counter, the Bip!/Bop! label, and the clock use {@link BIP_BOP_FONT_FAMILY}.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
@@ -162,20 +187,20 @@ export function BipBopRenderer(
 	ctx.fill();
 
 	ctx.fillStyle = BLACK;
-	ctx.font = `${frameFontSize}px sans-serif`;
+	ctx.font = monospaceFont(frameFontSize);
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'top';
 	ctx.fillText(formatFrameCount(frame), centerX, frameCountY);
 
 	if (cycleFrame === 0) {
-		ctx.font = `${labelFontSize}px sans-serif`;
+		ctx.font = monospaceFont(labelFontSize);
 		ctx.textBaseline = 'bottom';
 		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
-		ctx.fillText(periodFrame === 0 ? 'Bip!' : 'Bop!', centerX, labelY);
+		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, labelY);
 	}
 
 	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
-	ctx.font = `${clockFontSize}px monospace`;
+	ctx.font = monospaceFont(clockFontSize);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
 	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
@@ -201,7 +226,19 @@ function formatElapsedClock(frame: number): string {
 	const minutes = minutesTotal % 60;
 	const hours = Math.floor(minutesTotal / 60);
 
-	return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}.${pad2(centiseconds)}`;
+	return [
+		pad2(hours),
+		CLOCK_TIME_SEPARATOR,
+		pad2(minutes),
+		CLOCK_TIME_SEPARATOR,
+		pad2(seconds),
+		CLOCK_FRACTION_SEPARATOR,
+		pad2(centiseconds)
+	].join('');
+}
+
+function monospaceFont(size: number): string {
+	return `${size}px "${BIP_BOP_FONT_FAMILY}", monospace`;
 }
 
 function pad2(value: number): string {

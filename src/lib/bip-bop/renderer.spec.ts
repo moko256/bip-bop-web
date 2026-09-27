@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BipBopRenderer, createBipBopDimensions } from './renderer';
+import { BIP_BOP_RENDERED_TEXTS, BipBopRenderer, createBipBopDimensions } from './renderer';
 
 type ArcCall = {
 	x: number;
@@ -27,6 +27,7 @@ class MockContext {
 	}[] = [];
 
 	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+	fonts: string[] = [];
 
 	setTransform(): void {}
 
@@ -50,6 +51,7 @@ class MockContext {
 	}
 
 	fillText(text: string, x: number, y: number): void {
+		this.fonts.push(this.font);
 		this.texts.push({
 			text,
 			baseline: this.textBaseline,
@@ -161,7 +163,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '68px sans-serif'
+				font: '68px "JetBrains Mono", monospace'
 			},
 			{
 				text: 'Bip!',
@@ -170,7 +172,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '90px sans-serif'
+				font: '90px "JetBrains Mono", monospace'
 			}
 		]);
 		expect(atOne.map((text) => text.text)).toEqual(['000001']);
@@ -184,7 +186,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '68px sans-serif'
+				font: '68px "JetBrains Mono", monospace'
 			},
 			{
 				text: 'Bop!',
@@ -193,7 +195,7 @@ describe('BipBopRenderer', () => {
 				fill: '#ffffff',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '90px sans-serif'
+				font: '90px "JetBrains Mono", monospace'
 			}
 		]);
 		expect(atOneTwenty.map((text) => text.text)).toEqual(['000120', 'Bip!']);
@@ -214,6 +216,24 @@ describe('BipBopRenderer', () => {
 		expect(draw(90).context.fills.slice(0, 3)).toEqual(atHalf.context.fills.slice(0, 3));
 	});
 
+	it('draws the counter, the labels, and the clock in JetBrains Mono', () => {
+		const { context, dimensions } = draw(0);
+		const counter = `${dimensions.frameFontSize}px "JetBrains Mono", monospace`;
+		const label = `${dimensions.labelFontSize}px "JetBrains Mono", monospace`;
+		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
+
+		expect(context.fonts).toEqual([counter, label, clock]);
+	});
+
+	it('lists every character the renderer paints', () => {
+		const drawn = [0, 3, 60, 120, 987654, 60 * 3661 + 30]
+			.flatMap((frame) => draw(frame).context.texts.map((text) => text.text))
+			.join('');
+		const listed = new Set([...BIP_BOP_RENDERED_TEXTS.join('')]);
+
+		expect([...new Set(drawn)].filter((char) => !listed.has(char))).toEqual([]);
+	});
+
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
 		const { context, dimensions } = draw(0);
 		const clock = context.texts.at(-1);
@@ -225,7 +245,7 @@ describe('BipBopRenderer', () => {
 			fill: '#ffffff',
 			x: dimensions.clockX,
 			y: dimensions.clockY,
-			font: `${dimensions.clockFontSize}px monospace`
+			font: `${dimensions.clockFontSize}px "JetBrains Mono", monospace`
 		});
 		expect(draw(1).context.texts.at(-1)?.text).toBe('00:00:00.01');
 		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
