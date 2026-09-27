@@ -36,16 +36,12 @@
 	}
 
 	function start() {
-		const promise = generatePlayback({
+		playback = generatePlayback({
 			outputType,
 			codec,
 			resolution,
 			signal: abort.signal
 		});
-		promise.catch(() => {
-			// {#await} renders the rejection. This marks a discarded run as handled.
-		});
-		playback = promise;
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
