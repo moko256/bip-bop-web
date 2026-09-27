@@ -1,10 +1,14 @@
 export const BIP_BOP_CYCLE_FRAMES = 60;
+/** Two-second color loop at 60 fps. Endpoints are one second apart. */
+const COLOR_PERIOD_FRAMES = BIP_BOP_CYCLE_FRAMES * 2;
 
-const BACKGROUND = '#000000';
-const CIRCLE = '#808080';
-const SECTOR = '#ffffff';
-const TEXT = '#000000';
-const CLOCK = '#ffffff';
+const BLACK = '#000000';
+
+type Rgb = readonly [number, number, number];
+
+const RGB_BLACK: Rgb = [0, 0, 0];
+const RGB_WHITE: Rgb = [255, 255, 255];
+const RGB_GRAY: Rgb = [128, 128, 128];
 
 /** Layout shared by the web preview and a future video exporter. */
 export type BipBopDimensions = {
@@ -43,6 +47,9 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
  * Frame 0 of each 60-frame turn is the sector 1°–360°; each frame moves the start by 6°.
+ * Colors ping-pong over 120 frames (2 seconds): field and clock swap black and white,
+ * and the sector and backing circle swap white and gray. On each turn boundary the
+ * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits.
  */
@@ -56,27 +63,30 @@ export function BipBopRenderer(
 
 	const { width, height, centerX, centerY, radius, fontSize, clockFontSize, clockX, clockY } =
 		dimensions;
-	const cycleFrame = ((frame % BIP_BOP_CYCLE_FRAMES) + BIP_BOP_CYCLE_FRAMES) % BIP_BOP_CYCLE_FRAMES;
+	const cycleFrame = nonNegativeMod(frame, BIP_BOP_CYCLE_FRAMES);
+	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
 	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
+	const towardMidpoint =
+		periodFrame <= BIP_BOP_CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
 
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-	ctx.fillStyle = BACKGROUND;
+	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
 
 	ctx.beginPath();
 	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-	ctx.fillStyle = CIRCLE;
+	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
 	ctx.fill();
 
 	ctx.beginPath();
 	ctx.moveTo(centerX, centerY);
 	ctx.arc(centerX, centerY, radius, radiansFromTop(startDegrees), radiansFromTop(360));
 	ctx.closePath();
-	ctx.fillStyle = SECTOR;
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
 	ctx.fill();
 
-	ctx.fillStyle = TEXT;
+	ctx.fillStyle = BLACK;
 	ctx.font = `${fontSize}px sans-serif`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'top';
@@ -84,10 +94,11 @@ export function BipBopRenderer(
 
 	if (cycleFrame === 0) {
 		ctx.textBaseline = 'bottom';
-		ctx.fillText('Bip!', centerX, centerY);
+		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+		ctx.fillText(periodFrame === 0 ? 'Bip!' : 'Bop!', centerX, centerY);
 	}
 
-	ctx.fillStyle = CLOCK;
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
 	ctx.font = `${clockFontSize}px monospace`;
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
@@ -114,6 +125,19 @@ function formatElapsedClock(frame: number): string {
 
 function pad2(value: number): string {
 	return String(value).padStart(2, '0');
+}
+
+function nonNegativeMod(value: number, modulus: number): number {
+	return ((value % modulus) + modulus) % modulus;
+}
+
+/** Linear mix from `from` at numerator 0 to `to` at numerator === denominator. */
+function mixColor(from: Rgb, to: Rgb, numerator: number, denominator: number): string {
+	const channel = (start: number, end: number) =>
+		Math.round(start + ((end - start) * numerator) / denominator);
+	return `#${[channel(from[0], to[0]), channel(from[1], to[1]), channel(from[2], to[2])]
+		.map((value) => value.toString(16).padStart(2, '0'))
+		.join('')}`;
 }
 
 /** Canvas angles start at 3 o'clock; this shifts 0° to 12 o'clock, clockwise. */

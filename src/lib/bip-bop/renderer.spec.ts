@@ -107,10 +107,11 @@ describe('BipBopRenderer', () => {
 		expect(frame60?.start).toBeCloseTo(frame0?.start ?? 0);
 	});
 
-	it('draws the counter below center and Bip! above center when the count divides by 60', () => {
+	it('draws the counter below center and alternates Bip! and Bop! above center each second', () => {
 		const atZero = draw(0).context.texts.filter((text) => text.x === 960);
 		const atOne = draw(1).context.texts.filter((text) => text.x === 960);
 		const atSixty = draw(60).context.texts.filter((text) => text.x === 960);
+		const atOneTwenty = draw(120).context.texts.filter((text) => text.x === 960);
 
 		expect(atZero).toEqual([
 			{ text: '000000', baseline: 'top', align: 'center', fill: '#000000', x: 960, y: 540 },
@@ -118,7 +119,26 @@ describe('BipBopRenderer', () => {
 		]);
 		expect(atOne.map((text) => text.text)).toEqual(['000001']);
 		expect(atOne[0]?.baseline).toBe('top');
-		expect(atSixty.map((text) => text.text)).toEqual(['000060', 'Bip!']);
+		expect(atSixty).toEqual([
+			{ text: '000060', baseline: 'top', align: 'center', fill: '#000000', x: 960, y: 540 },
+			{ text: 'Bop!', baseline: 'bottom', align: 'center', fill: '#ffffff', x: 960, y: 540 }
+		]);
+		expect(atOneTwenty.map((text) => text.text)).toEqual(['000120', 'Bip!']);
+		expect(atOneTwenty[1]?.fill).toBe('#000000');
+	});
+
+	it('ping-pongs field, circle, sector, and clock colors over 2 seconds', () => {
+		const atHalf = draw(30);
+		const atSecond = draw(60);
+		const atReturn = draw(120);
+
+		expect(atHalf.context.fills).toEqual(['#808080', '#c0c0c0', '#c0c0c0']);
+		expect(atHalf.context.texts.at(-1)?.fill).toBe('#808080');
+		expect(atSecond.context.fills).toEqual(['#ffffff', '#ffffff', '#808080']);
+		expect(atSecond.context.texts.at(-1)?.fill).toBe('#000000');
+		expect(atReturn.context.fills).toEqual(['#000000', '#808080', '#ffffff']);
+		expect(atReturn.context.texts.at(-1)?.fill).toBe('#ffffff');
+		expect(draw(90).context.fills).toEqual(atHalf.context.fills);
 	});
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
