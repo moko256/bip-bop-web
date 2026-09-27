@@ -64,7 +64,7 @@
 	<div class="media placeholder" role="img" aria-label="動画のプレースホルダー"></div>
 {/snippet}
 
-{#snippet actions(pending)}
+{#snippet actions(pending: boolean)}
 	<button type="button" disabled={pending} onclick={start}>生成</button>
 {/snippet}
 
@@ -86,7 +86,7 @@
 				aria-label="生成した動画"
 				{@attach () => () => URL.revokeObjectURL(url)}
 			></video>
-		{:catch _error}
+		{:catch}
 			{@render placeholder()}
 		{/await}
 	{:else}
@@ -117,7 +117,7 @@
 {#if playback}
 	{#await playback}
 		{@render actions(true)}
-	{:then _url}
+	{:then}
 		{@render actions(false)}
 	{:catch error}
 		{@render actions(false)}
