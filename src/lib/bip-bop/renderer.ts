@@ -42,7 +42,7 @@ export type BipBopDimensions = {
 	frameCountY: number;
 	/** `Bip!` / `Bop!`. Height is `round(shortSide * 1/12)`. */
 	labelFontSize: number;
-	/** Bottom of `Bip!` / `Bop!`. The gap above center is `round(shortSide * 1/64)`. */
+	/** Bottom of `Bip!` / `Bop!`. The gap above center is `round(shortSide * 1/32)`. */
 	labelY: number;
 	/** Elapsed clock. Height is `round(shortSide * 1/16)`. */
 	clockFontSize: number;
@@ -62,7 +62,6 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 	const shortSide = Math.min(width, height);
 	const inset = pixelsAlongShortSide(shortSide, 1, 32);
 	const textHeight = pixelsAlongShortSide(shortSide, 1, 16);
-	const labelGap = pixelsAlongShortSide(shortSide, 1, 64);
 	const diameter = pixelsAlongShortSide(shortSide, 1, 3);
 	const centerY = height / 2;
 
@@ -75,7 +74,7 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		frameFontSize: textHeight,
 		frameCountY: centerY + inset,
 		labelFontSize: pixelsAlongShortSide(shortSide, 1, 12),
-		labelY: centerY - labelGap,
+		labelY: centerY - inset,
 		clockFontSize: textHeight,
 		clockX: inset,
 		clockY: inset,
@@ -104,7 +103,7 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
  * `round(shortSide * 1/32)` below center, and its height is `round(shortSide * 1/16)`.
- * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
+ * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/32)` under the text, at height
  * `round(shortSide * 1/12)`.
  * The corner clock uses the frame-counter height, inset from the top and left by
  * `round(shortSide * 1/32)`.

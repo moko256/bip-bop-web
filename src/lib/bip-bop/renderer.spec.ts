@@ -87,7 +87,7 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.frameFontSize).toBe(68);
 		expect(dimensions.frameCountY).toBe(574);
 		expect(dimensions.labelFontSize).toBe(90);
-		expect(dimensions.labelY).toBe(523);
+		expect(dimensions.labelY).toBe(506);
 		expect(dimensions.clockFontSize).toBe(68);
 		expect(dimensions.clockX).toBe(34);
 		expect(dimensions.clockY).toBe(34);
@@ -104,7 +104,7 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.frameFontSize).toBe(45);
 		expect(portrait.frameCountY).toBe(663);
 		expect(portrait.labelFontSize).toBe(60);
-		expect(portrait.labelY).toBe(629);
+		expect(portrait.labelY).toBe(617);
 		expect(portrait.clockX).toBe(23);
 		expect(portrait.clockY).toBe(23);
 		expect(portrait.colorBarSize).toBe(45);
