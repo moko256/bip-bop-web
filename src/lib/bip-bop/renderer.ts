@@ -10,6 +10,20 @@ const RGB_BLACK: Rgb = [0, 0, 0];
 const RGB_WHITE: Rgb = [255, 255, 255];
 const RGB_GRAY: Rgb = [128, 128, 128];
 
+/**
+ * 75% color bar: 75% amplitude, 100% saturation, sRGB.
+ * An "on" channel is 0.75 × 255, which rounds to 191 (0xbf). An "off" channel is 0.
+ */
+const COLOR_BAR_75 = [
+	'#bfbfbf',
+	'#bfbf00',
+	'#00bfbf',
+	'#00bf00',
+	'#bf00bf',
+	'#bf0000',
+	'#0000bf'
+] as const;
+
 /** Layout shared by the web preview and a future video exporter. */
 export type BipBopDimensions = {
 	width: number;
@@ -23,9 +37,17 @@ export type BipBopDimensions = {
 	clockFontSize: number;
 	clockX: number;
 	clockY: number;
+	/** Side of each bottom-left 75% color-bar square: 1/32 of the short side, rounded to a whole pixel. */
+	colorBarSize: number;
+	/** Left edge of the color bar. */
+	colorBarX: number;
+	/** Top edge of the color bar. The row sits on the bottom edge. */
+	colorBarY: number;
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
+	const colorBarSize = Math.round(Math.min(width, height) / 32);
+
 	return {
 		width,
 		height,
@@ -35,7 +57,10 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		fontSize: height / 12,
 		clockFontSize: height / 24,
 		clockX: height / 36,
-		clockY: height / 36
+		clockY: height / 36,
+		colorBarSize,
+		colorBarX: 0,
+		colorBarY: height - colorBarSize
 	};
 }
 
@@ -52,6 +77,9 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits.
+ * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
+ * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
+ * whose side is 1/32 of the short side, rounded to a whole pixel.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
@@ -61,8 +89,20 @@ export function BipBopRenderer(
 	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
 	if (!ctx || dimensions.width <= 0 || dimensions.height <= 0) return;
 
-	const { width, height, centerX, centerY, radius, fontSize, clockFontSize, clockX, clockY } =
-		dimensions;
+	const {
+		width,
+		height,
+		centerX,
+		centerY,
+		radius,
+		fontSize,
+		clockFontSize,
+		clockX,
+		clockY,
+		colorBarSize,
+		colorBarX,
+		colorBarY
+	} = dimensions;
 	const cycleFrame = nonNegativeMod(frame, BIP_BOP_CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
 	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
@@ -103,6 +143,11 @@ export function BipBopRenderer(
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
 	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
+
+	for (let index = 0; index < COLOR_BAR_75.length; index += 1) {
+		ctx.fillStyle = COLOR_BAR_75[index];
+		ctx.fillRect(colorBarX + index * colorBarSize, colorBarY, colorBarSize, colorBarSize);
+	}
 }
 
 /** Frame index shown in the circle, at least 6 digits. */

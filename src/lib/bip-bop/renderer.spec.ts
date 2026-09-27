@@ -19,10 +19,13 @@ class MockContext {
 	texts: { text: string; baseline: string; align: string; fill: string; x: number; y: number }[] =
 		[];
 
+	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+
 	setTransform(): void {}
 
-	fillRect(): void {
+	fillRect(x: number, y: number, w: number, h: number): void {
 		this.fills.push(this.fillStyle);
+		this.rects.push({ x, y, w, h, fill: this.fillStyle });
 	}
 
 	beginPath(): void {}
@@ -78,6 +81,21 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.clockX).toBe(30);
 		expect(dimensions.clockY).toBe(30);
 	});
+
+	it('rounds the color-bar side to a whole pixel after dividing the short side by 32', () => {
+		const landscape = createBipBopDimensions(1920, 1080);
+		const portrait = createBipBopDimensions(720, 1280);
+		const roundsDown = createBipBopDimensions(1000, 2000);
+
+		expect(landscape.colorBarSize).toBe(34);
+		expect(landscape.colorBarX).toBe(0);
+		expect(landscape.colorBarY).toBe(1046);
+		expect(portrait.colorBarSize).toBe(23);
+		expect(portrait.colorBarX).toBe(0);
+		expect(portrait.colorBarY).toBe(1257);
+		expect(roundsDown.colorBarSize).toBe(31);
+		expect(roundsDown.colorBarY).toBe(1969);
+	});
 });
 
 describe('BipBopRenderer', () => {
@@ -85,7 +103,7 @@ describe('BipBopRenderer', () => {
 		const { context, dimensions } = draw(0);
 		const sector = context.arcs[1];
 
-		expect(context.fills).toEqual(['#000000', '#808080', '#ffffff']);
+		expect(context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
 		expect(context.arcs[0]).toMatchObject({
 			x: dimensions.centerX,
 			y: dimensions.centerY,
@@ -132,13 +150,13 @@ describe('BipBopRenderer', () => {
 		const atSecond = draw(60);
 		const atReturn = draw(120);
 
-		expect(atHalf.context.fills).toEqual(['#808080', '#c0c0c0', '#c0c0c0']);
+		expect(atHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#c0c0c0', '#c0c0c0']);
 		expect(atHalf.context.texts.at(-1)?.fill).toBe('#808080');
-		expect(atSecond.context.fills).toEqual(['#ffffff', '#ffffff', '#808080']);
+		expect(atSecond.context.fills.slice(0, 3)).toEqual(['#ffffff', '#ffffff', '#808080']);
 		expect(atSecond.context.texts.at(-1)?.fill).toBe('#000000');
-		expect(atReturn.context.fills).toEqual(['#000000', '#808080', '#ffffff']);
+		expect(atReturn.context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
 		expect(atReturn.context.texts.at(-1)?.fill).toBe('#ffffff');
-		expect(draw(90).context.fills).toEqual(atHalf.context.fills);
+		expect(draw(90).context.fills.slice(0, 3)).toEqual(atHalf.context.fills.slice(0, 3));
 	});
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
@@ -157,5 +175,27 @@ describe('BipBopRenderer', () => {
 		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
 		expect(draw(60).context.texts.at(-1)?.text).toBe('00:00:01.00');
 		expect(draw(60 * 3661 + 30).context.texts.at(-1)?.text).toBe('01:01:01.50');
+	});
+
+	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {
+		const { context } = draw(0, 1920, 1080);
+		const squares = context.rects.slice(1);
+
+		expect(squares).toEqual([
+			{ x: 0, y: 1046, w: 34, h: 34, fill: '#bfbfbf' },
+			{ x: 34, y: 1046, w: 34, h: 34, fill: '#bfbf00' },
+			{ x: 68, y: 1046, w: 34, h: 34, fill: '#00bfbf' },
+			{ x: 102, y: 1046, w: 34, h: 34, fill: '#00bf00' },
+			{ x: 136, y: 1046, w: 34, h: 34, fill: '#bf00bf' },
+			{ x: 170, y: 1046, w: 34, h: 34, fill: '#bf0000' },
+			{ x: 204, y: 1046, w: 34, h: 34, fill: '#0000bf' }
+		]);
+	});
+
+	it('uses the width as the short side when the canvas is portrait', () => {
+		const squares = draw(0, 720, 1280).context.rects.slice(1);
+
+		expect(squares[0]).toEqual({ x: 0, y: 1257, w: 23, h: 23, fill: '#bfbfbf' });
+		expect(squares[6]).toEqual({ x: 138, y: 1257, w: 23, h: 23, fill: '#0000bf' });
 	});
 });
