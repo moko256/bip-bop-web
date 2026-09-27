@@ -8,8 +8,8 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
 		"test:unit": "vitest",
@@ -26,6 +26,7 @@
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^26",
+		"@typescript/native": "npm:typescript@^7.0.2",
 		"@vitest/browser-playwright": "^5.0.1",
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
@@ -38,7 +39,7 @@
 		"sass-embedded": "^1.105.0",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
-		"typescript": "^7.0.2",
+		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.60.1",
 		"vite": "^8.0.16",
 		"vitest": "^5.0.1",
@@ -46,6 +47,7 @@
 	},
 	"dependencies": {
 		"@picocss/pico": "^2.1.1",
-		"kiso.css": "^1.2.4"
+		"kiso.css": "^1.2.4",
+		"mediabunny": "^1.60.0"
 	}
 }

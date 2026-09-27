@@ -1,7 +1,13 @@
 <script lang="ts">
+	import BipBopPreview from '$lib/bip-bop/BipBopPreview.svelte';
+	import type { Snippet } from 'svelte';
 	import { resolutions } from './output';
+
+	let { outputTypeSelector }: { outputTypeSelector: Snippet } = $props();
 </script>
 
+<BipBopPreview />
+{@render outputTypeSelector()}
 <label>
 	解像度
 	<select>
