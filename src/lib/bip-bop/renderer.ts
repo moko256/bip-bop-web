@@ -137,6 +137,7 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
  * The circle diameter is `round(shortSide * 1/3)`.
+ * Image smoothing is off for every canvas and video frame.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
@@ -170,6 +171,8 @@ export function BipBopRenderer(
 		periodFrame <= BIP_BOP_CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
 
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	// Page canvas and video frames share this draw. Anti-aliasing stays off.
+	ctx.imageSmoothingEnabled = false;
 
 	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);

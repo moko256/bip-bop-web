@@ -3,24 +3,44 @@
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
 
-	const play: Attachment<HTMLCanvasElement> = (canvas) => {
+	const PREVIEW_LABEL = 'Bip-Bop preview';
+
+	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
+		const dpr = window.devicePixelRatio || 1;
+		const width = Math.round(host.clientWidth * dpr);
+		const height = Math.round(host.clientHeight * dpr);
+		if (width <= 0 || height <= 0) return null;
+		return { width, height };
+	}
+
+	function createPreviewCanvas(width: number, height: number): HTMLCanvasElement {
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		canvas.setAttribute('aria-label', PREVIEW_LABEL);
+		return canvas;
+	}
+
+	const play: Attachment<HTMLDivElement> = (host) => {
 		// The template never reads the counter, so it stays a plain number.
 		let frame = 0;
 		let rafId = 0;
 		let stopped = false;
+		let canvas: HTMLCanvasElement | null = null;
 
 		const tick = () => {
 			if (stopped) return;
-			const width = Math.round(canvas.clientWidth * window.devicePixelRatio);
-			const height = Math.round(canvas.clientHeight * window.devicePixelRatio);
+			const size = bitmapSize(host);
 
-			if (width > 0 && height > 0) {
-				if (canvas.width !== width || canvas.height !== height) {
-					canvas.width = width;
-					canvas.height = height;
+			if (size) {
+				const dimensions = createBipBopDimensions(size.width, size.height);
+				if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
+					canvas = createPreviewCanvas(size.width, size.height);
+					BipBopRenderer(canvas, dimensions, frame);
+					host.replaceChildren(canvas);
+				} else {
+					BipBopRenderer(canvas, dimensions, frame);
 				}
-
-				BipBopRenderer(canvas, createBipBopDimensions(width, height), frame);
 				frame += 1;
 			}
 
@@ -38,10 +58,21 @@
 	};
 </script>
 
-<canvas {@attach play} width="1920" height="1080" aria-label="Bip-Bop preview"></canvas>
+<div class="preview" {@attach play}></div>
 
 <style>
-	canvas {
+	.preview {
+		position: relative;
 		width: 100%;
+		aspect-ratio: 16 / 9;
+	}
+
+	.preview :global(canvas) {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		image-rendering: pixelated;
 	}
 </style>

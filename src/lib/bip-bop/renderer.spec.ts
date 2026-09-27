@@ -14,6 +14,7 @@ class MockContext {
 	font = '';
 	textAlign = '';
 	textBaseline = '';
+	imageSmoothingEnabled = true;
 	arcs: ArcCall[] = [];
 	fills: string[] = [];
 	texts: {
@@ -120,6 +121,12 @@ describe('createBipBopDimensions', () => {
 });
 
 describe('BipBopRenderer', () => {
+	it('turns anti-aliasing off for canvas and video frames', () => {
+		const { context } = draw(0);
+
+		expect(context.imageSmoothingEnabled).toBe(false);
+	});
+
 	it('paints a black field, a gray circle, and a white sector from 1° to 360° on frame 0', () => {
 		const { context, dimensions } = draw(0);
 		const sector = context.arcs[1];
