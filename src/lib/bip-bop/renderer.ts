@@ -36,32 +36,33 @@ export type BipBopDimensions = {
 	centerY: number;
 	/** Backing circle and sector. Diameter is `round(shortSide * 1/3)`. */
 	radius: number;
-	/** Frame counter. Height is `round(shortSide * 1/32)`. */
+	/** Frame counter. Height is `round(shortSide * 1/16)`. */
 	frameFontSize: number;
-	/** Top of the frame counter. The gap below center is `round(shortSide * 1/64)`. */
+	/** Top of the frame counter. The gap below center is `round(shortSide * 1/32)`. */
 	frameCountY: number;
-	/** `Bip!` / `Bop!`. Height is `round(shortSide * 1/10)`. */
+	/** `Bip!` / `Bop!`. Height is `round(shortSide * 1/12)`. */
 	labelFontSize: number;
 	/** Bottom of `Bip!` / `Bop!`. The gap above center is `round(shortSide * 1/64)`. */
 	labelY: number;
-	/** Elapsed clock. Height is `round(shortSide * 1/32)`. */
+	/** Elapsed clock. Height is `round(shortSide * 1/16)`. */
 	clockFontSize: number;
-	/** Left inset of the clock. `round(shortSide * 1/64)`. */
+	/** Left inset of the clock. `round(shortSide * 1/32)`. */
 	clockX: number;
-	/** Top inset of the clock. `round(shortSide * 1/64)`. */
+	/** Top inset of the clock. `round(shortSide * 1/32)`. */
 	clockY: number;
-	/** Side of each 75% color-bar square. Height is `round(shortSide * 1/32)`. */
+	/** Side of each 75% color-bar square. Height is `round(shortSide * 1/16)`. */
 	colorBarSize: number;
-	/** Left inset of the color bar. `round(shortSide * 1/64)`. */
+	/** Left inset of the color bar. `round(shortSide * 1/32)`. */
 	colorBarX: number;
-	/** Top of the color bar. The bottom inset is `round(shortSide * 1/64)`. */
+	/** Top of the color bar. The bottom inset is `round(shortSide * 1/32)`. */
 	colorBarY: number;
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
 	const shortSide = Math.min(width, height);
-	const margin = pixelsAlongShortSide(shortSide, 1, 64);
-	const barAndTextHeight = pixelsAlongShortSide(shortSide, 1, 32);
+	const inset = pixelsAlongShortSide(shortSide, 1, 32);
+	const textHeight = pixelsAlongShortSide(shortSide, 1, 16);
+	const labelGap = pixelsAlongShortSide(shortSide, 1, 64);
 	const diameter = pixelsAlongShortSide(shortSide, 1, 3);
 	const centerY = height / 2;
 
@@ -71,16 +72,16 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		centerX: width / 2,
 		centerY,
 		radius: diameter / 2,
-		frameFontSize: barAndTextHeight,
-		frameCountY: centerY + margin,
-		labelFontSize: pixelsAlongShortSide(shortSide, 1, 10),
-		labelY: centerY - margin,
-		clockFontSize: barAndTextHeight,
-		clockX: margin,
-		clockY: margin,
-		colorBarSize: barAndTextHeight,
-		colorBarX: margin,
-		colorBarY: height - margin - barAndTextHeight
+		frameFontSize: textHeight,
+		frameCountY: centerY + inset,
+		labelFontSize: pixelsAlongShortSide(shortSide, 1, 12),
+		labelY: centerY - labelGap,
+		clockFontSize: textHeight,
+		clockX: inset,
+		clockY: inset,
+		colorBarSize: textHeight,
+		colorBarX: inset,
+		colorBarY: height - inset - textHeight
 	};
 }
 
@@ -102,13 +103,14 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
- * `round(shortSide * 1/64)` below center, and its height is `round(shortSide * 1/32)`.
- * `Bip!` / `Bop!` sit above center with the same gap under the text, at height
- * `round(shortSide * 1/10)`.
- * The corner clock uses the same height, inset from the top and left by that gap.
+ * `round(shortSide * 1/32)` below center, and its height is `round(shortSide * 1/16)`.
+ * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
+ * `round(shortSide * 1/12)`.
+ * The corner clock uses the frame-counter height, inset from the top and left by
+ * `round(shortSide * 1/32)`.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
- * of that same height, inset from the left and bottom by the same gap.
+ * of that same height, inset from the left and bottom by that same inset.
  * The circle diameter is `round(shortSide * 1/3)`.
  */
 export function BipBopRenderer(

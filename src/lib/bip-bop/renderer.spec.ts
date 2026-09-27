@@ -84,16 +84,16 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.centerX).toBe(960);
 		expect(dimensions.centerY).toBe(540);
 		expect(dimensions.radius).toBe(180);
-		expect(dimensions.frameFontSize).toBe(34);
-		expect(dimensions.frameCountY).toBe(557);
-		expect(dimensions.labelFontSize).toBe(108);
+		expect(dimensions.frameFontSize).toBe(68);
+		expect(dimensions.frameCountY).toBe(574);
+		expect(dimensions.labelFontSize).toBe(90);
 		expect(dimensions.labelY).toBe(523);
-		expect(dimensions.clockFontSize).toBe(34);
-		expect(dimensions.clockX).toBe(17);
-		expect(dimensions.clockY).toBe(17);
-		expect(dimensions.colorBarSize).toBe(34);
-		expect(dimensions.colorBarX).toBe(17);
-		expect(dimensions.colorBarY).toBe(1029);
+		expect(dimensions.clockFontSize).toBe(68);
+		expect(dimensions.clockX).toBe(34);
+		expect(dimensions.clockY).toBe(34);
+		expect(dimensions.colorBarSize).toBe(68);
+		expect(dimensions.colorBarX).toBe(34);
+		expect(dimensions.colorBarY).toBe(978);
 	});
 
 	it('uses the short side and rounds half pixels, including an odd diameter', () => {
@@ -101,19 +101,19 @@ describe('createBipBopDimensions', () => {
 		const uneven = createBipBopDimensions(1000, 2000);
 
 		expect(portrait.radius).toBe(120);
-		expect(portrait.frameFontSize).toBe(23);
-		expect(portrait.frameCountY).toBe(651);
-		expect(portrait.labelFontSize).toBe(72);
+		expect(portrait.frameFontSize).toBe(45);
+		expect(portrait.frameCountY).toBe(663);
+		expect(portrait.labelFontSize).toBe(60);
 		expect(portrait.labelY).toBe(629);
-		expect(portrait.clockX).toBe(11);
-		expect(portrait.clockY).toBe(11);
-		expect(portrait.colorBarSize).toBe(23);
-		expect(portrait.colorBarX).toBe(11);
-		expect(portrait.colorBarY).toBe(1246);
+		expect(portrait.clockX).toBe(23);
+		expect(portrait.clockY).toBe(23);
+		expect(portrait.colorBarSize).toBe(45);
+		expect(portrait.colorBarX).toBe(23);
+		expect(portrait.colorBarY).toBe(1212);
 		expect(uneven.radius).toBe(166.5);
-		expect(uneven.colorBarSize).toBe(31);
-		expect(uneven.colorBarX).toBe(16);
-		expect(uneven.colorBarY).toBe(1953);
+		expect(uneven.colorBarSize).toBe(63);
+		expect(uneven.colorBarX).toBe(31);
+		expect(uneven.colorBarY).toBe(1906);
 	});
 });
 
@@ -161,7 +161,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '34px sans-serif'
+				font: '68px sans-serif'
 			},
 			{
 				text: 'Bip!',
@@ -170,7 +170,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '108px sans-serif'
+				font: '90px sans-serif'
 			}
 		]);
 		expect(atOne.map((text) => text.text)).toEqual(['000001']);
@@ -184,7 +184,7 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '34px sans-serif'
+				font: '68px sans-serif'
 			},
 			{
 				text: 'Bop!',
@@ -193,7 +193,7 @@ describe('BipBopRenderer', () => {
 				fill: '#ffffff',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '108px sans-serif'
+				font: '90px sans-serif'
 			}
 		]);
 		expect(atOneTwenty.map((text) => text.text)).toEqual(['000120', 'Bip!']);
@@ -238,20 +238,20 @@ describe('BipBopRenderer', () => {
 		const squares = context.rects.slice(1);
 
 		expect(squares).toEqual([
-			{ x: 17, y: 1029, w: 34, h: 34, fill: '#bfbfbf' },
-			{ x: 51, y: 1029, w: 34, h: 34, fill: '#bfbf00' },
-			{ x: 85, y: 1029, w: 34, h: 34, fill: '#00bfbf' },
-			{ x: 119, y: 1029, w: 34, h: 34, fill: '#00bf00' },
-			{ x: 153, y: 1029, w: 34, h: 34, fill: '#bf00bf' },
-			{ x: 187, y: 1029, w: 34, h: 34, fill: '#bf0000' },
-			{ x: 221, y: 1029, w: 34, h: 34, fill: '#0000bf' }
+			{ x: 34, y: 978, w: 68, h: 68, fill: '#bfbfbf' },
+			{ x: 102, y: 978, w: 68, h: 68, fill: '#bfbf00' },
+			{ x: 170, y: 978, w: 68, h: 68, fill: '#00bfbf' },
+			{ x: 238, y: 978, w: 68, h: 68, fill: '#00bf00' },
+			{ x: 306, y: 978, w: 68, h: 68, fill: '#bf00bf' },
+			{ x: 374, y: 978, w: 68, h: 68, fill: '#bf0000' },
+			{ x: 442, y: 978, w: 68, h: 68, fill: '#0000bf' }
 		]);
 	});
 
 	it('uses the width as the short side when the canvas is portrait', () => {
 		const squares = draw(0, 720, 1280).context.rects.slice(1);
 
-		expect(squares[0]).toEqual({ x: 11, y: 1246, w: 23, h: 23, fill: '#bfbfbf' });
-		expect(squares[6]).toEqual({ x: 149, y: 1246, w: 23, h: 23, fill: '#0000bf' });
+		expect(squares[0]).toEqual({ x: 23, y: 1212, w: 45, h: 45, fill: '#bfbfbf' });
+		expect(squares[6]).toEqual({ x: 293, y: 1212, w: 45, h: 45, fill: '#0000bf' });
 	});
 });
