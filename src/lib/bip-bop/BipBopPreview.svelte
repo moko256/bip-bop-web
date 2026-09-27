@@ -3,24 +3,50 @@
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
 
-	const play: Attachment<HTMLCanvasElement> = (canvas) => {
-		// The template never reads the counter, so it stays a plain number.
-		let frame = 0;
+	const PREVIEW_LABEL = 'Bip-Bop preview';
+
+	// The template never reads these, so they stay plain values.
+	// `devicePixels` is the host's width and height in device pixels (high DPI included).
+	let frame = 0;
+	let devicePixels: ResizeObserverSize[] | undefined;
+
+	function bitmapSize(
+		size: ResizeObserverSize[] | undefined
+	): { width: number; height: number } | null {
+		const box = size?.[0];
+		if (!box) return null;
+		const width = Math.round(box.inlineSize);
+		const height = Math.round(box.blockSize);
+		if (width <= 0 || height <= 0) return null;
+		return { width, height };
+	}
+
+	function createPreviewCanvas(width: number, height: number): HTMLCanvasElement {
+		const canvas = document.createElement('canvas');
+		canvas.width = width;
+		canvas.height = height;
+		canvas.setAttribute('aria-label', PREVIEW_LABEL);
+		return canvas;
+	}
+
+	const play: Attachment<HTMLDivElement> = (host) => {
 		let rafId = 0;
 		let stopped = false;
+		let canvas: HTMLCanvasElement | null = null;
 
 		const tick = () => {
 			if (stopped) return;
-			const width = Math.round(canvas.clientWidth * window.devicePixelRatio);
-			const height = Math.round(canvas.clientHeight * window.devicePixelRatio);
+			const size = bitmapSize(devicePixels);
 
-			if (width > 0 && height > 0) {
-				if (canvas.width !== width || canvas.height !== height) {
-					canvas.width = width;
-					canvas.height = height;
+			if (size) {
+				const dimensions = createBipBopDimensions(size.width, size.height);
+				if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
+					canvas = createPreviewCanvas(size.width, size.height);
+					BipBopRenderer(canvas, dimensions, frame);
+					host.replaceChildren(canvas);
+				} else {
+					BipBopRenderer(canvas, dimensions, frame);
 				}
-
-				BipBopRenderer(canvas, createBipBopDimensions(width, height), frame);
 				frame += 1;
 			}
 
@@ -38,10 +64,30 @@
 	};
 </script>
 
-<canvas {@attach play} width="1920" height="1080" aria-label="Bip-Bop preview"></canvas>
+<div
+	class="preview"
+	bind:devicePixelContentBoxSize={
+		null,
+		(size) => {
+			devicePixels = size ?? undefined;
+		}
+	}
+	{@attach play}
+></div>
 
 <style>
-	canvas {
+	.preview {
+		position: relative;
 		width: 100%;
+		aspect-ratio: 16 / 9;
+	}
+
+	.preview :global(canvas) {
+		position: absolute;
+		inset: 0;
+		display: block;
+		width: 100%;
+		height: 100%;
+		image-rendering: pixelated;
 	}
 </style>
