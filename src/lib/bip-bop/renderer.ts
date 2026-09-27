@@ -24,8 +24,6 @@ const COLOR_BAR_75 = [
 	'#0000bf'
 ] as const;
 
-/** Digits the frame counter and the elapsed clock can draw. */
-const FRAME_COUNT_TEXT = '0123456789';
 /** Label above center on even seconds. */
 const BIP_LABEL = 'Bip!';
 /** Label above center on odd seconds. */
@@ -37,16 +35,13 @@ const CLOCK_FRACTION_SEPARATOR = '.';
 export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
 
 /**
- * Strings whose characters {@link BipBopRenderer} can paint.
- * `scripts/download-jetbrains-mono.mjs` subsets {@link BIP_BOP_FONT_FAMILY} to this list.
+ * Subset {@link BIP_BOP_FONT_FAMILY} is built from. One string, sent unchanged by
+ * `scripts/download-jetbrains-mono.mjs`: RFC 6838 restricted-name symbols
+ * (`!#$&-^_.+`), the MIME type slash, the clock colon, ASCII digits, then
+ * ASCII letters.
  */
-export const BIP_BOP_RENDERED_TEXTS = [
-	FRAME_COUNT_TEXT,
-	BIP_LABEL,
-	BOP_LABEL,
-	CLOCK_TIME_SEPARATOR,
-	CLOCK_FRACTION_SEPARATOR
-];
+export const BIP_BOP_FONT_TEXT =
+	'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
 /**
  * Layout shared by the web preview and the video exporter.
@@ -58,7 +53,7 @@ export type BipBopDimensions = {
 	height: number;
 	centerX: number;
 	centerY: number;
-	/** Backing circle and sector. Diameter is `round(shortSide * 1/3)`. */
+	/** Backing circle and sector. Diameter is `round(shortSide * 2/5)`. */
 	radius: number;
 	/** Frame counter. Height is `round(shortSide * 1/16)`. */
 	frameFontSize: number;
@@ -74,6 +69,11 @@ export type BipBopDimensions = {
 	clockX: number;
 	/** Top inset of the clock. `round(shortSide * 1/32)`. */
 	clockY: number;
+	/**
+	 * Top-right resolution, and for a video the MIME type and video format.
+	 * Height is `round(clockFontSize / 2)`.
+	 */
+	overlayFontSize: number;
 	/** Side of each 75% color-bar square. Height is `round(shortSide * 1/16)`. */
 	colorBarSize: number;
 	/** Left inset of the color bar. `round(shortSide * 1/32)`. */
@@ -87,7 +87,7 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 	const inset = pixelsAlongShortSide(shortSide, 1, 32);
 	const centerGap = pixelsAlongShortSide(shortSide, 1, 64);
 	const textHeight = pixelsAlongShortSide(shortSide, 1, 16);
-	const diameter = pixelsAlongShortSide(shortSide, 1, 3);
+	const diameter = pixelsAlongShortSide(shortSide, 2, 5);
 	const centerY = height / 2;
 
 	return {
@@ -103,6 +103,7 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		clockFontSize: textHeight,
 		clockX: inset,
 		clockY: inset,
+		overlayFontSize: Math.round(textHeight / 2),
 		colorBarSize: textHeight,
 		colorBarX: inset,
 		colorBarY: height - inset - textHeight
@@ -116,6 +117,11 @@ function pixelsAlongShortSide(shortSide: number, numerator: number, denominator:
 
 type BipBopCanvas = HTMLCanvasElement | OffscreenCanvas;
 type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+
+export type BipBopVideoCorner = {
+	mimeType: string;
+	videoFormat: string;
+};
 
 /**
  * Draws one frame. Stateless: the caller owns the frame counter and the canvas size.
@@ -132,17 +138,23 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * `round(shortSide * 1/12)`.
  * The corner clock uses the frame-counter height, inset from the top and left by
  * `round(shortSide * 1/32)`.
- * The counter, the Bip!/Bop! label, and the clock use {@link BIP_BOP_FONT_FAMILY}.
+ * The counter, the Bip!/Bop! label, the clock, and the top-right lines use {@link BIP_BOP_FONT_FAMILY}.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
- * The circle diameter is `round(shortSide * 1/3)`.
+ * The circle diameter is `round(shortSide * 2/5)`.
+ * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`
+ * and `video.videoFormat` on the following lines. Each line is
+ * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
+ * and from the right by the clock's left inset. A page omits `video` and draws
+ * the resolution only.
  * Image smoothing is off for every canvas and video frame.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
 	dimensions: BipBopDimensions,
-	frame: number
+	frame: number,
+	video?: BipBopVideoCorner
 ): void {
 	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
 	if (!ctx || dimensions.width <= 0 || dimensions.height <= 0) return;
@@ -160,6 +172,7 @@ export function BipBopRenderer(
 		clockFontSize,
 		clockX,
 		clockY,
+		overlayFontSize,
 		colorBarSize,
 		colorBarX,
 		colorBarY
@@ -207,6 +220,15 @@ export function BipBopRenderer(
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
 	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
+
+	ctx.font = monospaceFont(overlayFontSize);
+	ctx.textAlign = 'right';
+	const lines = video
+		? [`${width}x${height}`, video.mimeType, video.videoFormat]
+		: [`${width}x${height}`];
+	for (const [index, line] of lines.entries()) {
+		ctx.fillText(line, width - clockX, clockY + index * overlayFontSize);
+	}
 
 	for (let index = 0; index < COLOR_BAR_75.length; index += 1) {
 		ctx.fillStyle = COLOR_BAR_75[index];

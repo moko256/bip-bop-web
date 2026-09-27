@@ -40,7 +40,10 @@ export async function generateBipBopVideo(options: {
 		const frameDuration = 1 / VIDEO_FPS;
 		for (let frame = 0; frame < frameCount; frame += 1) {
 			if (options.signal?.aborted) throw aborted();
-			BipBopRenderer(canvas, dimensions, frame);
+			BipBopRenderer(canvas, dimensions, frame, {
+				mimeType: format.mimeType,
+				videoFormat: options.outputType
+			});
 			await source.add(frame * frameDuration, frameDuration);
 		}
 		if (options.signal?.aborted) throw aborted();

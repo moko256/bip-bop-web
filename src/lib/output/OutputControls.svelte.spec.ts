@@ -63,6 +63,7 @@ describe('OutputControls', () => {
 
 		await expect.element(page.getByRole('radio', { name: 'mp4' })).toBeChecked();
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
+		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText('Bip-Bop preview')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('combobox', { name: '解像度' })).toHaveValue('1920x1080');
 		await expect
@@ -123,6 +124,20 @@ describe('OutputControls', () => {
 
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeDisabled();
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
+		await expect.element(page.getByRole('progressbar', { name: '生成中' })).toBeVisible();
+		const placeholder = page.getByRole('img', { name: '動画のプレースホルダー' }).element();
+		const progress = page
+			.getByRole('progressbar', { name: '生成中' })
+			.element() as HTMLProgressElement;
+		expect(placeholder.getAttribute('aria-busy')).toBeNull();
+		expect(placeholder.clientWidth).toBeGreaterThan(0);
+		expect(progress.hasAttribute('value')).toBe(false);
+		const place = placeholder.getBoundingClientRect();
+		const bar = progress.getBoundingClientRect();
+		expect(bar.width).toBeGreaterThan(0);
+		expect(bar.width).toBeLessThan(place.width);
+		expect(Math.abs(bar.left + bar.width / 2 - (place.left + place.width / 2))).toBeLessThan(1);
+		expect(Math.abs(bar.top + bar.height / 2 - (place.top + place.height / 2))).toBeLessThan(1);
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			codec: 'avc',
@@ -136,6 +151,7 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('img', { name: '動画のプレースホルダー' }))
 			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
 	});
 
@@ -187,6 +203,7 @@ describe('OutputControls', () => {
 			.element(page.getByRole('alert'))
 			.toHaveTextContent('このコーデックはエンコードできません');
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
+		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
 	});
 

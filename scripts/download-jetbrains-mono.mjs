@@ -1,5 +1,5 @@
 /**
- * Download a JetBrains Mono subset for the characters the Bip-Bop renderer paints.
+ * Download a JetBrains Mono subset for BIP_BOP_FONT_TEXT.
  *
  * Manual only. Not part of `dev`, `build`, or `prepare`.
  *   node --experimental-strip-types scripts/download-jetbrains-mono.mjs
@@ -9,7 +9,7 @@
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BIP_BOP_FONT_FAMILY, BIP_BOP_RENDERED_TEXTS } from '../src/lib/bip-bop/renderer.ts';
+import { BIP_BOP_FONT_FAMILY, BIP_BOP_FONT_TEXT } from '../src/lib/bip-bop/renderer.ts';
 
 const USER_AGENT =
 	'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -19,17 +19,6 @@ const outDir = path.join(root, 'src/lib/fonts');
 const stylesheetName = 'jetbrains-mono.css';
 
 const FONT_URL = /url\(\s*(['"]?)([^'")]+)\1\s*\)(?:\s*format\(\s*(['"]?)([a-z0-9-]+)\3\s*\))?/gi;
-
-/**
- * Concatenate, drop duplicate code points, and sort by Unicode scalar value.
- * @param {readonly string[]} texts
- * @returns {string}
- */
-function subsetText(texts) {
-	const unique = [...new Set([...texts.join('')])];
-	unique.sort((left, right) => (left.codePointAt(0) ?? 0) - (right.codePointAt(0) ?? 0));
-	return unique.join('');
-}
 
 /**
  * `https://fonts.googleapis.com/css?family=JetBrains+Mono&text=Hello`
@@ -99,10 +88,7 @@ async function formatStylesheet(source, filepath) {
 }
 
 async function downloadFont() {
-	const text = subsetText(BIP_BOP_RENDERED_TEXTS);
-	if (text.length === 0) throw new Error('The renderer text list is empty');
-
-	const cssUrl = googleFontsStylesheetUrl(BIP_BOP_FONT_FAMILY, text);
+	const cssUrl = googleFontsStylesheetUrl(BIP_BOP_FONT_FAMILY, BIP_BOP_FONT_TEXT);
 	const cssResponse = await fetch(cssUrl, { headers: { 'User-Agent': USER_AGENT } });
 	if (!cssResponse.ok) {
 		throw new Error(`${cssResponse.status} ${cssResponse.statusText} for ${cssUrl}`);
