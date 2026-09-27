@@ -1,6 +1,8 @@
 <script lang="ts">
+	import type { Attachment } from 'svelte/attachments';
 	import type { VideoCodec } from 'mediabunny';
 	import type { Snippet } from 'svelte';
+	import { generatePlayback } from './generate-video';
 	import {
 		resolutions,
 		supportedVideoCodecs,
@@ -19,12 +21,37 @@
 
 	let resolution = $state<Resolution>('1920x1080');
 	let codecChoice = $state<VideoCodec | null>(null);
+	let playback = $state<Promise<string> | null>(null);
 
 	let codecs = $derived(supportedVideoCodecs(outputType));
 	let codec = $derived(
 		codecChoice !== null && codecs.includes(codecChoice) ? codecChoice : codecs[0]
 	);
-	let settingsKey = $derived(`${outputType}:${resolution}:${codec}`);
+
+	let abort = new AbortController();
+
+	function invalidate() {
+		abort.abort();
+		abort = new AbortController();
+		playback = null;
+	}
+
+	function start() {
+		const promise = generatePlayback({
+			outputType,
+			codec,
+			resolution,
+			signal: abort.signal
+		});
+		promise.catch(() => {
+			// {#await} renders the rejection. This marks a discarded run as handled.
+		});
+		playback = promise;
+	}
+
+	const release: Attachment<HTMLDivElement> = () => {
+		return () => abort.abort();
+	};
 
 	function onCodecChange(event: Event) {
 		const value = (event.currentTarget as HTMLSelectElement).value;
@@ -34,27 +61,29 @@
 </script>
 
 {#snippet controls()}
-	{@render outputTypeSelector()}
-	<div class="grid">
-		<label>
-			解像度
-			<select bind:value={resolution}>
-				{#each resolutions as option (option.value)}
-					<option value={option.value}>{option.label}</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			ビデオコーデック
-			<select value={codec} onchange={onCodecChange}>
-				{#each codecs as codecOption (codecOption)}
-					<option value={codecOption}>{codecOption}</option>
-				{/each}
-			</select>
-		</label>
+	<div onchange={invalidate}>
+		{@render outputTypeSelector()}
+		<div class="grid">
+			<label>
+				解像度
+				<select bind:value={resolution}>
+					{#each resolutions as option (option.value)}
+						<option value={option.value}>{option.label}</option>
+					{/each}
+				</select>
+			</label>
+			<label>
+				ビデオコーデック
+				<select value={codec} onchange={onCodecChange}>
+					{#each codecs as codecOption (codecOption)}
+						<option value={codecOption}>{codecOption}</option>
+					{/each}
+				</select>
+			</label>
+		</div>
 	</div>
 {/snippet}
 
-{#key settingsKey}
-	<VideoPlayback {outputType} {codec} {resolution} {controls} />
-{/key}
+<div {@attach release}>
+	<VideoPlayback {playback} {controls} ongenerate={start} />
+</div>

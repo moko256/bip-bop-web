@@ -4,13 +4,17 @@ import { render } from 'vitest-browser-svelte';
 import OutputControls from './OutputControls.svelte';
 import { supportedVideoCodecs } from './output';
 
-const { generateBipBopVideo } = vi.hoisted(() => ({
-	generateBipBopVideo: vi.fn()
+const { generatePlayback } = vi.hoisted(() => ({
+	generatePlayback: vi.fn()
 }));
 
 vi.mock('./generate-video', () => ({
-	generateBipBopVideo
+	generatePlayback
 }));
+
+function videoUrl(): string {
+	return URL.createObjectURL(new Blob([Uint8Array.from([1, 2, 3])], { type: 'video/mp4' }));
+}
 
 function deferred<T>() {
 	let resolve: (value: T) => void = () => {};
@@ -33,7 +37,7 @@ function assertPrecedes(
 
 describe('OutputControls', () => {
 	beforeEach(() => {
-		generateBipBopVideo.mockReset();
+		generatePlayback.mockReset();
 	});
 
 	it('starts on page with the live canvas above OutputType', async () => {
@@ -110,8 +114,8 @@ describe('OutputControls', () => {
 	});
 
 	it('places the generated video where the placeholder was', async () => {
-		const pending = deferred<Blob>();
-		generateBipBopVideo.mockReturnValue(pending.promise);
+		const pending = deferred<string>();
+		generatePlayback.mockReturnValue(pending.promise);
 		render(OutputControls);
 
 		await page.getByRole('radio', { name: 'mp4' }).click();
@@ -119,15 +123,14 @@ describe('OutputControls', () => {
 
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeDisabled();
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
-		expect(generateBipBopVideo).toHaveBeenCalledWith({
+		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			codec: 'avc',
-			width: 1920,
-			height: 1080,
+			resolution: '1920x1080',
 			signal: expect.any(AbortSignal)
 		});
 
-		pending.resolve(new Blob([Uint8Array.from([1, 2, 3])], { type: 'video/mp4' }));
+		pending.resolve(videoUrl());
 
 		await expect.element(page.getByLabelText('生成した動画')).toBeVisible();
 		await expect
@@ -137,7 +140,7 @@ describe('OutputControls', () => {
 	});
 
 	it('returns to the placeholder when the resolution changes', async () => {
-		generateBipBopVideo.mockResolvedValue(new Blob([Uint8Array.from([1])], { type: 'video/mp4' }));
+		generatePlayback.mockResolvedValue(videoUrl());
 		render(OutputControls);
 
 		await page.getByRole('radio', { name: 'mp4' }).click();
@@ -150,24 +153,23 @@ describe('OutputControls', () => {
 		await expect.element(page.getByLabelText('生成した動画')).not.toBeInTheDocument();
 
 		await page.getByRole('button', { name: '生成' }).click();
-		expect(generateBipBopVideo).toHaveBeenLastCalledWith({
+		expect(generatePlayback).toHaveBeenLastCalledWith({
 			outputType: 'mp4',
 			codec: 'avc',
-			width: 720,
-			height: 480,
+			resolution: '720x480',
 			signal: expect.any(AbortSignal)
 		});
 	});
 
 	it('drops an in-flight video when OutputType changes', async () => {
-		const pending = deferred<Blob>();
-		generateBipBopVideo.mockReturnValue(pending.promise);
+		const pending = deferred<string>();
+		generatePlayback.mockReturnValue(pending.promise);
 		render(OutputControls);
 
 		await page.getByRole('radio', { name: 'mp4' }).click();
 		await page.getByRole('button', { name: '生成' }).click();
 		await page.getByRole('radio', { name: 'webm' }).click();
-		pending.resolve(new Blob([Uint8Array.from([1])], { type: 'video/mp4' }));
+		pending.resolve(videoUrl());
 
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
 		await expect.element(page.getByLabelText('生成した動画')).not.toBeInTheDocument();
@@ -175,7 +177,7 @@ describe('OutputControls', () => {
 	});
 
 	it('shows the encoder error and keeps the placeholder', async () => {
-		generateBipBopVideo.mockRejectedValue(new Error('このコーデックはエンコードできません'));
+		generatePlayback.mockRejectedValue(new Error('このコーデックはエンコードできません'));
 		render(OutputControls);
 
 		await page.getByRole('radio', { name: 'mp4' }).click();
