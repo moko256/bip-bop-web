@@ -1,3 +1,4 @@
+import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
 import { BufferTarget, CanvasSource, Output, Quality, type VideoCodec } from 'mediabunny';
 import {
@@ -18,6 +19,8 @@ export async function generateBipBopVideo(options: {
 	frameCount?: number;
 	signal?: AbortSignal;
 }): Promise<Blob> {
+	if (options.signal?.aborted) throw aborted();
+	await loadBipBopFont();
 	if (options.signal?.aborted) throw aborted();
 
 	const format = videoOutputFormat(options.outputType);

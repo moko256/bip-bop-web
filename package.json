@@ -12,6 +12,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --tsgo --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
+		"download-font": "node --experimental-strip-types scripts/download-jetbrains-mono.mjs",
 		"test:unit": "vitest",
 		"test": "pnpm run test:unit --run && pnpm run test:e2e",
 		"test:e2e": "playwright install && playwright test"
