@@ -9,7 +9,6 @@
 		type Resolution,
 		type VideoOutputType
 	} from './output';
-	import VideoPlayback from './VideoPlayback.svelte';
 
 	let {
 		outputType,
@@ -58,32 +57,95 @@
 		const match = codecs.find((item) => item === value);
 		if (match) codecChoice = match;
 	}
+
+	function errorMessage(error: unknown): string {
+		if (error instanceof Error && error.message !== '') return error.message;
+		return '動画の生成に失敗しました';
+	}
 </script>
 
-{#snippet controls()}
-	<div onchange={invalidate}>
-		{@render outputTypeSelector()}
-		<div class="grid">
-			<label>
-				解像度
-				<select bind:value={resolution}>
-					{#each resolutions as option (option.value)}
-						<option value={option.value}>{option.label}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				ビデオコーデック
-				<select value={codec} onchange={onCodecChange}>
-					{#each codecs as codecOption (codecOption)}
-						<option value={codecOption}>{codecOption}</option>
-					{/each}
-				</select>
-			</label>
-		</div>
-	</div>
+{#snippet placeholder()}
+	<div class="media placeholder" role="img" aria-label="動画のプレースホルダー"></div>
 {/snippet}
 
-<div {@attach release}>
-	<VideoPlayback {playback} {controls} ongenerate={start} />
+{#snippet actions(pending, error)}
+	<button type="button" disabled={pending} onclick={start}>生成</button>
+	{#if error}
+		<p role="alert">{error}</p>
+	{/if}
+{/snippet}
+
+<div class="stage" {@attach release}>
+	{#if playback}
+		{#await playback}
+			<div
+				class="media placeholder"
+				role="img"
+				aria-label="動画のプレースホルダー"
+				aria-busy="true"
+			></div>
+		{:then url}
+			<!-- svelte-ignore a11y_media_has_caption -->
+			<video
+				class="media"
+				src={url}
+				controls
+				aria-label="生成した動画"
+				{@attach () => () => URL.revokeObjectURL(url)}
+			></video>
+		{:catch _error}
+			{@render placeholder()}
+		{/await}
+	{:else}
+		{@render placeholder()}
+	{/if}
 </div>
+<div onchange={invalidate}>
+	{@render outputTypeSelector()}
+	<div class="grid">
+		<label>
+			解像度
+			<select bind:value={resolution}>
+				{#each resolutions as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			ビデオコーデック
+			<select value={codec} onchange={onCodecChange}>
+				{#each codecs as codecOption (codecOption)}
+					<option value={codecOption}>{codecOption}</option>
+				{/each}
+			</select>
+		</label>
+	</div>
+</div>
+{#if playback}
+	{#await playback}
+		{@render actions(true, null)}
+	{:then _url}
+		{@render actions(false, null)}
+	{:catch error}
+		{@render actions(false, errorMessage(error))}
+	{/await}
+{:else}
+	{@render actions(false, null)}
+{/if}
+
+<style>
+	.stage {
+		display: grid;
+		width: 100%;
+		aspect-ratio: 16 / 9;
+		background: #000;
+		outline: 1px solid var(--pico-muted-border-color, #ccc);
+	}
+
+	.media {
+		grid-area: 1 / 1;
+		width: 100%;
+		height: 100%;
+		object-fit: contain;
+	}
+</style>
