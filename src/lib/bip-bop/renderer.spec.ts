@@ -19,10 +19,13 @@ class MockContext {
 	texts: { text: string; baseline: string; align: string; fill: string; x: number; y: number }[] =
 		[];
 
+	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+
 	setTransform(): void {}
 
-	fillRect(): void {
+	fillRect(x: number, y: number, w: number, h: number): void {
 		this.fills.push(this.fillStyle);
+		this.rects.push({ x, y, w, h, fill: this.fillStyle });
 	}
 
 	beginPath(): void {}
@@ -78,6 +81,18 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.clockX).toBe(30);
 		expect(dimensions.clockY).toBe(30);
 	});
+
+	it('sizes the bottom-left color bar to 1/32 of the short side', () => {
+		const landscape = createBipBopDimensions(1920, 1080);
+		const portrait = createBipBopDimensions(720, 1280);
+
+		expect(landscape.colorBarSize).toBe(33.75);
+		expect(landscape.colorBarX).toBe(0);
+		expect(landscape.colorBarY).toBe(1046.25);
+		expect(portrait.colorBarSize).toBe(22.5);
+		expect(portrait.colorBarX).toBe(0);
+		expect(portrait.colorBarY).toBe(1257.5);
+	});
 });
 
 describe('BipBopRenderer', () => {
@@ -85,7 +100,7 @@ describe('BipBopRenderer', () => {
 		const { context, dimensions } = draw(0);
 		const sector = context.arcs[1];
 
-		expect(context.fills).toEqual(['#000000', '#808080', '#ffffff']);
+		expect(context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
 		expect(context.arcs[0]).toMatchObject({
 			x: dimensions.centerX,
 			y: dimensions.centerY,
@@ -137,5 +152,27 @@ describe('BipBopRenderer', () => {
 		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
 		expect(draw(60).context.texts.at(-1)?.text).toBe('00:00:01.00');
 		expect(draw(60 * 3661 + 30).context.texts.at(-1)?.text).toBe('01:01:01.50');
+	});
+
+	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {
+		const { context } = draw(0, 1920, 1080);
+		const squares = context.rects.slice(1);
+
+		expect(squares).toEqual([
+			{ x: 0, y: 1046.25, w: 33.75, h: 33.75, fill: '#bfbfbf' },
+			{ x: 33.75, y: 1046.25, w: 33.75, h: 33.75, fill: '#bfbf00' },
+			{ x: 67.5, y: 1046.25, w: 33.75, h: 33.75, fill: '#00bfbf' },
+			{ x: 101.25, y: 1046.25, w: 33.75, h: 33.75, fill: '#00bf00' },
+			{ x: 135, y: 1046.25, w: 33.75, h: 33.75, fill: '#bf00bf' },
+			{ x: 168.75, y: 1046.25, w: 33.75, h: 33.75, fill: '#bf0000' },
+			{ x: 202.5, y: 1046.25, w: 33.75, h: 33.75, fill: '#0000bf' }
+		]);
+	});
+
+	it('uses the width as the short side when the canvas is portrait', () => {
+		const squares = draw(0, 720, 1280).context.rects.slice(1);
+
+		expect(squares[0]).toEqual({ x: 0, y: 1257.5, w: 22.5, h: 22.5, fill: '#bfbfbf' });
+		expect(squares[6]).toEqual({ x: 135, y: 1257.5, w: 22.5, h: 22.5, fill: '#0000bf' });
 	});
 });
