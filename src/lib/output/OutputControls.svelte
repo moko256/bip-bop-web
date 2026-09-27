@@ -7,14 +7,18 @@
 	let category = $derived(outputCategory(outputType));
 </script>
 
-<div class="grid" role="radiogroup" aria-label="OutputType">
+<fieldset aria-label="OutputType">
 	{#each outputTypes as type (type)}
-		<label>
-			<input type="radio" name="output-type" value={type} bind:group={outputType} />
-			{outputTypeLabels[type]}
-		</label>
+		<input
+			type="radio"
+			id="output-type-{type}"
+			name="output-type"
+			value={type}
+			bind:group={outputType}
+		/>
+		<label for="output-type-{type}">{outputTypeLabels[type]}</label>
 	{/each}
-</div>
+</fieldset>
 
 {#if category === 'video'}
 	<VideoOutput />
