@@ -82,16 +82,19 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.clockY).toBe(30);
 	});
 
-	it('sizes the bottom-left color bar to 1/32 of the short side', () => {
+	it('rounds the color-bar side to a whole pixel after dividing the short side by 32', () => {
 		const landscape = createBipBopDimensions(1920, 1080);
 		const portrait = createBipBopDimensions(720, 1280);
+		const roundsDown = createBipBopDimensions(1000, 2000);
 
-		expect(landscape.colorBarSize).toBe(33.75);
+		expect(landscape.colorBarSize).toBe(34);
 		expect(landscape.colorBarX).toBe(0);
-		expect(landscape.colorBarY).toBe(1046.25);
-		expect(portrait.colorBarSize).toBe(22.5);
+		expect(landscape.colorBarY).toBe(1046);
+		expect(portrait.colorBarSize).toBe(23);
 		expect(portrait.colorBarX).toBe(0);
-		expect(portrait.colorBarY).toBe(1257.5);
+		expect(portrait.colorBarY).toBe(1257);
+		expect(roundsDown.colorBarSize).toBe(31);
+		expect(roundsDown.colorBarY).toBe(1969);
 	});
 });
 
@@ -159,20 +162,20 @@ describe('BipBopRenderer', () => {
 		const squares = context.rects.slice(1);
 
 		expect(squares).toEqual([
-			{ x: 0, y: 1046.25, w: 33.75, h: 33.75, fill: '#bfbfbf' },
-			{ x: 33.75, y: 1046.25, w: 33.75, h: 33.75, fill: '#bfbf00' },
-			{ x: 67.5, y: 1046.25, w: 33.75, h: 33.75, fill: '#00bfbf' },
-			{ x: 101.25, y: 1046.25, w: 33.75, h: 33.75, fill: '#00bf00' },
-			{ x: 135, y: 1046.25, w: 33.75, h: 33.75, fill: '#bf00bf' },
-			{ x: 168.75, y: 1046.25, w: 33.75, h: 33.75, fill: '#bf0000' },
-			{ x: 202.5, y: 1046.25, w: 33.75, h: 33.75, fill: '#0000bf' }
+			{ x: 0, y: 1046, w: 34, h: 34, fill: '#bfbfbf' },
+			{ x: 34, y: 1046, w: 34, h: 34, fill: '#bfbf00' },
+			{ x: 68, y: 1046, w: 34, h: 34, fill: '#00bfbf' },
+			{ x: 102, y: 1046, w: 34, h: 34, fill: '#00bf00' },
+			{ x: 136, y: 1046, w: 34, h: 34, fill: '#bf00bf' },
+			{ x: 170, y: 1046, w: 34, h: 34, fill: '#bf0000' },
+			{ x: 204, y: 1046, w: 34, h: 34, fill: '#0000bf' }
 		]);
 	});
 
 	it('uses the width as the short side when the canvas is portrait', () => {
 		const squares = draw(0, 720, 1280).context.rects.slice(1);
 
-		expect(squares[0]).toEqual({ x: 0, y: 1257.5, w: 22.5, h: 22.5, fill: '#bfbfbf' });
-		expect(squares[6]).toEqual({ x: 135, y: 1257.5, w: 22.5, h: 22.5, fill: '#0000bf' });
+		expect(squares[0]).toEqual({ x: 0, y: 1257, w: 23, h: 23, fill: '#bfbfbf' });
+		expect(squares[6]).toEqual({ x: 138, y: 1257, w: 23, h: 23, fill: '#0000bf' });
 	});
 });

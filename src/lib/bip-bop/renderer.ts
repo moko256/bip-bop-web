@@ -33,7 +33,7 @@ export type BipBopDimensions = {
 	clockFontSize: number;
 	clockX: number;
 	clockY: number;
-	/** Side of each bottom-left 75% color-bar square: 1/32 of the short side. */
+	/** Side of each bottom-left 75% color-bar square: 1/32 of the short side, rounded to a whole pixel. */
 	colorBarSize: number;
 	/** Left edge of the color bar. */
 	colorBarX: number;
@@ -42,7 +42,7 @@ export type BipBopDimensions = {
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
-	const colorBarSize = Math.min(width, height) / 32;
+	const colorBarSize = Math.round(Math.min(width, height) / 32);
 
 	return {
 		width,
@@ -71,7 +71,7 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
- * bottom-left. Each swatch is a square whose side is 1/32 of the short side.
+ * bottom-left. Each swatch is a square whose side is 1/32 of the short side, rounded to a whole pixel.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
