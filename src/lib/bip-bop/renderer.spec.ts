@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BipBopRenderer, createBipBopDimensions } from './renderer';
+import { BIP_BOP_RENDERED_TEXTS, BipBopRenderer, createBipBopDimensions } from './renderer';
 
 type ArcCall = {
 	x: number;
@@ -20,6 +20,7 @@ class MockContext {
 		[];
 
 	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+	fonts: string[] = [];
 
 	setTransform(): void {}
 
@@ -43,6 +44,7 @@ class MockContext {
 	}
 
 	fillText(text: string, x: number, y: number): void {
+		this.fonts.push(this.font);
 		this.texts.push({
 			text,
 			baseline: this.textBaseline,
@@ -157,6 +159,23 @@ describe('BipBopRenderer', () => {
 		expect(atReturn.context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
 		expect(atReturn.context.texts.at(-1)?.fill).toBe('#ffffff');
 		expect(draw(90).context.fills.slice(0, 3)).toEqual(atHalf.context.fills.slice(0, 3));
+	});
+
+	it('draws the counter, the labels, and the clock in JetBrains Mono', () => {
+		const { context, dimensions } = draw(0);
+		const label = `${dimensions.fontSize}px "JetBrains Mono", monospace`;
+		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
+
+		expect(context.fonts).toEqual([label, label, clock]);
+	});
+
+	it('lists every character the renderer paints', () => {
+		const drawn = [0, 3, 60, 120, 987654, 60 * 3661 + 30]
+			.flatMap((frame) => draw(frame).context.texts.map((text) => text.text))
+			.join('');
+		const listed = new Set([...BIP_BOP_RENDERED_TEXTS.join('')]);
+
+		expect([...new Set(drawn)].filter((char) => !listed.has(char))).toEqual([]);
 	});
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
