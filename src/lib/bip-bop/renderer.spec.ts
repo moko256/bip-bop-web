@@ -16,7 +16,8 @@ class MockContext {
 	textBaseline = '';
 	arcs: ArcCall[] = [];
 	fills: string[] = [];
-	texts: { text: string; baseline: string; x: number; y: number }[] = [];
+	texts: { text: string; baseline: string; align: string; fill: string; x: number; y: number }[] =
+		[];
 
 	setTransform(): void {}
 
@@ -39,7 +40,14 @@ class MockContext {
 	}
 
 	fillText(text: string, x: number, y: number): void {
-		this.texts.push({ text, baseline: this.textBaseline, x, y });
+		this.texts.push({
+			text,
+			baseline: this.textBaseline,
+			align: this.textAlign,
+			fill: this.fillStyle,
+			x,
+			y
+		});
 	}
 }
 
@@ -66,6 +74,9 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.centerY).toBe(540);
 		expect(dimensions.radius).toBe(180);
 		expect(dimensions.fontSize).toBe(90);
+		expect(dimensions.clockFontSize).toBe(45);
+		expect(dimensions.clockX).toBe(30);
+		expect(dimensions.clockY).toBe(30);
 	});
 });
 
@@ -97,16 +108,34 @@ describe('BipBopRenderer', () => {
 	});
 
 	it('draws the counter below center and Bip! above center when the count divides by 60', () => {
-		const atZero = draw(0).context.texts;
-		const atOne = draw(1).context.texts;
-		const atSixty = draw(60).context.texts;
+		const atZero = draw(0).context.texts.filter((text) => text.x === 960);
+		const atOne = draw(1).context.texts.filter((text) => text.x === 960);
+		const atSixty = draw(60).context.texts.filter((text) => text.x === 960);
 
 		expect(atZero).toEqual([
-			{ text: '0', baseline: 'top', x: 960, y: 540 },
-			{ text: 'Bip!', baseline: 'bottom', x: 960, y: 540 }
+			{ text: '000000', baseline: 'top', align: 'center', fill: '#000000', x: 960, y: 540 },
+			{ text: 'Bip!', baseline: 'bottom', align: 'center', fill: '#000000', x: 960, y: 540 }
 		]);
-		expect(atOne.map((text) => text.text)).toEqual(['1']);
+		expect(atOne.map((text) => text.text)).toEqual(['000001']);
 		expect(atOne[0]?.baseline).toBe('top');
-		expect(atSixty.map((text) => text.text)).toEqual(['60', 'Bip!']);
+		expect(atSixty.map((text) => text.text)).toEqual(['000060', 'Bip!']);
+	});
+
+	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
+		const { context, dimensions } = draw(0);
+		const clock = context.texts.at(-1);
+
+		expect(clock).toEqual({
+			text: '00:00:00.00',
+			baseline: 'top',
+			align: 'left',
+			fill: '#ffffff',
+			x: dimensions.clockX,
+			y: dimensions.clockY
+		});
+		expect(draw(1).context.texts.at(-1)?.text).toBe('00:00:00.01');
+		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
+		expect(draw(60).context.texts.at(-1)?.text).toBe('00:00:01.00');
+		expect(draw(60 * 3661 + 30).context.texts.at(-1)?.text).toBe('01:01:01.50');
 	});
 });

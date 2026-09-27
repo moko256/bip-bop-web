@@ -4,6 +4,7 @@ const BACKGROUND = '#000000';
 const CIRCLE = '#808080';
 const SECTOR = '#ffffff';
 const TEXT = '#000000';
+const CLOCK = '#ffffff';
 
 /** Layout shared by the web preview and a future video exporter. */
 export type BipBopDimensions = {
@@ -14,6 +15,10 @@ export type BipBopDimensions = {
 	/** Backing circle and sector. Diameter is one third of the canvas height. */
 	radius: number;
 	fontSize: number;
+	/** Elapsed clock burned into the top-left corner. */
+	clockFontSize: number;
+	clockX: number;
+	clockY: number;
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
@@ -23,7 +28,10 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		centerX: width / 2,
 		centerY: height / 2,
 		radius: height / 6,
-		fontSize: height / 12
+		fontSize: height / 12,
+		clockFontSize: height / 24,
+		clockX: height / 36,
+		clockY: height / 36
 	};
 }
 
@@ -35,6 +43,8 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
  * Frame 0 of each 60-frame turn is the sector 1°–360°; each frame moves the start by 6°.
+ * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
+ * The center counter is the frame index, zero-padded to 6 digits.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
@@ -44,7 +54,8 @@ export function BipBopRenderer(
 	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
 	if (!ctx || dimensions.width <= 0 || dimensions.height <= 0) return;
 
-	const { width, height, centerX, centerY, radius, fontSize } = dimensions;
+	const { width, height, centerX, centerY, radius, fontSize, clockFontSize, clockX, clockY } =
+		dimensions;
 	const cycleFrame = ((frame % BIP_BOP_CYCLE_FRAMES) + BIP_BOP_CYCLE_FRAMES) % BIP_BOP_CYCLE_FRAMES;
 	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
 
@@ -69,12 +80,40 @@ export function BipBopRenderer(
 	ctx.font = `${fontSize}px sans-serif`;
 	ctx.textAlign = 'center';
 	ctx.textBaseline = 'top';
-	ctx.fillText(String(frame), centerX, centerY);
+	ctx.fillText(formatFrameCount(frame), centerX, centerY);
 
 	if (cycleFrame === 0) {
 		ctx.textBaseline = 'bottom';
 		ctx.fillText('Bip!', centerX, centerY);
 	}
+
+	ctx.fillStyle = CLOCK;
+	ctx.font = `${clockFontSize}px monospace`;
+	ctx.textAlign = 'left';
+	ctx.textBaseline = 'top';
+	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
+}
+
+/** Frame index shown in the circle, at least 6 digits. */
+function formatFrameCount(frame: number): string {
+	return String(Math.trunc(frame)).padStart(6, '0');
+}
+
+/** `HH:MM:SS.CC` from a 60 fps frame index. Centiseconds are truncated, not rounded. */
+function formatElapsedClock(frame: number): string {
+	const centisecondsTotal = Math.floor((Math.trunc(frame) * 100) / BIP_BOP_CYCLE_FRAMES);
+	const centiseconds = centisecondsTotal % 100;
+	const secondsTotal = Math.floor(centisecondsTotal / 100);
+	const seconds = secondsTotal % 60;
+	const minutesTotal = Math.floor(secondsTotal / 60);
+	const minutes = minutesTotal % 60;
+	const hours = Math.floor(minutesTotal / 60);
+
+	return `${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}.${pad2(centiseconds)}`;
+}
+
+function pad2(value: number): string {
+	return String(value).padStart(2, '0');
 }
 
 /** Canvas angles start at 3 o'clock; this shifts 0° to 12 o'clock, clockwise. */
