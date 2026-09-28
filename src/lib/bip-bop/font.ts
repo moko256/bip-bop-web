@@ -1,5 +1,5 @@
 import jetbrainsMono from '$lib/fonts/jetbrains-mono-0.woff2?inline';
-import { BIP_BOP_FONT_FAMILY, BIP_BOP_RENDERED_TEXTS } from './renderer';
+import { BIP_BOP_FONT_FAMILY, BIP_BOP_FONT_TEXT } from './renderer';
 
 let pending: Promise<void> | undefined;
 
@@ -21,7 +21,7 @@ async function loadFace(): Promise<void> {
 			weight: '400'
 		});
 		document.fonts.add(await face.load());
-		await document.fonts.load(`16px "${BIP_BOP_FONT_FAMILY}"`, BIP_BOP_RENDERED_TEXTS.join(''));
+		await document.fonts.load(`16px "${BIP_BOP_FONT_FAMILY}"`, BIP_BOP_FONT_TEXT);
 	} catch (error) {
 		pending = undefined;
 		throw error;

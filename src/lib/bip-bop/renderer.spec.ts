@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BIP_BOP_RENDERED_TEXTS, BipBopRenderer, createBipBopDimensions } from './renderer';
+import {
+	BIP_BOP_FONT_TEXT,
+	BipBopRenderer,
+	createBipBopDimensions,
+	type BipBopVideoCorner
+} from './renderer';
 
 type ArcCall = {
 	x: number;
@@ -65,13 +70,13 @@ class MockContext {
 	}
 }
 
-function draw(frame: number, width = 1920, height = 1080) {
+function draw(frame: number, width = 1920, height = 1080, video?: BipBopVideoCorner) {
 	const context = new MockContext();
 	const canvas = {
 		getContext: () => context
 	} as unknown as HTMLCanvasElement;
 	const dimensions = createBipBopDimensions(width, height);
-	BipBopRenderer(canvas, dimensions, frame);
+	BipBopRenderer(canvas, dimensions, frame, video);
 	return { context, dimensions };
 }
 
@@ -86,7 +91,8 @@ describe('createBipBopDimensions', () => {
 
 		expect(dimensions.centerX).toBe(960);
 		expect(dimensions.centerY).toBe(540);
-		expect(dimensions.radius).toBe(180);
+		expect(dimensions.radius).toBe(216);
+		expect(dimensions.overlayFontSize).toBe(34);
 		expect(dimensions.frameFontSize).toBe(68);
 		expect(dimensions.frameCountY).toBe(557);
 		expect(dimensions.labelFontSize).toBe(90);
@@ -103,7 +109,8 @@ describe('createBipBopDimensions', () => {
 		const portrait = createBipBopDimensions(720, 1280);
 		const uneven = createBipBopDimensions(1000, 2000);
 
-		expect(portrait.radius).toBe(120);
+		expect(portrait.radius).toBe(144);
+		expect(portrait.overlayFontSize).toBe(23);
 		expect(portrait.frameFontSize).toBe(45);
 		expect(portrait.frameCountY).toBe(651);
 		expect(portrait.labelFontSize).toBe(60);
@@ -113,7 +120,9 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.colorBarSize).toBe(45);
 		expect(portrait.colorBarX).toBe(23);
 		expect(portrait.colorBarY).toBe(1212);
-		expect(uneven.radius).toBe(166.5);
+		expect(uneven.radius).toBe(200);
+		expect(uneven.overlayFontSize).toBe(32);
+		expect(createBipBopDimensions(1003, 2000).radius).toBe(200.5);
 		expect(uneven.colorBarSize).toBe(63);
 		expect(uneven.colorBarX).toBe(31);
 		expect(uneven.colorBarY).toBe(1906);
@@ -215,35 +224,47 @@ describe('BipBopRenderer', () => {
 		const atReturn = draw(120);
 
 		expect(atHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#c0c0c0', '#c0c0c0']);
-		expect(atHalf.context.texts.at(-1)?.fill).toBe('#808080');
+		expect(atHalf.context.texts.find((text) => text.align === 'left')?.fill).toBe('#808080');
 		expect(atSecond.context.fills.slice(0, 3)).toEqual(['#ffffff', '#ffffff', '#808080']);
-		expect(atSecond.context.texts.at(-1)?.fill).toBe('#000000');
+		expect(atSecond.context.texts.find((text) => text.align === 'left')?.fill).toBe('#000000');
 		expect(atReturn.context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
-		expect(atReturn.context.texts.at(-1)?.fill).toBe('#ffffff');
+		expect(atReturn.context.texts.find((text) => text.align === 'left')?.fill).toBe('#ffffff');
 		expect(draw(90).context.fills.slice(0, 3)).toEqual(atHalf.context.fills.slice(0, 3));
 	});
 
-	it('draws the counter, the labels, and the clock in JetBrains Mono', () => {
+	it('draws the counter, the labels, the clock, and the corner in JetBrains Mono', () => {
 		const { context, dimensions } = draw(0);
 		const counter = `${dimensions.frameFontSize}px "JetBrains Mono", monospace`;
 		const label = `${dimensions.labelFontSize}px "JetBrains Mono", monospace`;
 		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
+		const corner = `${dimensions.overlayFontSize}px "JetBrains Mono", monospace`;
 
-		expect(context.fonts).toEqual([counter, label, clock]);
+		expect(context.fonts).toEqual([counter, label, clock, corner]);
+	});
+
+	it('requests the font subset as one precomposed string', () => {
+		expect(BIP_BOP_FONT_TEXT).toBe(
+			'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+		);
 	});
 
 	it('lists every character the renderer paints', () => {
-		const drawn = [0, 3, 60, 120, 987654, 60 * 3661 + 30]
-			.flatMap((frame) => draw(frame).context.texts.map((text) => text.text))
-			.join('');
-		const listed = new Set([...BIP_BOP_RENDERED_TEXTS.join('')]);
+		const pageFrames = [0, 3, 60, 120, 987654, 60 * 3661 + 30].flatMap((frame) =>
+			draw(frame).context.texts.map((text) => text.text)
+		);
+		const videoFrames = [
+			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoFormat: 'mp4' }),
+			draw(0, 720, 480, { mimeType: 'video/webm', videoFormat: 'webm' })
+		].flatMap((frame) => frame.context.texts.map((text) => text.text));
+		const drawn = [...pageFrames, ...videoFrames].join('');
+		const listed = new Set(BIP_BOP_FONT_TEXT);
 
 		expect([...new Set(drawn)].filter((char) => !listed.has(char))).toEqual([]);
 	});
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
 		const { context, dimensions } = draw(0);
-		const clock = context.texts.at(-1);
+		const clock = context.texts.find((text) => text.align === 'left');
 
 		expect(clock).toEqual({
 			text: '00:00:00.00',
@@ -254,10 +275,78 @@ describe('BipBopRenderer', () => {
 			y: dimensions.clockY,
 			font: `${dimensions.clockFontSize}px "JetBrains Mono", monospace`
 		});
-		expect(draw(1).context.texts.at(-1)?.text).toBe('00:00:00.01');
-		expect(draw(30).context.texts.at(-1)?.text).toBe('00:00:00.50');
-		expect(draw(60).context.texts.at(-1)?.text).toBe('00:00:01.00');
-		expect(draw(60 * 3661 + 30).context.texts.at(-1)?.text).toBe('01:01:01.50');
+		expect(draw(1).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.01');
+		expect(draw(30).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
+		expect(draw(60).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
+		expect(draw(60 * 3661 + 30).context.texts.find((text) => text.align === 'left')?.text).toBe(
+			'01:01:01.50'
+		);
+	});
+
+	it('draws only the resolution at the top-right on a page', () => {
+		const landscape = draw(0, 1920, 1080);
+		const portrait = draw(0, 720, 1280);
+
+		expect(landscape.context.texts.filter((text) => text.align === 'right')).toEqual([
+			{
+				text: '1920x1080',
+				baseline: 'top',
+				align: 'right',
+				fill: '#ffffff',
+				x: 1920 - landscape.dimensions.clockX,
+				y: landscape.dimensions.clockY,
+				font: '34px "JetBrains Mono", monospace'
+			}
+		]);
+		expect(portrait.context.texts.filter((text) => text.align === 'right')).toEqual([
+			{
+				text: '720x1280',
+				baseline: 'top',
+				align: 'right',
+				fill: '#ffffff',
+				x: 720 - portrait.dimensions.clockX,
+				y: portrait.dimensions.clockY,
+				font: '23px "JetBrains Mono", monospace'
+			}
+		]);
+	});
+
+	it('draws the mime type and video format under the resolution', () => {
+		const { context, dimensions } = draw(60, 1920, 1080, {
+			mimeType: 'video/mp4',
+			videoFormat: 'mp4'
+		});
+		const corner = context.texts.filter((text) => text.align === 'right');
+
+		expect(corner).toEqual([
+			{
+				text: '1920x1080',
+				baseline: 'top',
+				align: 'right',
+				fill: '#000000',
+				x: 1920 - dimensions.clockX,
+				y: dimensions.clockY,
+				font: '34px "JetBrains Mono", monospace'
+			},
+			{
+				text: 'video/mp4',
+				baseline: 'top',
+				align: 'right',
+				fill: '#000000',
+				x: 1920 - dimensions.clockX,
+				y: dimensions.clockY + dimensions.overlayFontSize,
+				font: '34px "JetBrains Mono", monospace'
+			},
+			{
+				text: 'mp4',
+				baseline: 'top',
+				align: 'right',
+				fill: '#000000',
+				x: 1920 - dimensions.clockX,
+				y: dimensions.clockY + dimensions.overlayFontSize * 2,
+				font: '34px "JetBrains Mono", monospace'
+			}
+		]);
 	});
 
 	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {

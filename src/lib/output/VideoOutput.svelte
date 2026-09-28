@@ -71,12 +71,8 @@
 <div class="stage" {@attach release}>
 	{#if playback}
 		{#await playback}
-			<div
-				class="media placeholder"
-				role="img"
-				aria-label="動画のプレースホルダー"
-				aria-busy="true"
-			></div>
+			{@render placeholder()}
+			<progress aria-label="生成中"></progress>
 		{:then url}
 			<!-- svelte-ignore a11y_media_has_caption -->
 			<video
@@ -141,5 +137,12 @@
 		width: 100%;
 		height: 100%;
 		object-fit: contain;
+	}
+
+	.stage > progress {
+		grid-area: 1 / 1;
+		place-self: center;
+		width: 40%;
+		margin: 0;
 	}
 </style>
