@@ -151,15 +151,22 @@ describe('BipBopRenderer', () => {
 		expect(sector?.radius).toBe(dimensions.radius);
 	});
 
-	it('advances the sector start by 6° each frame', () => {
+	it('holds the sector for 60 frames, then advances the start by 6°', () => {
 		const frame0 = draw(0).context.arcs[1];
-		const frame1 = draw(1).context.arcs[1];
 		const frame59 = draw(59).context.arcs[1];
 		const frame60 = draw(60).context.arcs[1];
+		const frame119 = draw(119).context.arcs[1];
+		const frame120 = draw(120).context.arcs[1];
+		const frame3599 = draw(3599).context.arcs[1];
+		const frame3600 = draw(3600).context.arcs[1];
 
-		expect(frame1?.start).toBeCloseTo(radiansFromTop(7));
-		expect(frame59?.start).toBeCloseTo(radiansFromTop(355));
-		expect(frame60?.start).toBeCloseTo(frame0?.start ?? 0);
+		expect(frame0?.start).toBeCloseTo(radiansFromTop(1));
+		expect(frame59?.start).toBeCloseTo(radiansFromTop(1));
+		expect(frame60?.start).toBeCloseTo(radiansFromTop(7));
+		expect(frame119?.start).toBeCloseTo(radiansFromTop(7));
+		expect(frame120?.start).toBeCloseTo(radiansFromTop(13));
+		expect(frame3599?.start).toBeCloseTo(radiansFromTop(355));
+		expect(frame3600?.start).toBeCloseTo(radiansFromTop(1));
 	});
 
 	it('draws the counter below center and alternates Bip! and Bop! above center each second', () => {
@@ -218,18 +225,21 @@ describe('BipBopRenderer', () => {
 		expect(atOneTwenty[1]?.fill).toBe('#000000');
 	});
 
-	it('ping-pongs field, circle, sector, and clock colors over 2 seconds', () => {
+	it('ping-pongs field and clock colors, and switches circle and sector colors each second', () => {
 		const atHalf = draw(30);
 		const atSecond = draw(60);
+		const atNextHalf = draw(90);
 		const atReturn = draw(120);
 
-		expect(atHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#c0c0c0', '#c0c0c0']);
+		expect(atHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#808080', '#ffffff']);
+		expect(draw(59).context.fills.slice(0, 3)).toEqual(['#fbfbfb', '#808080', '#ffffff']);
 		expect(atHalf.context.texts.find((text) => text.align === 'left')?.fill).toBe('#808080');
 		expect(atSecond.context.fills.slice(0, 3)).toEqual(['#ffffff', '#ffffff', '#808080']);
 		expect(atSecond.context.texts.find((text) => text.align === 'left')?.fill).toBe('#000000');
+		expect(atNextHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#ffffff', '#808080']);
+		expect(draw(119).context.fills.slice(1, 3)).toEqual(['#ffffff', '#808080']);
 		expect(atReturn.context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
 		expect(atReturn.context.texts.find((text) => text.align === 'left')?.fill).toBe('#ffffff');
-		expect(draw(90).context.fills.slice(0, 3)).toEqual(atHalf.context.fills.slice(0, 3));
 	});
 
 	it('draws the counter, the labels, the clock, and the corner in JetBrains Mono', () => {
