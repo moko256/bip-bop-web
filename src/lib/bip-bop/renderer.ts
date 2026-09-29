@@ -2,6 +2,15 @@ export const BIP_BOP_CYCLE_FRAMES = 60;
 /** Two-second color loop at 60 fps. Endpoints are one second apart. */
 const COLOR_PERIOD_FRAMES = BIP_BOP_CYCLE_FRAMES * 2;
 
+/**
+ * Frame index for a preview clock. One second is {@link BIP_BOP_CYCLE_FRAMES} frames.
+ * Elapsed time is truncated, same as the corner clock.
+ */
+export function bipBopFrameIndex(elapsedMs: number): number {
+	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;
+	return Math.floor((elapsedMs * BIP_BOP_CYCLE_FRAMES) / 1000);
+}
+
 const BLACK = '#000000';
 
 type Rgb = readonly [number, number, number];
