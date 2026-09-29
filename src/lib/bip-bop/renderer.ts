@@ -127,9 +127,12 @@ export type BipBopVideoCorner = {
  * Draws one frame. Stateless: the caller owns the frame counter and the canvas size.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * Frame 0 of each 60-frame turn is the sector 1°–360°; each frame moves the start by 6°.
- * Colors ping-pong over 120 frames (2 seconds): field and clock swap black and white,
- * and the sector and backing circle swap white and gray. On each turn boundary the
+ * The backing circle and sector do not animate inside a 60-frame block. They switch
+ * only when the frame index is divisible by 60. Frames 0–59 are the sector 1°–360°
+ * on a gray circle; frames 60–119 start at 7° on a white circle with a gray sector;
+ * each later block moves the start by another 6° and swaps those two circle colors.
+ * Field and clock colors still ping-pong over 120 frames (2 seconds), swapping black
+ * and white. On each turn boundary the
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
  * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
@@ -179,9 +182,13 @@ export function BipBopRenderer(
 	} = dimensions;
 	const cycleFrame = nonNegativeMod(frame, BIP_BOP_CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
-	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
+	const turn = Math.floor(frame / BIP_BOP_CYCLE_FRAMES);
+	const sectorStep = nonNegativeMod(turn, BIP_BOP_CYCLE_FRAMES);
+	const startDegrees = 1 + sectorStep * (360 / BIP_BOP_CYCLE_FRAMES);
 	const towardMidpoint =
 		periodFrame <= BIP_BOP_CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
+	const circleSwapped = nonNegativeMod(turn, 2) === 1;
+	const circleMix = circleSwapped ? BIP_BOP_CYCLE_FRAMES : 0;
 
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 	// Page canvas and video frames share this draw. Anti-aliasing stays off.
@@ -192,14 +199,14 @@ export function BipBopRenderer(
 
 	ctx.beginPath();
 	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, circleMix, BIP_BOP_CYCLE_FRAMES);
 	ctx.fill();
 
 	ctx.beginPath();
 	ctx.moveTo(centerX, centerY);
 	ctx.arc(centerX, centerY, radius, radiansFromTop(startDegrees), radiansFromTop(360));
 	ctx.closePath();
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, circleMix, BIP_BOP_CYCLE_FRAMES);
 	ctx.fill();
 
 	ctx.fillStyle = BLACK;
