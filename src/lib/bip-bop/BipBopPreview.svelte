@@ -69,7 +69,10 @@
 		};
 
 		const resumeAudio = () => {
-			if (audio.state !== 'running') void audio.resume();
+			if (stopped || audio.state === 'running') return;
+			void audio.resume().catch(() => {
+				// Unmount closes the context while this promise can still be pending.
+			});
 		};
 
 		audio.addEventListener('statechange', onAudioState);
