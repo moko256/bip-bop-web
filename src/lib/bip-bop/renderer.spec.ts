@@ -164,22 +164,19 @@ describe('BipBopRenderer', () => {
 		expect(sector?.radius).toBe(dimensions.radius);
 	});
 
-	it('holds the sector for 60 frames, then advances the start by 6°', () => {
-		const frame0 = draw(0).context.arcs[1];
-		const frame59 = draw(59).context.arcs[1];
-		const frame60 = draw(60).context.arcs[1];
-		const frame119 = draw(119).context.arcs[1];
-		const frame120 = draw(120).context.arcs[1];
-		const frame3599 = draw(3599).context.arcs[1];
-		const frame3600 = draw(3600).context.arcs[1];
+	it('starts the sector at 1° and sweeps the leading edge 6° clockwise each frame', () => {
+		const sector = (frame: number) => draw(frame).context.arcs[1];
 
-		expect(frame0?.start).toBeCloseTo(radiansFromTop(1));
-		expect(frame59?.start).toBeCloseTo(radiansFromTop(1));
-		expect(frame60?.start).toBeCloseTo(radiansFromTop(7));
-		expect(frame119?.start).toBeCloseTo(radiansFromTop(7));
-		expect(frame120?.start).toBeCloseTo(radiansFromTop(13));
-		expect(frame3599?.start).toBeCloseTo(radiansFromTop(355));
-		expect(frame3600?.start).toBeCloseTo(radiansFromTop(1));
+		expect(sector(0)?.start).toBeCloseTo(radiansFromTop(1));
+		expect(sector(0)?.end).toBeCloseTo(radiansFromTop(360));
+		expect(sector(1)?.start).toBeCloseTo(radiansFromTop(7));
+		expect(sector(30)?.start).toBeCloseTo(radiansFromTop(181));
+		expect(sector(59)?.start).toBeCloseTo(radiansFromTop(355));
+		expect(sector(60)?.start).toBeCloseTo(radiansFromTop(1));
+		expect(sector(119)?.start).toBeCloseTo(radiansFromTop(355));
+		expect(sector(120)?.start).toBeCloseTo(radiansFromTop(1));
+		expect(sector(3599)?.start).toBeCloseTo(radiansFromTop(355));
+		expect(sector(3600)?.start).toBeCloseTo(radiansFromTop(1));
 	});
 
 	it('draws the counter below center and alternates Bip! and Bop! above center each second', () => {

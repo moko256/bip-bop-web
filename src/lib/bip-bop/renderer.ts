@@ -136,10 +136,12 @@ export type BipBopVideoCorner = {
  * Draws one frame. Stateless: the caller owns the frame counter and the canvas size.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * The backing circle and sector do not animate inside a 60-frame block. They switch
- * only when the frame index is divisible by 60. Frames 0–59 are the sector 1°–360°
- * on a gray circle; frames 60–119 start at 7° on a white circle with a gray sector;
- * each later block moves the start by another 6° and swaps those two circle colors.
+ * Frame 0 of each 60-frame turn is the sector 1°–360°; each frame moves the start
+ * by 6°, so the leading edge completes one clockwise turn per second. The backing
+ * circle and sector fills do not animate inside a second. They switch only when the
+ * frame index is divisible by 60: frames 0–59 are a white sector on a gray circle,
+ * frames 60–119 are a gray sector on a white circle, and each later second swaps
+ * those two fills.
  * Field and clock colors still ping-pong over 120 frames (2 seconds), swapping black
  * and white. On each turn boundary the
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
@@ -192,8 +194,7 @@ export function BipBopRenderer(
 	const cycleFrame = nonNegativeMod(frame, BIP_BOP_CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
 	const turn = Math.floor(frame / BIP_BOP_CYCLE_FRAMES);
-	const sectorStep = nonNegativeMod(turn, BIP_BOP_CYCLE_FRAMES);
-	const startDegrees = 1 + sectorStep * (360 / BIP_BOP_CYCLE_FRAMES);
+	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
 	const towardMidpoint =
 		periodFrame <= BIP_BOP_CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
 	const circleSwapped = nonNegativeMod(turn, 2) === 1;
