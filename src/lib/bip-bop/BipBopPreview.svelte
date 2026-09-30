@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
+	import { BipBopAudioRenderer, planBipBopTone } from './audio';
 	import { loadBipBopFont } from './font';
-	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import { BipBopRenderer, bipBopFrameIndex, createBipBopDimensions } from './renderer';
 
 	const PREVIEW_LABEL = 'Bip-Bop preview';
 
@@ -22,17 +23,21 @@
 	}
 
 	const play: Attachment<HTMLDivElement> = (host) => {
-		// The template never reads the counter, so it stays a plain number.
-		let frame = 0;
 		let rafId = 0;
+		let toneTimer = 0;
 		let stopped = false;
+		let clockStarted = false;
+		let playedWhileRunning = false;
 		let canvas: HTMLCanvasElement | null = null;
+		let startedAt = 0;
+		const audio = new AudioContext();
 
-		const tick = () => {
+		const draw = () => {
 			if (stopped) return;
 			const size = bitmapSize(host);
 
 			if (size) {
+				const frame = bipBopFrameIndex(Date.now() - startedAt);
 				const dimensions = createBipBopDimensions(size.width, size.height);
 				if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
 					canvas = createPreviewCanvas(size.width, size.height);
@@ -41,19 +46,56 @@
 				} else {
 					BipBopRenderer(canvas, dimensions, frame);
 				}
-				frame += 1;
 			}
 
-			rafId = requestAnimationFrame(tick);
+			rafId = requestAnimationFrame(draw);
 		};
 
+		// Wake after each burst, then schedule the next whole second from the preview clock.
+		const scheduleTone = () => {
+			if (stopped || !clockStarted) return;
+			const plan = planBipBopTone(Date.now() - startedAt);
+			playedWhileRunning = audio.state === 'running';
+			if (playedWhileRunning) {
+				BipBopAudioRenderer(audio, plan.delayMs, plan.frequencyHz);
+			}
+			toneTimer = window.setTimeout(scheduleTone, plan.waitMs);
+		};
+
+		const onAudioState = () => {
+			if (stopped || !clockStarted || audio.state !== 'running' || playedWhileRunning) return;
+			window.clearTimeout(toneTimer);
+			scheduleTone();
+		};
+
+		const resumeAudio = () => {
+			if (stopped || audio.state === 'running') return;
+			void audio.resume().catch(() => {
+				// Unmount closes the context while this promise can still be pending.
+			});
+		};
+
+		audio.addEventListener('statechange', onAudioState);
+		window.addEventListener('pointerdown', resumeAudio);
+		window.addEventListener('keydown', resumeAudio);
+		resumeAudio();
+
 		void loadBipBopFont().finally(() => {
-			if (!stopped) rafId = requestAnimationFrame(tick);
+			if (stopped) return;
+			clockStarted = true;
+			startedAt = Date.now();
+			scheduleTone();
+			draw();
 		});
 
 		return () => {
 			stopped = true;
 			cancelAnimationFrame(rafId);
+			window.clearTimeout(toneTimer);
+			audio.removeEventListener('statechange', onAudioState);
+			window.removeEventListener('pointerdown', resumeAudio);
+			window.removeEventListener('keydown', resumeAudio);
+			void audio.close();
 		};
 	};
 </script>

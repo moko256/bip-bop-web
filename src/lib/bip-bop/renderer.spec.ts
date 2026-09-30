@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	BIP_BOP_FONT_TEXT,
 	BipBopRenderer,
+	bipBopFrameIndex,
 	createBipBopDimensions,
 	type BipBopVideoCorner
 } from './renderer';
@@ -84,6 +85,18 @@ function draw(frame: number, width = 1920, height = 1080, video?: BipBopVideoCor
 function radiansFromTop(degrees: number): number {
 	return -Math.PI / 2 + (degrees * Math.PI) / 180;
 }
+
+describe('bipBopFrameIndex', () => {
+	it('counts 60 frames per second from the preview clock, truncating partial frames', () => {
+		expect(bipBopFrameIndex(0)).toBe(0);
+		expect(bipBopFrameIndex(16)).toBe(0);
+		expect(bipBopFrameIndex(1000 / 60)).toBe(1);
+		expect(bipBopFrameIndex(999)).toBe(59);
+		expect(bipBopFrameIndex(1000)).toBe(60);
+		expect(bipBopFrameIndex(2000)).toBe(120);
+		expect(bipBopFrameIndex(-10)).toBe(0);
+	});
+});
 
 describe('createBipBopDimensions', () => {
 	it('sizes every drawn length as round(shortSide * fraction) on a 1920×1080 canvas', () => {
