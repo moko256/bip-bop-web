@@ -59,8 +59,8 @@ export function bipBopToneFrameCount(sampleRate: number): number {
  * Schedules one sine burst on `context`.
  * The burst starts `delayMs` after `context.currentTime` and lasts {@link BIP_BOP_TONE_MS}.
  * The web preview passes the wait until the next second. Video writing passes `0`:
- * the burst is the first 16ms of an offline context, and the caller places that
- * buffer on the second it belongs to.
+ * the burst is the first 16ms of an offline context. The video worker places
+ * that buffer on the second it belongs to.
  */
 export function BipBopAudioRenderer(
 	context: BipBopAudioContext,

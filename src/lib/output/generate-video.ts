@@ -4,28 +4,19 @@ import {
 	bipBopFrequencyHz,
 	bipBopToneFrameCount
 } from '$lib/bip-bop/audio';
-import { loadBipBopFont } from '$lib/bip-bop/font';
-import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
-import {
-	AudioSample,
-	AudioSampleSource,
-	BufferTarget,
-	CanvasSource,
-	getFirstEncodableAudioCodec,
-	Output,
-	Quality,
-	type VideoCodec
-} from 'mediabunny';
-import {
-	parseResolution,
-	videoOutputFormat,
-	type Resolution,
-	type VideoOutputType
-} from './output';
+import type { VideoCodec } from 'mediabunny';
+import { parseResolution, type Resolution, type VideoOutputType } from './output';
+import type { VideoTone, VideoWorkerRequest, VideoWorkerResponse } from './video-job';
+import { VIDEO_DURATION_SECONDS, VIDEO_FPS } from './video-timing';
 
-export const VIDEO_FPS = 60;
-export const VIDEO_DURATION_SECONDS = 10;
+export { VIDEO_DURATION_SECONDS, VIDEO_FPS };
 
+/**
+ * Encodes the Bip-Bop picture and tone.
+ * Drawing and muxing run in a worker. Each tone is rendered on this thread:
+ * a worker has no `OfflineAudioContext`, and the preview and the file share
+ * {@link BipBopAudioRenderer}.
+ */
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
 	codec: VideoCodec;
@@ -35,54 +26,24 @@ export async function generateBipBopVideo(options: {
 	signal?: AbortSignal;
 }): Promise<Blob> {
 	if (options.signal?.aborted) throw aborted();
-	await loadBipBopFont();
+	const frameCount = options.frameCount ?? VIDEO_FPS * VIDEO_DURATION_SECONDS;
+	const tones = await renderBipBopTones(frameCount, options.signal);
 	if (options.signal?.aborted) throw aborted();
 
-	const format = videoOutputFormat(options.outputType);
-	const audioCodec = await getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), {
-		numberOfChannels: 1,
-		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE
-	});
-	if (!audioCodec) throw new Error('音声コーデックを利用できません');
+	const { buffer, mimeType } = await encodeInWorker(
+		{
+			kind: 'generate',
+			outputType: options.outputType,
+			codec: options.codec,
+			width: options.width,
+			height: options.height,
+			frameCount,
+			tones
+		},
+		options.signal
+	);
 	if (options.signal?.aborted) throw aborted();
-
-	const canvas = new OffscreenCanvas(options.width, options.height);
-	const dimensions = createBipBopDimensions(options.width, options.height);
-	const target = new BufferTarget();
-	const output = new Output({ format, target });
-	const source = new CanvasSource(canvas, {
-		codec: options.codec,
-		quality: new Quality('high')
-	});
-	const audioSource = new AudioSampleSource({
-		codec: audioCodec,
-		quality: new Quality('high')
-	});
-	output.addVideoTrack(source, { frameRate: VIDEO_FPS });
-	output.addAudioTrack(audioSource);
-
-	try {
-		await output.start();
-		const frameCount = options.frameCount ?? VIDEO_FPS * VIDEO_DURATION_SECONDS;
-		const frameDuration = 1 / VIDEO_FPS;
-		for (let frame = 0; frame < frameCount; frame += 1) {
-			if (options.signal?.aborted) throw aborted();
-			BipBopRenderer(canvas, dimensions, frame, {
-				mimeType: format.mimeType,
-				videoFormat: options.outputType
-			});
-			if (frame % VIDEO_FPS === 0) await addBipBopTone(audioSource, frame / VIDEO_FPS);
-			await source.add(frame * frameDuration, frameDuration);
-		}
-		if (options.signal?.aborted) throw aborted();
-		await output.finalize();
-	} catch (error) {
-		await cancelOutput(output);
-		throw error;
-	}
-
-	if (!target.buffer) throw new Error('動画の生成に失敗しました');
-	return new Blob([target.buffer], { type: format.mimeType });
+	return new Blob([buffer], { type: mimeType });
 }
 
 export async function generatePlayback(options: {
@@ -110,33 +71,124 @@ export async function generatePlayback(options: {
 }
 
 /**
- * Renders one burst at the start of an offline context (0ms from `currentTime`)
- * and places it on `second`.
+ * Renders one burst at the start of an offline context (0ms from `currentTime`).
+ * The worker places the samples on `second`.
  */
-async function addBipBopTone(source: AudioSampleSource, second: number): Promise<void> {
+async function renderBipBopTone(second: number): Promise<VideoTone> {
 	const length = bipBopToneFrameCount(BIP_BOP_AUDIO_SAMPLE_RATE);
 	const context = new OfflineAudioContext(1, length, BIP_BOP_AUDIO_SAMPLE_RATE);
 	BipBopAudioRenderer(context, 0, bipBopFrequencyHz(second));
 	const buffer = await context.startRendering();
-	const samples = AudioSample.fromAudioBuffer(buffer, second);
-	for (const sample of samples) {
-		try {
-			await source.add(sample);
-		} finally {
-			sample.close();
-		}
+	return {
+		second,
+		sampleRate: buffer.sampleRate,
+		samples: new Float32Array(buffer.getChannelData(0))
+	};
+}
+
+async function renderBipBopTones(frameCount: number, signal?: AbortSignal): Promise<VideoTone[]> {
+	const tones: VideoTone[] = [];
+	for (let frame = 0; frame < frameCount; frame += VIDEO_FPS) {
+		if (signal?.aborted) throw aborted();
+		tones.push(await renderBipBopTone(frame / VIDEO_FPS));
 	}
+	return tones;
+}
+
+type PendingJob = {
+	resolve: (result: { mimeType: string; buffer: ArrayBuffer }) => void;
+	reject: (error: unknown) => void;
+	onAbort: () => void;
+	signal?: AbortSignal;
+};
+
+let videoWorker: Worker | undefined;
+let nextJobId = 1;
+const pendingJobs = new Map<number, PendingJob>();
+
+function encodeInWorker(
+	request: Omit<Extract<VideoWorkerRequest, { kind: 'generate' }>, 'id'>,
+	signal?: AbortSignal
+): Promise<{ mimeType: string; buffer: ArrayBuffer }> {
+	if (signal?.aborted) return Promise.reject(aborted());
+	const id = nextJobId;
+	nextJobId += 1;
+	const current = worker();
+	const jobRequest = { ...request, id };
+
+	return new Promise((resolve, reject) => {
+		const onAbort = () => {
+			try {
+				current.postMessage({ kind: 'abort', id } satisfies VideoWorkerRequest);
+			} catch {
+				// The worker is already gone.
+			}
+			finish(id, (job) => job.reject(aborted()));
+		};
+		pendingJobs.set(id, { resolve, reject, onAbort, signal });
+		signal?.addEventListener('abort', onAbort, { once: true });
+		try {
+			current.postMessage(jobRequest satisfies VideoWorkerRequest, toneBuffers(request.tones));
+		} catch (error) {
+			finish(id, (job) => job.reject(error));
+		}
+	});
+}
+
+function worker(): Worker {
+	if (videoWorker) return videoWorker;
+	const created = new Worker(new URL('./generate-video.worker.ts', import.meta.url), {
+		type: 'module',
+		name: 'bip-bop-video'
+	});
+	created.onmessage = (event: MessageEvent<VideoWorkerResponse>) => {
+		deliver(event.data);
+	};
+	created.onerror = (event) => {
+		event.preventDefault();
+		const message = event.message === '' ? '動画の生成に失敗しました' : event.message;
+		failAll(new Error(message));
+		created.terminate();
+		if (videoWorker === created) videoWorker = undefined;
+	};
+	videoWorker = created;
+	return created;
+}
+
+function deliver(response: VideoWorkerResponse): void {
+	finish(response.id, (job) => {
+		if (response.ok) job.resolve({ mimeType: response.mimeType, buffer: response.buffer });
+		else job.reject(errorFromWorker(response.name, response.message));
+	});
+}
+
+function failAll(error: Error): void {
+	for (const id of [...pendingJobs.keys()]) finish(id, (job) => job.reject(error));
+}
+
+function finish(id: number, action: (job: PendingJob) => void): void {
+	const job = pendingJobs.get(id);
+	if (!job) return;
+	pendingJobs.delete(id);
+	job.signal?.removeEventListener('abort', job.onAbort);
+	action(job);
+}
+
+function toneBuffers(tones: VideoTone[]): ArrayBuffer[] {
+	return tones.map((tone) => {
+		const buffer = tone.samples.buffer;
+		if (!(buffer instanceof ArrayBuffer)) throw new Error('音声の生成に失敗しました');
+		return buffer;
+	});
+}
+
+function errorFromWorker(name: string, message: string): Error {
+	if (name === 'AbortError') return new DOMException(message, 'AbortError');
+	const error = new Error(message);
+	error.name = name;
+	return error;
 }
 
 function aborted(): DOMException {
 	return new DOMException('動画の生成を中断しました', 'AbortError');
-}
-
-async function cancelOutput(output: Output): Promise<void> {
-	if (output.state === 'finalized' || output.state === 'canceled') return;
-	try {
-		await output.cancel();
-	} catch {
-		// The output can no longer accept samples.
-	}
 }
