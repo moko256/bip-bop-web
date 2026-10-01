@@ -273,8 +273,8 @@ describe('BipBopRenderer', () => {
 			draw(frame).context.texts.map((text) => text.text)
 		);
 		const videoFrames = [
-			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoFormat: 'mp4' }),
-			draw(0, 720, 480, { mimeType: 'video/webm', videoFormat: 'webm' })
+			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoCodec: 'avc', audioCodec: 'aac' }),
+			draw(0, 720, 480, { mimeType: 'video/webm', videoCodec: 'vp9', audioCodec: 'opus' })
 		].flatMap((frame) => frame.context.texts.map((text) => text.text));
 		const drawn = [...pageFrames, ...videoFrames].join('');
 		const listed = new Set(BIP_BOP_FONT_TEXT);
@@ -331,10 +331,11 @@ describe('BipBopRenderer', () => {
 		]);
 	});
 
-	it('draws the mime type and video format under the resolution', () => {
+	it('draws the mime type and codecs under the resolution', () => {
 		const { context, dimensions } = draw(60, 1920, 1080, {
 			mimeType: 'video/mp4',
-			videoFormat: 'mp4'
+			videoCodec: 'avc',
+			audioCodec: 'aac'
 		});
 		const corner = context.texts.filter((text) => text.align === 'right');
 
@@ -358,12 +359,21 @@ describe('BipBopRenderer', () => {
 				font: '34px "JetBrains Mono", monospace'
 			},
 			{
-				text: 'mp4',
+				text: 'avc',
 				baseline: 'top',
 				align: 'right',
 				fill: '#000000',
 				x: 1920 - dimensions.clockX,
 				y: dimensions.clockY + dimensions.overlayFontSize * 2,
+				font: '34px "JetBrains Mono", monospace'
+			},
+			{
+				text: 'aac',
+				baseline: 'top',
+				align: 'right',
+				fill: '#000000',
+				x: 1920 - dimensions.clockX,
+				y: dimensions.clockY + dimensions.overlayFontSize * 3,
 				font: '34px "JetBrains Mono", monospace'
 			}
 		]);
