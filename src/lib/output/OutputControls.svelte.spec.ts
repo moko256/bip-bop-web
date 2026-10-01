@@ -10,9 +10,10 @@ const { generatePlayback } = vi.hoisted(() => ({
 	generatePlayback: vi.fn()
 }));
 
-vi.mock('./generate-video', () => ({
-	generatePlayback
-}));
+vi.mock('./generate-video', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./generate-video')>();
+	return { ...actual, generatePlayback };
+});
 
 function videoUrl(): string {
 	return URL.createObjectURL(new Blob([Uint8Array.from([1, 2, 3])], { type: 'video/mp4' }));
@@ -180,8 +181,39 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('img', { name: '動画のプレースホルダー' }))
 			.not.toBeInTheDocument();
-		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
+		await expect.element(page.getByRole('progressbar', { name: '生成中' })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('progressbar', { name: '再生位置' })).toBeVisible();
+		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
+		const video = page.getByLabelText('生成した動画').element() as HTMLVideoElement;
+		expect(video.hasAttribute('controls')).toBe(false);
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
+	});
+
+	it('plays, seeks, and pauses the generated video from the transport', async () => {
+		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+		try {
+			generatePlayback.mockResolvedValue(videoUrl());
+			render(OutputControls);
+
+			await page.getByRole('radio', { name: 'mp4' }).click();
+			await page.getByRole('button', { name: '生成' }).click();
+			await expect.element(page.getByLabelText('生成した動画')).toBeVisible();
+
+			await page.getByRole('button', { name: '再生' }).first().click();
+			expect(play).toHaveBeenCalled();
+			await expect.element(page.getByRole('button', { name: '停止' }).first()).toBeVisible();
+
+			const video = page.getByLabelText('生成した動画').element() as HTMLVideoElement;
+			await page.getByRole('spinbutton', { name: 'フレーム' }).fill('90');
+			expect(video.currentTime).toBeCloseTo(90 / 60);
+
+			await page.getByRole('button', { name: '停止' }).first().click();
+			expect(pause).toHaveBeenCalled();
+		} finally {
+			play.mockRestore();
+			pause.mockRestore();
+		}
 	});
 
 	it('returns to the placeholder when the resolution changes', async () => {

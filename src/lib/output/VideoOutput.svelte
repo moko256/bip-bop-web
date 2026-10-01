@@ -4,7 +4,9 @@
 	import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
 	import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 	import type { Snippet } from 'svelte';
-	import { generatePlayback } from './generate-video';
+	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
+	import { clampFrame } from '$lib/playback/time';
+	import { VIDEO_DURATION_SECONDS, VIDEO_FPS, generatePlayback } from './generate-video';
 	import {
 		resolutions,
 		supportedAudioCodecs,
@@ -26,6 +28,10 @@
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	let defaultAudioCodec = $state<AudioCodec | null>(null);
 	let playback = $state<Promise<string> | null>(null);
+	let playing = $state(false);
+	let frame = $state(0);
+	let video: HTMLVideoElement | undefined;
+	const maxFrame = VIDEO_FPS * VIDEO_DURATION_SECONDS;
 
 	let videoCodecs = $derived(supportedVideoCodecs(outputType));
 	let videoCodec = $derived(
@@ -62,9 +68,13 @@
 		abort.abort();
 		abort = new AbortController();
 		playback = null;
+		playing = false;
+		frame = 0;
 	}
 
 	function start() {
+		playing = false;
+		frame = 0;
 		playback = generatePlayback({
 			outputType,
 			videoCodec,
@@ -90,6 +100,71 @@
 		if (match) audioCodecChoice = match;
 	}
 
+	function frameAt(currentTime: number): number {
+		if (!Number.isFinite(currentTime) || currentTime <= 0) return 0;
+		return Math.min(maxFrame, Math.round(currentTime * VIDEO_FPS));
+	}
+
+	function onplaybackchange(next: boolean) {
+		const element = video;
+		if (!next) {
+			playing = false;
+			element?.pause();
+			return;
+		}
+		if (element && (element.ended || frame >= maxFrame)) {
+			element.currentTime = 0;
+			frame = 0;
+		}
+		playing = true;
+		void element?.play().catch(() => {
+			playing = false;
+		});
+	}
+
+	function onframechange(next: number) {
+		const clamped = clampFrame(next, maxFrame);
+		frame = clamped;
+		if (video) video.currentTime = clamped / VIDEO_FPS;
+	}
+
+	const sync: Attachment<HTMLVideoElement> = (element) => {
+		video = element;
+		let raf = 0;
+		const updateFrame = () => {
+			frame = frameAt(element.currentTime);
+		};
+		const tick = () => {
+			updateFrame();
+			raf = requestAnimationFrame(tick);
+		};
+		const onPlay = () => {
+			playing = true;
+			cancelAnimationFrame(raf);
+			raf = requestAnimationFrame(tick);
+		};
+		const onPause = () => {
+			playing = false;
+			cancelAnimationFrame(raf);
+			updateFrame();
+		};
+		element.addEventListener('play', onPlay);
+		element.addEventListener('pause', onPause);
+		element.addEventListener('ended', onPause);
+		element.addEventListener('seeked', updateFrame);
+		element.addEventListener('timeupdate', updateFrame);
+		updateFrame();
+		return () => {
+			if (video === element) video = undefined;
+			cancelAnimationFrame(raf);
+			element.removeEventListener('play', onPlay);
+			element.removeEventListener('pause', onPause);
+			element.removeEventListener('ended', onPause);
+			element.removeEventListener('seeked', updateFrame);
+			element.removeEventListener('timeupdate', updateFrame);
+		};
+	};
+
 	function errorMessage(error: unknown): string {
 		if (error instanceof Error && error.message !== '') return error.message;
 		return '動画の生成に失敗しました';
@@ -104,25 +179,43 @@
 	<button type="button" disabled={pending} onclick={start}>生成</button>
 {/snippet}
 
-<div class="stage" {@attach release}>
+<div {@attach release}>
 	{#if playback}
 		{#await playback}
-			{@render placeholder()}
-			<progress aria-label="生成中"></progress>
+			<div class="stage">
+				{@render placeholder()}
+				<progress aria-label="生成中"></progress>
+			</div>
 		{:then url}
-			<!-- svelte-ignore a11y_media_has_caption -->
-			<video
-				class="media"
-				src={url}
-				controls
-				aria-label="生成した動画"
-				{@attach () => () => URL.revokeObjectURL(url)}
-			></video>
+			<PlaybackControls
+				{playing}
+				{frame}
+				{maxFrame}
+				fps={VIDEO_FPS}
+				{onplaybackchange}
+				{onframechange}
+			>
+				<div class="stage">
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video
+						class="media"
+						src={url}
+						playsinline
+						aria-label="生成した動画"
+						{@attach sync}
+						{@attach () => () => URL.revokeObjectURL(url)}
+					></video>
+				</div>
+			</PlaybackControls>
 		{:catch}
-			{@render placeholder()}
+			<div class="stage">
+				{@render placeholder()}
+			</div>
 		{/await}
 	{:else}
-		{@render placeholder()}
+		<div class="stage">
+			{@render placeholder()}
+		</div>
 	{/if}
 </div>
 <div onchange={invalidate}>
