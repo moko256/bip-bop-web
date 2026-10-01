@@ -1,12 +1,34 @@
 #!/usr/bin/env bash
-# Cursor sessionStart: git fetch, then git pull.
-# If either command fails, the pull conflicts, or local changes conflict with
+# Cursor sessionStart: git fetch, then git pull, only for a Cloud Agent.
+# Cloud Agents were formerly called Background Agents. sessionStart reports that
+# with is_background_agent. Interactive sessions exit before touching git.
+# If fetch or pull fails, the pull conflicts, or local changes conflict with
 # the update, HEAD, the index, and the worktree are put back to the pre-hook
 # state. Remote-tracking refs already updated by fetch stay as they are.
 set -u
 
+payload=""
 if [ ! -t 0 ]; then
-	cat >/dev/null || true
+	payload=$(cat || true)
+fi
+
+is_background_agent=$(
+	printf '%s' "$payload" | python3 -c 'import json,sys
+raw=sys.stdin.read().strip()
+if not raw:
+    print("0")
+    raise SystemExit(0)
+try:
+    data=json.loads(raw)
+except json.JSONDecodeError:
+    print("0")
+    raise SystemExit(0)
+print("1" if data.get("is_background_agent") is True else "0")'
+) || is_background_agent=0
+
+if [ "$is_background_agent" != "1" ]; then
+	echo '{}'
+	exit 0
 fi
 
 emit() {
