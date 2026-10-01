@@ -22,14 +22,16 @@
 	} = $props();
 
 	let resolution = $state<Resolution>('1920x1080');
-	let codecChoice = $state<VideoCodec | null>(null);
+	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	let defaultAudioCodec = $state<AudioCodec | null>(null);
 	let playback = $state<Promise<string> | null>(null);
 
-	let codecs = $derived(supportedVideoCodecs(outputType));
-	let codec = $derived(
-		codecChoice !== null && codecs.includes(codecChoice) ? codecChoice : codecs[0]
+	let videoCodecs = $derived(supportedVideoCodecs(outputType));
+	let videoCodec = $derived(
+		videoCodecChoice !== null && videoCodecs.includes(videoCodecChoice)
+			? videoCodecChoice
+			: videoCodecs[0]
 	);
 	let audioCodecs = $derived(supportedAudioCodecs(outputType));
 	let audioCodec = $derived(
@@ -65,7 +67,7 @@
 	function start() {
 		playback = generatePlayback({
 			outputType,
-			codec,
+			codec: videoCodec,
 			audioCodec,
 			resolution,
 			signal: abort.signal
@@ -76,10 +78,10 @@
 		return () => abort.abort();
 	};
 
-	function onCodecChange(event: Event) {
+	function onVideoCodecChange(event: Event) {
 		const value = (event.currentTarget as HTMLSelectElement).value;
-		const match = codecs.find((item) => item === value);
-		if (match) codecChoice = match;
+		const match = videoCodecs.find((item) => item === value);
+		if (match) videoCodecChoice = match;
 	}
 
 	function onAudioCodecChange(event: Event) {
@@ -136,17 +138,17 @@
 		</label>
 		<label>
 			ビデオコーデック
-			<select value={codec} onchange={onCodecChange}>
-				{#each codecs as codecOption (codecOption)}
-					<option value={codecOption}>{codecOption}</option>
+			<select value={videoCodec} onchange={onVideoCodecChange}>
+				{#each videoCodecs as videoCodecOption (videoCodecOption)}
+					<option value={videoCodecOption}>{videoCodecOption}</option>
 				{/each}
 			</select>
 		</label>
 		<label>
 			オーディオコーデック
 			<select value={audioCodec} onchange={onAudioCodecChange}>
-				{#each audioCodecs as codecOption (codecOption)}
-					<option value={codecOption}>{codecOption}</option>
+				{#each audioCodecs as audioCodecOption (audioCodecOption)}
+					<option value={audioCodecOption}>{audioCodecOption}</option>
 				{/each}
 			</select>
 		</label>
