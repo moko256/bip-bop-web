@@ -67,7 +67,7 @@
 	function start() {
 		playback = generatePlayback({
 			outputType,
-			codec: videoCodec,
+			videoCodec,
 			audioCodec,
 			resolution,
 			signal: abort.signal

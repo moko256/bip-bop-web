@@ -42,13 +42,13 @@ describe('OutputControls', () => {
 
 	beforeEach(async () => {
 		generatePlayback.mockReset();
-		const codec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
+		const audioCodec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
 			numberOfChannels: 1,
 			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
 			quality: new Quality('high')
 		});
-		if (!codec) throw new Error('音声コーデックを利用できません');
-		defaultMp4AudioCodec = codec;
+		if (!audioCodec) throw new Error('音声コーデックを利用できません');
+		defaultMp4AudioCodec = audioCodec;
 	});
 
 	it('starts on page with the live canvas above OutputType', async () => {
@@ -80,17 +80,17 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('combobox', { name: 'ビデオコーデック' }))
 			.toHaveValue('avc');
-		for (const codec of supportedVideoCodecs('mp4')) {
+		for (const videoCodec of supportedVideoCodecs('mp4')) {
 			await expect
-				.element(page.getByRole('option', { name: codec, exact: true }))
+				.element(page.getByRole('option', { name: videoCodec, exact: true }))
 				.toBeInTheDocument();
 		}
 		await expect
 			.element(page.getByRole('combobox', { name: 'オーディオコーデック' }))
 			.toHaveValue(defaultMp4AudioCodec);
-		for (const codec of supportedAudioCodecs('mp4')) {
+		for (const audioCodec of supportedAudioCodecs('mp4')) {
 			await expect
-				.element(page.getByRole('option', { name: codec, exact: true }))
+				.element(page.getByRole('option', { name: audioCodec, exact: true }))
 				.toBeInTheDocument();
 		}
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
@@ -118,7 +118,7 @@ describe('OutputControls', () => {
 		await expect.element(page.getByRole('button', { name: '開く' })).not.toBeInTheDocument();
 	});
 
-	it('keeps a codec that both containers support', async () => {
+	it('keeps a video codec that both containers support', async () => {
 		render(OutputControls);
 
 		await page.getByRole('radio', { name: 'mp4' }).click();
@@ -168,7 +168,7 @@ describe('OutputControls', () => {
 		expect(Math.abs(bar.top + bar.height / 2 - (place.top + place.height / 2))).toBeLessThan(1);
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
-			codec: 'avc',
+			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
 			resolution: '1920x1080',
 			signal: expect.any(AbortSignal)
@@ -200,7 +200,7 @@ describe('OutputControls', () => {
 		await page.getByRole('button', { name: '生成' }).click();
 		expect(generatePlayback).toHaveBeenLastCalledWith({
 			outputType: 'mp4',
-			codec: 'avc',
+			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
 			resolution: '720x480',
 			signal: expect.any(AbortSignal)

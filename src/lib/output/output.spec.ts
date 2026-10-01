@@ -31,7 +31,7 @@ describe('videoOutputFormat', () => {
 		expect(videoOutputFormat('webm').mimeType).toBe('video/webm');
 	});
 
-	it('lists the codecs the format can contain', () => {
+	it('lists the video codecs the format can contain', () => {
 		expect(supportedVideoCodecs('mp4')).toEqual(['avc', 'hevc', 'vp9', 'av1', 'vp8', 'prores']);
 		expect(supportedVideoCodecs('webm')).toEqual(['vp9', 'av1', 'vp8']);
 	});

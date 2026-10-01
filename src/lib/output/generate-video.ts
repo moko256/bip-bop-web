@@ -29,7 +29,7 @@ export const VIDEO_DURATION_SECONDS = 10;
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
-	codec: VideoCodec;
+	videoCodec: VideoCodec;
 	audioCodec: AudioCodec;
 	width: number;
 	height: number;
@@ -50,7 +50,6 @@ export async function generateBipBopVideo(options: {
 		quality: new Quality('high')
 	});
 	if (!encodable) throw new Error('このオーディオコーデックはエンコードできません');
-	const audioCodec = options.audioCodec;
 	if (options.signal?.aborted) throw aborted();
 
 	const canvas = new OffscreenCanvas(options.width, options.height);
@@ -58,11 +57,11 @@ export async function generateBipBopVideo(options: {
 	const target = new BufferTarget();
 	const output = new Output({ format, target });
 	const source = new CanvasSource(canvas, {
-		codec: options.codec,
+		codec: options.videoCodec,
 		quality: new Quality('high')
 	});
 	const audioSource = new AudioSampleSource({
-		codec: audioCodec,
+		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
 	output.addVideoTrack(source, { frameRate: VIDEO_FPS });
@@ -94,7 +93,7 @@ export async function generateBipBopVideo(options: {
 
 export async function generatePlayback(options: {
 	outputType: VideoOutputType;
-	codec: VideoCodec;
+	videoCodec: VideoCodec;
 	audioCodec: AudioCodec;
 	resolution: Resolution;
 	signal?: AbortSignal;
@@ -102,7 +101,7 @@ export async function generatePlayback(options: {
 	const { width, height } = parseResolution(options.resolution);
 	const blob = await generateBipBopVideo({
 		outputType: options.outputType,
-		codec: options.codec,
+		videoCodec: options.videoCodec,
 		audioCodec: options.audioCodec,
 		width,
 		height,

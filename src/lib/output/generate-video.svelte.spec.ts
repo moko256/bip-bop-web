@@ -6,13 +6,13 @@ import { supportedAudioCodecs } from './output';
 import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
 
 async function defaultMp4AudioCodec() {
-	const codec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
+	const audioCodec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
 		numberOfChannels: 1,
 		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
 		quality: new Quality('high')
 	});
-	if (!codec) throw new Error('音声コーデックを利用できません');
-	return codec;
+	if (!audioCodec) throw new Error('音声コーデックを利用できません');
+	return audioCodec;
 }
 
 function correlation(samples: Float32Array, frequencyHz: number, sampleRate: number): number {
@@ -29,7 +29,7 @@ describe('generateBipBopVideo', () => {
 	it('writes an mp4 blob with the format mime type', async () => {
 		const blob = await generateBipBopVideo({
 			outputType: 'mp4',
-			codec: 'avc',
+			videoCodec: 'avc',
 			audioCodec: await defaultMp4AudioCodec(),
 			width: 64,
 			height: 64,
@@ -43,7 +43,7 @@ describe('generateBipBopVideo', () => {
 	it('writes a webm blob with the format mime type', async () => {
 		const blob = await generateBipBopVideo({
 			outputType: 'webm',
-			codec: 'vp9',
+			videoCodec: 'vp9',
 			audioCodec: 'opus',
 			width: 64,
 			height: 64,
@@ -57,7 +57,7 @@ describe('generateBipBopVideo', () => {
 	it('writes a 1500Hz burst on even seconds and a 475Hz burst on odd seconds', async () => {
 		const blob = await generateBipBopVideo({
 			outputType: 'mp4',
-			codec: 'avc',
+			videoCodec: 'avc',
 			audioCodec: await defaultMp4AudioCodec(),
 			width: 64,
 			height: 64,
@@ -90,7 +90,7 @@ describe('generateBipBopVideo', () => {
 		await expect(
 			generateBipBopVideo({
 				outputType: 'mp4',
-				codec: 'avc',
+				videoCodec: 'avc',
 				audioCodec: await defaultMp4AudioCodec(),
 				width: 64,
 				height: 64,
