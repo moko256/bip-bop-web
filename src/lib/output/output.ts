@@ -1,4 +1,10 @@
-import { Mp4OutputFormat, WebMOutputFormat, type OutputFormat, type VideoCodec } from 'mediabunny';
+import {
+	Mp4OutputFormat,
+	WebMOutputFormat,
+	type AudioCodec,
+	type OutputFormat,
+	type VideoCodec
+} from 'mediabunny';
 
 export const outputTypes = ['page', 'mp4', 'webm', 'fullscreen-url'] as const;
 
@@ -36,6 +42,10 @@ export function videoOutputFormat(type: VideoOutputType): OutputFormat {
 
 export function supportedVideoCodecs(type: VideoOutputType): VideoCodec[] {
 	return videoOutputFormat(type).getSupportedVideoCodecs();
+}
+
+export function supportedAudioCodecs(type: VideoOutputType): AudioCodec[] {
+	return videoOutputFormat(type).getSupportedAudioCodecs();
 }
 
 export const outputTypeLabels: Record<OutputType, string> = {

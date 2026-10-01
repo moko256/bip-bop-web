@@ -1,8 +1,10 @@
 import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
+import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import OutputControls from './OutputControls.svelte';
-import { supportedVideoCodecs } from './output';
+import { supportedAudioCodecs, supportedVideoCodecs } from './output';
 
 const { generatePlayback } = vi.hoisted(() => ({
 	generatePlayback: vi.fn()
@@ -36,8 +38,17 @@ function assertPrecedes(
 }
 
 describe('OutputControls', () => {
-	beforeEach(() => {
+	let defaultMp4AudioCodec: string;
+
+	beforeEach(async () => {
 		generatePlayback.mockReset();
+		const codec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
+			numberOfChannels: 1,
+			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
+			quality: new Quality('high')
+		});
+		if (!codec) throw new Error('音声コーデックを利用できません');
+		defaultMp4AudioCodec = codec;
 	});
 
 	it('starts on page with the live canvas above OutputType', async () => {
@@ -76,7 +87,12 @@ describe('OutputControls', () => {
 		}
 		await expect
 			.element(page.getByRole('combobox', { name: 'オーディオコーデック' }))
-			.not.toBeInTheDocument();
+			.toHaveValue(defaultMp4AudioCodec);
+		for (const codec of supportedAudioCodecs('mp4')) {
+			await expect
+				.element(page.getByRole('option', { name: codec, exact: true }))
+				.toBeInTheDocument();
+		}
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
 		await expect.element(page.getByRole('option', { name: '720×480' })).toBeInTheDocument();
 		assertPrecedes(
@@ -114,6 +130,18 @@ describe('OutputControls', () => {
 			.toHaveValue('vp9');
 	});
 
+	it('keeps an audio codec that both containers support', async () => {
+		render(OutputControls);
+
+		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('combobox', { name: 'オーディオコーデック' }).selectOptions('opus');
+		await page.getByRole('radio', { name: 'webm' }).click();
+
+		await expect
+			.element(page.getByRole('combobox', { name: 'オーディオコーデック' }))
+			.toHaveValue('opus');
+	});
+
 	it('places the generated video where the placeholder was', async () => {
 		const pending = deferred<string>();
 		generatePlayback.mockReturnValue(pending.promise);
@@ -141,6 +169,7 @@ describe('OutputControls', () => {
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			codec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
 			resolution: '1920x1080',
 			signal: expect.any(AbortSignal)
 		});
@@ -172,6 +201,7 @@ describe('OutputControls', () => {
 		expect(generatePlayback).toHaveBeenLastCalledWith({
 			outputType: 'mp4',
 			codec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
 			resolution: '720x480',
 			signal: expect.any(AbortSignal)
 		});

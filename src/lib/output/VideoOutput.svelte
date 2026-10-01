@@ -1,10 +1,13 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
-	import type { VideoCodec } from 'mediabunny';
+	import type { AudioCodec, VideoCodec } from 'mediabunny';
+	import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
+	import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 	import type { Snippet } from 'svelte';
 	import { generatePlayback } from './generate-video';
 	import {
 		resolutions,
+		supportedAudioCodecs,
 		supportedVideoCodecs,
 		type Resolution,
 		type VideoOutputType
@@ -20,12 +23,36 @@
 
 	let resolution = $state<Resolution>('1920x1080');
 	let codecChoice = $state<VideoCodec | null>(null);
+	let audioCodecChoice = $state<AudioCodec | null>(null);
+	let defaultAudioCodec = $state<AudioCodec | null>(null);
 	let playback = $state<Promise<string> | null>(null);
 
 	let codecs = $derived(supportedVideoCodecs(outputType));
 	let codec = $derived(
 		codecChoice !== null && codecs.includes(codecChoice) ? codecChoice : codecs[0]
 	);
+	let audioCodecs = $derived(supportedAudioCodecs(outputType));
+	let audioCodec = $derived(
+		audioCodecChoice !== null && audioCodecs.includes(audioCodecChoice)
+			? audioCodecChoice
+			: (defaultAudioCodec ?? audioCodecs[0])
+	);
+
+	$effect(() => {
+		const type = outputType;
+		const options = supportedAudioCodecs(type);
+		let canceled = false;
+		void getFirstEncodableAudioCodec(options, {
+			numberOfChannels: 1,
+			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
+			quality: new Quality('high')
+		}).then((match) => {
+			if (!canceled && type === outputType) defaultAudioCodec = match;
+		});
+		return () => {
+			canceled = true;
+		};
+	});
 
 	let abort = new AbortController();
 
@@ -39,6 +66,7 @@
 		playback = generatePlayback({
 			outputType,
 			codec,
+			audioCodec,
 			resolution,
 			signal: abort.signal
 		});
@@ -52,6 +80,12 @@
 		const value = (event.currentTarget as HTMLSelectElement).value;
 		const match = codecs.find((item) => item === value);
 		if (match) codecChoice = match;
+	}
+
+	function onAudioCodecChange(event: Event) {
+		const value = (event.currentTarget as HTMLSelectElement).value;
+		const match = audioCodecs.find((item) => item === value);
+		if (match) audioCodecChoice = match;
 	}
 
 	function errorMessage(error: unknown): string {
@@ -104,6 +138,14 @@
 			ビデオコーデック
 			<select value={codec} onchange={onCodecChange}>
 				{#each codecs as codecOption (codecOption)}
+					<option value={codecOption}>{codecOption}</option>
+				{/each}
+			</select>
+		</label>
+		<label>
+			オーディオコーデック
+			<select value={audioCodec} onchange={onAudioCodecChange}>
+				{#each audioCodecs as codecOption (codecOption)}
 					<option value={codecOption}>{codecOption}</option>
 				{/each}
 			</select>
