@@ -11,9 +11,10 @@ import {
 	AudioSampleSource,
 	BufferTarget,
 	CanvasSource,
-	getFirstEncodableAudioCodec,
+	canEncodeAudio,
 	Output,
 	Quality,
+	type AudioCodec,
 	type VideoCodec
 } from 'mediabunny';
 import {
@@ -28,7 +29,8 @@ export const VIDEO_DURATION_SECONDS = 10;
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
-	codec: VideoCodec;
+	videoCodec: VideoCodec;
+	audioCodec: AudioCodec;
 	width: number;
 	height: number;
 	frameCount?: number;
@@ -39,11 +41,15 @@ export async function generateBipBopVideo(options: {
 	if (options.signal?.aborted) throw aborted();
 
 	const format = videoOutputFormat(options.outputType);
-	const audioCodec = await getFirstEncodableAudioCodec(format.getSupportedAudioCodecs(), {
+	if (!format.getSupportedAudioCodecs().includes(options.audioCodec)) {
+		throw new Error('このオーディオコーデックはコンテナで利用できません');
+	}
+	const encodable = await canEncodeAudio(options.audioCodec, {
 		numberOfChannels: 1,
-		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE
+		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
+		quality: new Quality('high')
 	});
-	if (!audioCodec) throw new Error('音声コーデックを利用できません');
+	if (!encodable) throw new Error('このオーディオコーデックはエンコードできません');
 	if (options.signal?.aborted) throw aborted();
 
 	const canvas = new OffscreenCanvas(options.width, options.height);
@@ -51,11 +57,11 @@ export async function generateBipBopVideo(options: {
 	const target = new BufferTarget();
 	const output = new Output({ format, target });
 	const source = new CanvasSource(canvas, {
-		codec: options.codec,
+		codec: options.videoCodec,
 		quality: new Quality('high')
 	});
 	const audioSource = new AudioSampleSource({
-		codec: audioCodec,
+		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
 	output.addVideoTrack(source, { frameRate: VIDEO_FPS });
@@ -87,14 +93,16 @@ export async function generateBipBopVideo(options: {
 
 export async function generatePlayback(options: {
 	outputType: VideoOutputType;
-	codec: VideoCodec;
+	videoCodec: VideoCodec;
+	audioCodec: AudioCodec;
 	resolution: Resolution;
 	signal?: AbortSignal;
 }): Promise<string> {
 	const { width, height } = parseResolution(options.resolution);
 	const blob = await generateBipBopVideo({
 		outputType: options.outputType,
-		codec: options.codec,
+		videoCodec: options.videoCodec,
+		audioCodec: options.audioCodec,
 		width,
 		height,
 		signal: options.signal

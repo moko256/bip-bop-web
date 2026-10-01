@@ -3,6 +3,7 @@ import {
 	isVideoOutputType,
 	outputCategory,
 	parseResolution,
+	supportedAudioCodecs,
 	supportedVideoCodecs,
 	videoOutputFormat
 } from './output';
@@ -30,9 +31,33 @@ describe('videoOutputFormat', () => {
 		expect(videoOutputFormat('webm').mimeType).toBe('video/webm');
 	});
 
-	it('lists the codecs the format can contain', () => {
+	it('lists the video codecs the format can contain', () => {
 		expect(supportedVideoCodecs('mp4')).toEqual(['avc', 'hevc', 'vp9', 'av1', 'vp8', 'prores']);
 		expect(supportedVideoCodecs('webm')).toEqual(['vp9', 'av1', 'vp8']);
+	});
+
+	it('lists the audio codecs the format can contain', () => {
+		expect(supportedAudioCodecs('mp4')).toEqual([
+			'aac',
+			'opus',
+			'mp3',
+			'vorbis',
+			'flac',
+			'ac3',
+			'eac3',
+			'dts',
+			'pcm-s16',
+			'pcm-s16be',
+			'pcm-s24',
+			'pcm-s24be',
+			'pcm-s32',
+			'pcm-s32be',
+			'pcm-f32',
+			'pcm-f32be',
+			'pcm-f64',
+			'pcm-f64be'
+		]);
+		expect(supportedAudioCodecs('webm')).toEqual(['opus', 'vorbis']);
 	});
 });
 
