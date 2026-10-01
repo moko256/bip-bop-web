@@ -79,7 +79,7 @@ export type BipBopDimensions = {
 	/** Top inset of the clock. `round(shortSide * 1/32)`. */
 	clockY: number;
 	/**
-	 * Top-right resolution, and for a video the MIME type and video format.
+	 * Top-right resolution, and for a video the MIME type and video/audio codecs.
 	 * Height is `round(clockFontSize / 2)`.
 	 */
 	overlayFontSize: number;
@@ -129,7 +129,8 @@ type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2
 
 export type BipBopVideoCorner = {
 	mimeType: string;
-	videoFormat: string;
+	videoCodec: string;
+	audioCodec: string;
 };
 
 /**
@@ -157,8 +158,8 @@ export type BipBopVideoCorner = {
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
  * The circle diameter is `round(shortSide * 2/5)`.
- * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`
- * and `video.videoFormat` on the following lines. Each line is
+ * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
+ * `video.videoCodec`, and `video.audioCodec` on the following lines. Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
  * and from the right by the clock's left inset. A page omits `video` and draws
  * the resolution only.
@@ -241,7 +242,7 @@ export function BipBopRenderer(
 	ctx.font = monospaceFont(overlayFontSize);
 	ctx.textAlign = 'right';
 	const lines = video
-		? [`${width}x${height}`, video.mimeType, video.videoFormat]
+		? [`${width}x${height}`, video.mimeType, video.videoCodec, video.audioCodec]
 		: [`${width}x${height}`];
 	for (const [index, line] of lines.entries()) {
 		ctx.fillText(line, width - clockX, clockY + index * overlayFontSize);

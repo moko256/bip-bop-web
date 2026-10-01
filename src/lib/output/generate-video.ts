@@ -75,7 +75,8 @@ export async function generateBipBopVideo(options: {
 			if (options.signal?.aborted) throw aborted();
 			BipBopRenderer(canvas, dimensions, frame, {
 				mimeType: format.mimeType,
-				videoFormat: options.outputType
+				videoCodec: options.videoCodec,
+				audioCodec: options.audioCodec
 			});
 			if (frame % VIDEO_FPS === 0) await addBipBopTone(audioSource, frame / VIDEO_FPS);
 			await source.add(frame * frameDuration, frameDuration);
