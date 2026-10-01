@@ -6,7 +6,13 @@
 	import type { Snippet } from 'svelte';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { clampFrame } from '$lib/playback/time';
-	import { VIDEO_DURATION_SECONDS, VIDEO_FPS, generatePlayback } from './generate-video';
+	import {
+		BIP_BOP_FPS,
+		BIP_BOP_MAX_FRAME,
+		frameAtSeconds,
+		secondsAtFrame
+	} from '$lib/bip-bop/timeline';
+	import { generatePlayback } from './generate-video';
 	import {
 		resolutions,
 		supportedAudioCodecs,
@@ -31,7 +37,7 @@
 	let playing = $state(false);
 	let frame = $state(0);
 	let video: HTMLVideoElement | undefined;
-	const maxFrame = VIDEO_FPS * VIDEO_DURATION_SECONDS;
+	const maxFrame = BIP_BOP_MAX_FRAME;
 
 	let videoCodecs = $derived(supportedVideoCodecs(outputType));
 	let videoCodec = $derived(
@@ -100,11 +106,6 @@
 		if (match) audioCodecChoice = match;
 	}
 
-	function frameAt(currentTime: number): number {
-		if (!Number.isFinite(currentTime) || currentTime <= 0) return 0;
-		return Math.min(maxFrame, Math.round(currentTime * VIDEO_FPS));
-	}
-
 	function onplaybackchange(next: boolean) {
 		const element = video;
 		if (!next) {
@@ -125,14 +126,14 @@
 	function onframechange(next: number) {
 		const clamped = clampFrame(next, maxFrame);
 		frame = clamped;
-		if (video) video.currentTime = clamped / VIDEO_FPS;
+		if (video) video.currentTime = secondsAtFrame(clamped);
 	}
 
 	const sync: Attachment<HTMLVideoElement> = (element) => {
 		video = element;
 		let raf = 0;
 		const updateFrame = () => {
-			frame = frameAt(element.currentTime);
+			frame = frameAtSeconds(element.currentTime);
 		};
 		const tick = () => {
 			updateFrame();
@@ -191,7 +192,7 @@
 				{playing}
 				{frame}
 				{maxFrame}
-				fps={VIDEO_FPS}
+				fps={BIP_BOP_FPS}
 				{onplaybackchange}
 				{onframechange}
 			>

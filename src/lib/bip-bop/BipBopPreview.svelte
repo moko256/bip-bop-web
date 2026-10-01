@@ -4,17 +4,10 @@
 	import type { Attachment } from 'svelte/attachments';
 	import { BipBopAudioRenderer, planBipBopTone } from './audio';
 	import { loadBipBopFont } from './font';
-	import {
-		BIP_BOP_CYCLE_FRAMES,
-		BipBopRenderer,
-		bipBopFrameIndex,
-		createBipBopDimensions
-	} from './renderer';
+	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME, frameAtElapsedMs, secondsAtFrame } from './timeline';
 
 	const PREVIEW_LABEL = 'Bip-Bop preview';
-	const FPS = BIP_BOP_CYCLE_FRAMES;
-	/** Ten seconds, the same length as an exported video. */
-	const MAX_FRAME = FPS * 10;
 
 	let playing = $state(false);
 	let frame = $state(0);
@@ -69,9 +62,9 @@
 
 	function tick() {
 		if (disposed || !playing) return;
-		const next = Math.min(MAX_FRAME, bipBopFrameIndex(Date.now() - startedAt));
+		const next = Math.min(BIP_BOP_MAX_FRAME, frameAtElapsedMs(Date.now() - startedAt));
 		if (next !== frame) frame = next;
-		if (next >= MAX_FRAME) {
+		if (next >= BIP_BOP_MAX_FRAME) {
 			playing = false;
 			stopClock();
 			return;
@@ -81,7 +74,7 @@
 
 	function startFromCurrentFrame() {
 		stopClock();
-		const elapsedMs = (frame * 1000) / FPS;
+		const elapsedMs = secondsAtFrame(frame) * 1000;
 		startedAt = Date.now() - elapsedMs;
 		playing = true;
 		audio = new AudioContext();
@@ -95,14 +88,14 @@
 			stopClock();
 			return;
 		}
-		if (frame >= MAX_FRAME) frame = 0;
+		if (frame >= BIP_BOP_MAX_FRAME) frame = 0;
 		startFromCurrentFrame();
 	}
 
 	function onframechange(next: number) {
-		frame = clampFrame(next, MAX_FRAME);
+		frame = clampFrame(next, BIP_BOP_MAX_FRAME);
 		if (!playing) return;
-		if (frame >= MAX_FRAME) {
+		if (frame >= BIP_BOP_MAX_FRAME) {
 			playing = false;
 			stopClock();
 			return;
@@ -177,8 +170,8 @@
 <PlaybackControls
 	{playing}
 	{frame}
-	maxFrame={MAX_FRAME}
-	fps={FPS}
+	maxFrame={BIP_BOP_MAX_FRAME}
+	fps={BIP_BOP_FPS}
 	{onplaybackchange}
 	{onframechange}
 >

@@ -6,6 +6,7 @@ import {
 } from '$lib/bip-bop/audio';
 import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 import {
 	AudioSample,
 	AudioSampleSource,
@@ -23,9 +24,6 @@ import {
 	type Resolution,
 	type VideoOutputType
 } from './output';
-
-export const VIDEO_FPS = 60;
-export const VIDEO_DURATION_SECONDS = 10;
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
@@ -64,13 +62,13 @@ export async function generateBipBopVideo(options: {
 		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
-	output.addVideoTrack(source, { frameRate: VIDEO_FPS });
+	output.addVideoTrack(source, { frameRate: BIP_BOP_FPS });
 	output.addAudioTrack(audioSource);
 
 	try {
 		await output.start();
-		const frameCount = options.frameCount ?? VIDEO_FPS * VIDEO_DURATION_SECONDS;
-		const frameDuration = 1 / VIDEO_FPS;
+		const frameCount = options.frameCount ?? BIP_BOP_MAX_FRAME;
+		const frameDuration = 1 / BIP_BOP_FPS;
 		for (let frame = 0; frame < frameCount; frame += 1) {
 			if (options.signal?.aborted) throw aborted();
 			BipBopRenderer(canvas, dimensions, frame, {
@@ -78,7 +76,7 @@ export async function generateBipBopVideo(options: {
 				videoCodec: options.videoCodec,
 				audioCodec: options.audioCodec
 			});
-			if (frame % VIDEO_FPS === 0) await addBipBopTone(audioSource, frame / VIDEO_FPS);
+			if (frame % BIP_BOP_FPS === 0) await addBipBopTone(audioSource, frame / BIP_BOP_FPS);
 			await source.add(frame * frameDuration, frameDuration);
 		}
 		if (options.signal?.aborted) throw aborted();
