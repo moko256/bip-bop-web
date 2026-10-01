@@ -1,8 +1,6 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
-	import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
-	import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
@@ -10,6 +8,7 @@
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
+	import { VideoGeneration } from './VideoGeneration.svelte';
 	import {
 		resolutions,
 		supportedAudioCodecs,
@@ -29,8 +28,7 @@
 	let resolution = $state<Resolution>('1920x1080');
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
-	let defaultAudioCodec = $state<AudioCodec | null>(null);
-	let playback = $state<Promise<string> | null>(null);
+	const generation = new VideoGeneration(generatePlayback);
 	const playbackSide = videoPlayback(browserPlaybackClock());
 	const session = new PlaybackSession({
 		maxFrame: BIP_BOP_MAX_FRAME,
@@ -48,49 +46,32 @@
 	let audioCodec = $derived(
 		audioCodecChoice !== null && audioCodecs.includes(audioCodecChoice)
 			? audioCodecChoice
-			: (defaultAudioCodec ?? audioCodecs[0])
+			: (generation.defaultAudioCodec ?? audioCodecs[0])
 	);
 
 	$effect(() => {
-		const type = outputType;
-		const options = supportedAudioCodecs(type);
-		let canceled = false;
-		void getFirstEncodableAudioCodec(options, {
-			numberOfChannels: 1,
-			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
-			quality: new Quality('high')
-		}).then((match) => {
-			if (!canceled && type === outputType) defaultAudioCodec = match;
-		});
-		return () => {
-			canceled = true;
-		};
+		void generation.loadDefaultAudioCodec(outputType);
 	});
 
-	let abort = new AbortController();
-
 	function invalidate() {
-		abort.abort();
-		abort = new AbortController();
-		playback = null;
+		generation.cancel();
 		session.reset();
 	}
 
 	function start() {
 		session.reset();
-		playback = generatePlayback({
+		generation.start({
 			outputType,
 			videoCodec,
 			audioCodec,
-			resolution,
-			signal: abort.signal
+			resolution
 		});
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
 		return () => {
 			session.dispose();
-			abort.abort();
+			generation.dispose();
 		};
 	};
 
@@ -121,8 +102,8 @@
 {/snippet}
 
 <div {@attach release}>
-	{#if playback}
-		{#await playback}
+	{#if generation.playback}
+		{#await generation.playback}
 			<div class="stage">
 				{@render placeholder()}
 				<progress aria-label="生成中"></progress>
@@ -193,8 +174,8 @@
 		</label>
 	</div>
 </div>
-{#if playback}
-	{#await playback}
+{#if generation.playback}
+	{#await generation.playback}
 		{@render actions(true)}
 	{:then}
 		{@render actions(false)}

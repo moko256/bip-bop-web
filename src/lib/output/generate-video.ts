@@ -13,6 +13,7 @@ import {
 	BufferTarget,
 	CanvasSource,
 	canEncodeAudio,
+	getFirstEncodableAudioCodec,
 	Output,
 	Quality,
 	type AudioCodec,
@@ -20,6 +21,7 @@ import {
 } from 'mediabunny';
 import {
 	parseResolution,
+	supportedAudioCodecs,
 	videoOutputFormat,
 	type Resolution,
 	type VideoOutputType
@@ -88,6 +90,15 @@ export async function generateBipBopVideo(options: {
 
 	if (!target.buffer) throw new Error('動画の生成に失敗しました');
 	return new Blob([target.buffer], { type: format.mimeType });
+}
+
+/** First audio codec this browser can encode into `type`. */
+export async function preferredAudioCodec(type: VideoOutputType): Promise<AudioCodec | null> {
+	return getFirstEncodableAudioCodec(supportedAudioCodecs(type), {
+		numberOfChannels: 1,
+		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
+		quality: new Quality('high')
+	});
 }
 
 export async function generatePlayback(options: {
