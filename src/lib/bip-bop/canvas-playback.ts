@@ -1,7 +1,7 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
 import type { PlaybackClock } from '$lib/playback/clock';
-import { BipBopAudioRenderer, planBipBopTone } from './audio';
 import { BIP_BOP_MAX_FRAME, frameAtElapsedMs, secondsAtFrame } from './timeline';
+import { scheduleLiveTones } from './tone-schedule';
 
 /** Live Bip/Bop bursts while the canvas clock is running. */
 export type CanvasAudio = {
@@ -11,18 +11,9 @@ export type CanvasAudio = {
 
 export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 	let audio: AudioContext | null = null;
-	let timer = 0;
 	let active = false;
 	let getElapsed = () => 0;
-
-	function schedule(elapsedMs: number) {
-		if (!active) return;
-		const context = audio;
-		if (!context || context.state !== 'running') return;
-		const plan = planBipBopTone(elapsedMs);
-		BipBopAudioRenderer(context, plan.delayMs, plan.frequencyHz);
-		timer = clock.delay(plan.waitMs, () => schedule(getElapsed()));
-	}
+	let cancelTones = () => {};
 
 	return {
 		start(elapsedMs, elapsed) {
@@ -34,7 +25,14 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 			const context = audio;
 			const run = (elapsedNow: number) => {
 				if (!active || audio !== context) return;
-				schedule(elapsedNow);
+				cancelTones();
+				cancelTones = scheduleLiveTones({
+					context,
+					elapsedMs: elapsedNow,
+					getElapsed,
+					clock,
+					active: () => active && audio === context
+				});
 			};
 			if (context.state === 'running') {
 				run(elapsedMs);
@@ -49,8 +47,8 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 		},
 		stop() {
 			active = false;
-			clock.cancelDelay(timer);
-			timer = 0;
+			cancelTones();
+			cancelTones = () => {};
 			const previous = audio;
 			audio = null;
 			if (previous) void previous.close();
