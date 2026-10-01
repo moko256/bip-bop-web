@@ -3,15 +3,12 @@
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
 	import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
 	import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
+	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
+	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
-	import { clampFrame } from '$lib/playback/time';
-	import {
-		BIP_BOP_FPS,
-		BIP_BOP_MAX_FRAME,
-		frameAtSeconds,
-		secondsAtFrame
-	} from '$lib/bip-bop/timeline';
+	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
+	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import {
 		resolutions,
@@ -34,10 +31,12 @@
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	let defaultAudioCodec = $state<AudioCodec | null>(null);
 	let playback = $state<Promise<string> | null>(null);
-	let playing = $state(false);
-	let frame = $state(0);
-	let video: HTMLVideoElement | undefined;
-	const maxFrame = BIP_BOP_MAX_FRAME;
+	const playbackSide = videoPlayback(browserPlaybackClock());
+	const session = new PlaybackSession({
+		maxFrame: BIP_BOP_MAX_FRAME,
+		fps: BIP_BOP_FPS,
+		connect: playbackSide.connect
+	});
 
 	let videoCodecs = $derived(supportedVideoCodecs(outputType));
 	let videoCodec = $derived(
@@ -74,13 +73,11 @@
 		abort.abort();
 		abort = new AbortController();
 		playback = null;
-		playing = false;
-		frame = 0;
+		session.reset();
 	}
 
 	function start() {
-		playing = false;
-		frame = 0;
+		session.reset();
 		playback = generatePlayback({
 			outputType,
 			videoCodec,
@@ -91,7 +88,10 @@
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
-		return () => abort.abort();
+		return () => {
+			session.dispose();
+			abort.abort();
+		};
 	};
 
 	function onVideoCodecChange(event: Event) {
@@ -105,66 +105,6 @@
 		const match = audioCodecs.find((item) => item === value);
 		if (match) audioCodecChoice = match;
 	}
-
-	function onplaybackchange(next: boolean) {
-		const element = video;
-		if (!next) {
-			playing = false;
-			element?.pause();
-			return;
-		}
-		if (element && (element.ended || frame >= maxFrame)) {
-			element.currentTime = 0;
-			frame = 0;
-		}
-		playing = true;
-		void element?.play().catch(() => {
-			playing = false;
-		});
-	}
-
-	function onframechange(next: number) {
-		const clamped = clampFrame(next, maxFrame);
-		frame = clamped;
-		if (video) video.currentTime = secondsAtFrame(clamped);
-	}
-
-	const sync: Attachment<HTMLVideoElement> = (element) => {
-		video = element;
-		let raf = 0;
-		const updateFrame = () => {
-			frame = frameAtSeconds(element.currentTime);
-		};
-		const tick = () => {
-			updateFrame();
-			raf = requestAnimationFrame(tick);
-		};
-		const onPlay = () => {
-			playing = true;
-			cancelAnimationFrame(raf);
-			raf = requestAnimationFrame(tick);
-		};
-		const onPause = () => {
-			playing = false;
-			cancelAnimationFrame(raf);
-			updateFrame();
-		};
-		element.addEventListener('play', onPlay);
-		element.addEventListener('pause', onPause);
-		element.addEventListener('ended', onPause);
-		element.addEventListener('seeked', updateFrame);
-		element.addEventListener('timeupdate', updateFrame);
-		updateFrame();
-		return () => {
-			if (video === element) video = undefined;
-			cancelAnimationFrame(raf);
-			element.removeEventListener('play', onPlay);
-			element.removeEventListener('pause', onPause);
-			element.removeEventListener('ended', onPause);
-			element.removeEventListener('seeked', updateFrame);
-			element.removeEventListener('timeupdate', updateFrame);
-		};
-	};
 
 	function errorMessage(error: unknown): string {
 		if (error instanceof Error && error.message !== '') return error.message;
@@ -189,12 +129,12 @@
 			</div>
 		{:then url}
 			<PlaybackControls
-				{playing}
-				{frame}
-				{maxFrame}
-				fps={BIP_BOP_FPS}
-				{onplaybackchange}
-				{onframechange}
+				playing={session.playing}
+				frame={session.frame}
+				maxFrame={session.maxFrame}
+				fps={session.fps}
+				onplaybackchange={(next) => session.setPlaying(next)}
+				onframechange={(next) => session.seek(next)}
 			>
 				<div class="stage">
 					<!-- svelte-ignore a11y_media_has_caption -->
@@ -203,8 +143,13 @@
 						src={url}
 						playsinline
 						aria-label="生成した動画"
-						{@attach sync}
-						{@attach () => () => URL.revokeObjectURL(url)}
+						{@attach (element) => {
+							const detach = playbackSide.attach(element);
+							return () => {
+								detach();
+								URL.revokeObjectURL(url);
+							};
+						}}
 					></video>
 				</div>
 			</PlaybackControls>

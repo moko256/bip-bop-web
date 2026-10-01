@@ -1,107 +1,19 @@
 <script lang="ts">
+	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
-	import { clampFrame } from '$lib/playback/time';
+	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { BipBopAudioRenderer, planBipBopTone } from './audio';
+	import { canvasPlayback } from './canvas-playback';
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
-	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME, frameAtElapsedMs, secondsAtFrame } from './timeline';
+	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './timeline';
 
 	const PREVIEW_LABEL = 'Bip-Bop preview';
-
-	let playing = $state(false);
-	let frame = $state(0);
-
-	let rafId = 0;
-	let toneTimer = 0;
-	let startedAt = 0;
-	let audio: AudioContext | null = null;
-	let disposed = false;
-
-	function silence() {
-		window.clearTimeout(toneTimer);
-		toneTimer = 0;
-		const previous = audio;
-		audio = null;
-		if (previous) void previous.close();
-	}
-
-	function stopClock() {
-		cancelAnimationFrame(rafId);
-		rafId = 0;
-		silence();
-	}
-
-	function scheduleTone(elapsedMs: number) {
-		if (disposed || !playing) return;
-		const context = audio;
-		if (!context || context.state !== 'running') return;
-		const plan = planBipBopTone(elapsedMs);
-		BipBopAudioRenderer(context, plan.delayMs, plan.frequencyHz);
-		toneTimer = window.setTimeout(() => scheduleTone(Date.now() - startedAt), plan.waitMs);
-	}
-
-	function startAudio(elapsedMs: number) {
-		const context = audio;
-		if (!context) return;
-		const run = (elapsed: number) => {
-			if (disposed || !playing || audio !== context) return;
-			scheduleTone(elapsed);
-		};
-		if (context.state === 'running') {
-			run(elapsedMs);
-			return;
-		}
-		void context
-			.resume()
-			.then(() => run(Math.max(elapsedMs, Date.now() - startedAt)))
-			.catch(() => {
-				// Unmount closes the context while this promise can still be pending.
-			});
-	}
-
-	function tick() {
-		if (disposed || !playing) return;
-		const next = Math.min(BIP_BOP_MAX_FRAME, frameAtElapsedMs(Date.now() - startedAt));
-		if (next !== frame) frame = next;
-		if (next >= BIP_BOP_MAX_FRAME) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		rafId = requestAnimationFrame(tick);
-	}
-
-	function startFromCurrentFrame() {
-		stopClock();
-		const elapsedMs = secondsAtFrame(frame) * 1000;
-		startedAt = Date.now() - elapsedMs;
-		playing = true;
-		audio = new AudioContext();
-		rafId = requestAnimationFrame(tick);
-		startAudio(elapsedMs);
-	}
-
-	function onplaybackchange(next: boolean) {
-		if (!next) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		if (frame >= BIP_BOP_MAX_FRAME) frame = 0;
-		startFromCurrentFrame();
-	}
-
-	function onframechange(next: number) {
-		frame = clampFrame(next, BIP_BOP_MAX_FRAME);
-		if (!playing) return;
-		if (frame >= BIP_BOP_MAX_FRAME) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		startFromCurrentFrame();
-	}
+	const session = new PlaybackSession({
+		maxFrame: BIP_BOP_MAX_FRAME,
+		fps: BIP_BOP_FPS,
+		connect: canvasPlayback(browserPlaybackClock())
+	});
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
 		const dpr = window.devicePixelRatio || 1;
@@ -138,18 +50,18 @@
 		void loadBipBopFont().finally(() => {
 			if (canceled) return;
 			ready = true;
-			draw(frame);
+			draw(session.frame);
 		});
 
 		$effect(() => {
-			const current = frame;
+			const current = session.frame;
 			if (!ready) return;
 			draw(current);
 		});
 
 		const observer = new ResizeObserver(() => {
 			if (!ready) return;
-			draw(frame);
+			draw(session.frame);
 		});
 		observer.observe(host);
 
@@ -160,20 +72,17 @@
 	};
 
 	const release: Attachment<HTMLDivElement> = () => {
-		return () => {
-			disposed = true;
-			stopClock();
-		};
+		return () => session.dispose();
 	};
 </script>
 
 <PlaybackControls
-	{playing}
-	{frame}
-	maxFrame={BIP_BOP_MAX_FRAME}
-	fps={BIP_BOP_FPS}
-	{onplaybackchange}
-	{onframechange}
+	playing={session.playing}
+	frame={session.frame}
+	maxFrame={session.maxFrame}
+	fps={session.fps}
+	onplaybackchange={(next) => session.setPlaying(next)}
+	onframechange={(next) => session.seek(next)}
 >
 	<div class="preview" {@attach paint} {@attach release}></div>
 </PlaybackControls>
