@@ -1,10 +1,114 @@
 <script lang="ts">
+	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
+	import { clampFrame } from '$lib/playback/time';
 	import type { Attachment } from 'svelte/attachments';
 	import { BipBopAudioRenderer, planBipBopTone } from './audio';
 	import { loadBipBopFont } from './font';
-	import { BipBopRenderer, bipBopFrameIndex, createBipBopDimensions } from './renderer';
+	import {
+		BIP_BOP_CYCLE_FRAMES,
+		BipBopRenderer,
+		bipBopFrameIndex,
+		createBipBopDimensions
+	} from './renderer';
 
 	const PREVIEW_LABEL = 'Bip-Bop preview';
+	const FPS = BIP_BOP_CYCLE_FRAMES;
+	/** Ten seconds, the same length as an exported video. */
+	const MAX_FRAME = FPS * 10;
+
+	let playing = $state(false);
+	let frame = $state(0);
+
+	let rafId = 0;
+	let toneTimer = 0;
+	let startedAt = 0;
+	let audio: AudioContext | null = null;
+	let disposed = false;
+
+	function silence() {
+		window.clearTimeout(toneTimer);
+		toneTimer = 0;
+		const previous = audio;
+		audio = null;
+		if (previous) void previous.close();
+	}
+
+	function stopClock() {
+		cancelAnimationFrame(rafId);
+		rafId = 0;
+		silence();
+	}
+
+	function scheduleTone(elapsedMs: number) {
+		if (disposed || !playing) return;
+		const context = audio;
+		if (!context || context.state !== 'running') return;
+		const plan = planBipBopTone(elapsedMs);
+		BipBopAudioRenderer(context, plan.delayMs, plan.frequencyHz);
+		toneTimer = window.setTimeout(() => scheduleTone(Date.now() - startedAt), plan.waitMs);
+	}
+
+	function startAudio(elapsedMs: number) {
+		const context = audio;
+		if (!context) return;
+		const run = (elapsed: number) => {
+			if (disposed || !playing || audio !== context) return;
+			scheduleTone(elapsed);
+		};
+		if (context.state === 'running') {
+			run(elapsedMs);
+			return;
+		}
+		void context
+			.resume()
+			.then(() => run(Math.max(elapsedMs, Date.now() - startedAt)))
+			.catch(() => {
+				// Unmount closes the context while this promise can still be pending.
+			});
+	}
+
+	function tick() {
+		if (disposed || !playing) return;
+		const next = Math.min(MAX_FRAME, bipBopFrameIndex(Date.now() - startedAt));
+		if (next !== frame) frame = next;
+		if (next >= MAX_FRAME) {
+			playing = false;
+			stopClock();
+			return;
+		}
+		rafId = requestAnimationFrame(tick);
+	}
+
+	function startFromCurrentFrame() {
+		stopClock();
+		const elapsedMs = (frame * 1000) / FPS;
+		startedAt = Date.now() - elapsedMs;
+		playing = true;
+		audio = new AudioContext();
+		rafId = requestAnimationFrame(tick);
+		startAudio(elapsedMs);
+	}
+
+	function onplaybackchange(next: boolean) {
+		if (!next) {
+			playing = false;
+			stopClock();
+			return;
+		}
+		if (frame >= MAX_FRAME) frame = 0;
+		startFromCurrentFrame();
+	}
+
+	function onframechange(next: number) {
+		frame = clampFrame(next, MAX_FRAME);
+		if (!playing) return;
+		if (frame >= MAX_FRAME) {
+			playing = false;
+			stopClock();
+			return;
+		}
+		startFromCurrentFrame();
+	}
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
 		const dpr = window.devicePixelRatio || 1;
@@ -22,85 +126,64 @@
 		return canvas;
 	}
 
-	const play: Attachment<HTMLDivElement> = (host) => {
-		let rafId = 0;
-		let toneTimer = 0;
-		let stopped = false;
-		let clockStarted = false;
-		let playedWhileRunning = false;
+	const paint: Attachment<HTMLDivElement> = (host) => {
 		let canvas: HTMLCanvasElement | null = null;
-		let startedAt = 0;
-		const audio = new AudioContext();
+		let ready = false;
+		let canceled = false;
 
-		const draw = () => {
-			if (stopped) return;
+		const draw = (current: number) => {
 			const size = bitmapSize(host);
-
-			if (size) {
-				const frame = bipBopFrameIndex(Date.now() - startedAt);
-				const dimensions = createBipBopDimensions(size.width, size.height);
-				if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
-					canvas = createPreviewCanvas(size.width, size.height);
-					BipBopRenderer(canvas, dimensions, frame);
-					host.replaceChildren(canvas);
-				} else {
-					BipBopRenderer(canvas, dimensions, frame);
-				}
+			if (!size) return;
+			const dimensions = createBipBopDimensions(size.width, size.height);
+			if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
+				canvas = createPreviewCanvas(size.width, size.height);
+				host.replaceChildren(canvas);
 			}
-
-			rafId = requestAnimationFrame(draw);
+			BipBopRenderer(canvas, dimensions, current);
 		};
-
-		// Wake after each burst, then schedule the next whole second from the preview clock.
-		const scheduleTone = () => {
-			if (stopped || !clockStarted) return;
-			const plan = planBipBopTone(Date.now() - startedAt);
-			playedWhileRunning = audio.state === 'running';
-			if (playedWhileRunning) {
-				BipBopAudioRenderer(audio, plan.delayMs, plan.frequencyHz);
-			}
-			toneTimer = window.setTimeout(scheduleTone, plan.waitMs);
-		};
-
-		const onAudioState = () => {
-			if (stopped || !clockStarted || audio.state !== 'running' || playedWhileRunning) return;
-			window.clearTimeout(toneTimer);
-			scheduleTone();
-		};
-
-		const resumeAudio = () => {
-			if (stopped || audio.state === 'running') return;
-			void audio.resume().catch(() => {
-				// Unmount closes the context while this promise can still be pending.
-			});
-		};
-
-		audio.addEventListener('statechange', onAudioState);
-		window.addEventListener('pointerdown', resumeAudio);
-		window.addEventListener('keydown', resumeAudio);
-		resumeAudio();
 
 		void loadBipBopFont().finally(() => {
-			if (stopped) return;
-			clockStarted = true;
-			startedAt = Date.now();
-			scheduleTone();
-			draw();
+			if (canceled) return;
+			ready = true;
+			draw(frame);
 		});
 
+		$effect(() => {
+			const current = frame;
+			if (!ready) return;
+			draw(current);
+		});
+
+		const observer = new ResizeObserver(() => {
+			if (!ready) return;
+			draw(frame);
+		});
+		observer.observe(host);
+
 		return () => {
-			stopped = true;
-			cancelAnimationFrame(rafId);
-			window.clearTimeout(toneTimer);
-			audio.removeEventListener('statechange', onAudioState);
-			window.removeEventListener('pointerdown', resumeAudio);
-			window.removeEventListener('keydown', resumeAudio);
-			void audio.close();
+			canceled = true;
+			observer.disconnect();
+		};
+	};
+
+	const release: Attachment<HTMLDivElement> = () => {
+		return () => {
+			disposed = true;
+			stopClock();
 		};
 	};
 </script>
 
-<div class="preview" {@attach play}></div>
+<PlaybackControls
+	{playing}
+	{frame}
+	maxFrame={MAX_FRAME}
+	fps={FPS}
+	{onplaybackchange}
+	{onframechange}
+>
+	<div class="preview" {@attach paint} {@attach release}></div>
+</PlaybackControls>
 
 <style>
 	.preview {

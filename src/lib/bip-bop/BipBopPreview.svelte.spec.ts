@@ -110,13 +110,18 @@ describe('BipBopPreview', () => {
 		expect(getComputedStyle(element).imageRendering).toBe('pixelated');
 	});
 
-	it('plays a 16ms Bip at the preview start, then schedules Bop for the next second', async () => {
+	it('stays stopped until play, then plays a 16ms Bip and schedules Bop', async () => {
 		PreviewAudioContext.instances = [];
 		const realAudioContext = window.AudioContext;
 		window.AudioContext = PreviewAudioContext as unknown as typeof AudioContext;
 
 		try {
 			render(BipBopPreview);
+
+			await expect.element(page.getByRole('button', { name: '再生' }).first()).toBeVisible();
+			expect(PreviewAudioContext.instances).toHaveLength(0);
+
+			await page.getByRole('button', { name: '再生' }).first().click();
 
 			await expect
 				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
@@ -136,5 +141,23 @@ describe('BipBopPreview', () => {
 		} finally {
 			window.AudioContext = realAudioContext;
 		}
+	});
+
+	it('seeks a stopped 10 second preview from the frame field', async () => {
+		render(BipBopPreview);
+
+		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
+		const input = page.getByRole('spinbutton', { name: 'フレーム' });
+		await expect.element(input).toHaveValue(0);
+
+		await input.fill('120');
+
+		await expect.element(page.getByText('00:02 / 00:10')).toBeVisible();
+		await expect.element(input).toHaveValue(120);
+		const progress = page
+			.getByRole('progressbar', { name: '再生位置' })
+			.element() as HTMLProgressElement;
+		expect(progress.value).toBe(120);
+		expect(progress.max).toBe(600);
 	});
 });
