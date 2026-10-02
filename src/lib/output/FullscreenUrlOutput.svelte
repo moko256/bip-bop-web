@@ -3,6 +3,7 @@
 	import OutputLayout from './OutputLayout.svelte';
 	import type { Snippet } from 'svelte';
 	import { resolutions } from './output';
+	import * as m from '$lib/paraglide/messages';
 
 	let { outputTypeSelector }: { outputTypeSelector: Snippet } = $props();
 </script>
@@ -15,7 +16,7 @@
 		{@render outputTypeSelector()}
 		<div class="output-fields">
 			<label>
-				解像度
+				{m.resolution()}
 				<select>
 					{#each resolutions as resolution (resolution.value)}
 						<option value={resolution.value}>{resolution.label}</option>
@@ -24,10 +25,10 @@
 			</label>
 		</div>
 		<label>
-			URL
-			<input type="url" readonly placeholder="URL" />
+			{m.url_label()}
+			<input type="url" readonly placeholder={m.url_label()} />
 		</label>
-		<button type="button">コピー</button>
-		<button type="button">開く</button>
+		<button type="button">{m.copy()}</button>
+		<button type="button">{m.open()}</button>
 	{/snippet}
 </OutputLayout>

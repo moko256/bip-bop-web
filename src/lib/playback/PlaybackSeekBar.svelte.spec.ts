@@ -1,3 +1,4 @@
+import * as m from '$lib/paraglide/messages';
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
@@ -34,7 +35,7 @@ async function mount(frame = 0, maxFrame = 100) {
 	});
 	view.container.style.display = 'flex';
 	view.container.style.width = '320px';
-	const slider = page.getByRole('slider', { name: '再生位置' });
+	const slider = page.getByRole('slider', { name: m.playback_position_aria() });
 	const bar = slider.element().querySelector('.bar');
 	const knob = slider.element().querySelector('.knob');
 	if (!bar || !knob) throw new Error('seek bar is missing its bar or knob');

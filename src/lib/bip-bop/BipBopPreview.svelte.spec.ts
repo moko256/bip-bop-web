@@ -1,3 +1,4 @@
+import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
@@ -90,7 +91,7 @@ describe('BipBopPreview', () => {
 		useDevicePixelRatio(2);
 		render(BipBopPreview);
 
-		const canvas = page.getByLabelText('Bip-Bop preview');
+		const canvas = page.getByLabelText(m.bip_bop_preview_aria());
 		await expect.element(canvas).toBeVisible();
 		await expect
 			.poll(() => {
@@ -124,10 +125,12 @@ describe('BipBopPreview', () => {
 		try {
 			render(BipBopPreview);
 
-			await expect.element(page.getByRole('button', { name: '再生' }).first()).toBeVisible();
+			await expect
+				.element(page.getByRole('button', { name: m.playback_play() }).first())
+				.toBeVisible();
 			expect(PreviewAudioContext.instances).toHaveLength(0);
 
-			await page.getByRole('button', { name: '再生' }).first().click();
+			await page.getByRole('button', { name: m.playback_play() }).first().click();
 
 			await expect
 				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
@@ -151,7 +154,9 @@ describe('BipBopPreview', () => {
 	});
 
 	function frameValue(): number {
-		const input = page.getByRole('spinbutton', { name: 'フレーム' }).element() as HTMLInputElement;
+		const input = page
+			.getByRole('spinbutton', { name: m.frame_aria() })
+			.element() as HTMLInputElement;
 		return input.valueAsNumber;
 	}
 
@@ -163,10 +168,12 @@ describe('BipBopPreview', () => {
 
 		try {
 			render(BipBopPreview);
-			await expect.element(page.getByRole('button', { name: '再生' }).first()).toBeVisible();
+			await expect
+				.element(page.getByRole('button', { name: m.playback_play() }).first())
+				.toBeVisible();
 
 			const started = Date.now();
-			await page.getByRole('button', { name: '再生' }).first().click();
+			await page.getByRole('button', { name: m.playback_play() }).first().click();
 
 			await expect
 				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
@@ -198,13 +205,13 @@ describe('BipBopPreview', () => {
 
 		try {
 			render(BipBopPreview);
-			const input = page.getByRole('spinbutton', { name: 'フレーム' });
+			const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 			await expect.element(input).toBeVisible();
 			await input.fill('30');
 			await expect.element(input).toHaveValue(30);
 
 			const started = Date.now();
-			await page.getByRole('button', { name: '再生' }).first().click();
+			await page.getByRole('button', { name: m.playback_play() }).first().click();
 
 			await expect
 				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
@@ -226,14 +233,14 @@ describe('BipBopPreview', () => {
 		render(BipBopPreview);
 
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
-		const input = page.getByRole('spinbutton', { name: 'フレーム' });
+		const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 		await expect.element(input).toHaveValue(0);
 
 		await input.fill('120');
 
 		await expect.element(page.getByText('00:02 / 00:10')).toBeVisible();
 		await expect.element(input).toHaveValue(120);
-		const progress = page.getByRole('slider', { name: '再生位置' }).element();
+		const progress = page.getByRole('slider', { name: m.playback_position_aria() }).element();
 		expect(progress.getAttribute('aria-valuenow')).toBe('120');
 		expect(progress.getAttribute('aria-valuemax')).toBe('600');
 	});

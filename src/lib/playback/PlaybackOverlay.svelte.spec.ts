@@ -1,4 +1,5 @@
 import { createRawSnippet } from 'svelte';
+import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
@@ -24,7 +25,7 @@ describe('PlaybackOverlay', () => {
 		});
 
 		const content = page.getByTestId('content');
-		const veil = page.getByRole('button', { name: '再生' });
+		const veil = page.getByRole('button', { name: m.playback_play() });
 		await expect.element(content).toBeVisible();
 		await expect.element(veil).toBeVisible();
 
@@ -61,7 +62,7 @@ describe('PlaybackOverlay', () => {
 
 		await view.rerender({ playing: true, onplaybackchange, children });
 
-		const veil = page.getByRole('button', { name: '停止' });
+		const veil = page.getByRole('button', { name: m.playback_pause() });
 		await expect.element(veil).toBeVisible();
 		expect(veil.element().querySelector('path')).toBeNull();
 		expect(getComputedStyle(veil.element()).backgroundColor).toBe('rgba(0, 0, 0, 0)');
