@@ -22,11 +22,7 @@
 	<div class="content">
 		{@render content({ onclick: togglePlayback })}
 	</div>
-	<div
-		class={['veil', { playing }]}
-		style:--stopped-veil={stoppedVeilColor}
-		aria-hidden="true"
-	>
+	<div class={['veil', { playing }]} style:--stopped-veil={stoppedVeilColor} aria-hidden="true">
 		{#if !playing}
 			<PlaybackIcon name="play-circle" size="4rem" />
 		{/if}

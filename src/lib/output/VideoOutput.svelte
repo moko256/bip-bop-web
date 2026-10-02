@@ -14,7 +14,12 @@
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
 	import ResolutionSelect from './ResolutionSelect.svelte';
-	import { parseResolution, defaultResolution, type Resolution, type VideoOutputType } from './output';
+	import {
+		parseResolution,
+		defaultResolution,
+		type Resolution,
+		type VideoOutputType
+	} from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 	import * as m from '$lib/paraglide/messages';
 
