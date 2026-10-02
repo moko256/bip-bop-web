@@ -99,23 +99,26 @@ describe('PlaybackSeekBar', () => {
 		expect(Math.abs(after - bar.getBoundingClientRect().right)).toBeLessThan(1.5);
 	});
 
-	it('moves the knob to a click on the bar and leaves it there while the pointer moves', async () => {
+	it('moves the knob to a click on the bar and follows the pointer while held', async () => {
 		const { frames, slider, bar } = await mount(0, 100);
 		const box = bar.getBoundingClientRect();
+		const seek = slider.element();
 
 		await slider.click({
 			position: {
-				x: box.left - slider.element().getBoundingClientRect().left + box.width / 2,
-				y: slider.element().getBoundingClientRect().height / 2
+				x: box.left - seek.getBoundingClientRect().left + box.width / 2,
+				y: seek.getBoundingClientRect().height / 2
 			}
 		});
 		expect(frames).toEqual([50]);
 
 		pointer(bar, 'pointerdown', box.left + box.width * 0.25);
 		expect(frames.at(-1)).toBe(25);
-		pointer(bar, 'pointermove', box.left + box.width * 0.8);
-		pointer(bar, 'pointerup', box.left + box.width * 0.8, 0);
-		expect(frames).toEqual([50, 25]);
+		pointer(seek, 'pointermove', box.left + box.width * 0.8);
+		expect(frames.at(-1)).toBe(80);
+		pointer(seek, 'pointerup', box.left + box.width * 0.8, 0);
+		pointer(seek, 'pointermove', box.left + box.width * 0.1);
+		expect(frames).toEqual([50, 25, 80]);
 	});
 
 	it('steps the frame from the keyboard', async () => {
@@ -133,12 +136,13 @@ describe('PlaybackSeekBar', () => {
 		const box = bar.getBoundingClientRect();
 
 		pointer(knob, 'pointerdown', box.left);
+		expect(frames).toEqual([0]);
 		pointer(knob, 'pointermove', box.left + box.width * 0.4);
-		expect(frames).toEqual([40]);
+		expect(frames).toEqual([0, 40]);
 		pointer(knob, 'pointermove', box.left + box.width * 0.9);
-		expect(frames).toEqual([40, 90]);
+		expect(frames).toEqual([0, 40, 90]);
 		pointer(knob, 'pointerup', box.left + box.width * 0.9, 0);
 		pointer(knob, 'pointermove', box.left + box.width * 0.1);
-		expect(frames).toEqual([40, 90]);
+		expect(frames).toEqual([0, 40, 90]);
 	});
 });
