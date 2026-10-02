@@ -7,7 +7,7 @@
 </script>
 
 {#snippet outputTypeSelector()}
-	<div role="group" aria-label="OutputType">
+	<div class="output-type-switcher" role="group" aria-label="OutputType">
 		{#each outputTypes as type (type)}
 			<button
 				type="button"
@@ -32,3 +32,24 @@
 {:else}
 	<PageOutput {outputTypeSelector} />
 {/if}
+
+<style>
+	.output-type-switcher {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		width: 100%;
+		margin-bottom: 0;
+		border-radius: 0;
+		box-shadow: none;
+		vertical-align: baseline;
+	}
+
+	.output-type-switcher > :global(button) {
+		flex: 1 1 calc(50% - 0.25rem);
+		width: auto;
+		min-width: 0;
+		margin: 0;
+		border-radius: var(--pico-border-radius);
+	}
+</style>
