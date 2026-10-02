@@ -62,6 +62,11 @@
 		};
 	});
 
+	$effect(() => {
+		outputType;
+		invalidate();
+	});
+
 	let abort = new AbortController();
 
 	function invalidate() {

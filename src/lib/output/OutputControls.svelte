@@ -8,14 +8,20 @@
 </script>
 
 {#snippet outputTypeSelector()}
-	<fieldset aria-label="OutputType">
+	<div role="group" aria-label="OutputType">
 		{#each outputTypes as type (type)}
-			<label>
-				<input type="radio" name="output-type" value={type} bind:group={outputType} />
+			<button
+				type="button"
+				class={outputType === type ? undefined : 'outline'}
+				aria-current={outputType === type ? true : undefined}
+				onclick={() => {
+					outputType = type;
+				}}
+			>
 				{outputTypeLabels[type]}
-			</label>
+			</button>
 		{/each}
-	</fieldset>
+	</div>
 {/snippet}
 
 {#if isVideoOutputType(outputType)}
