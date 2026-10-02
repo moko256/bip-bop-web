@@ -9,6 +9,7 @@
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
+	import OutputLayout from './OutputLayout.svelte';
 	import { resolutions, type Resolution, type VideoOutputType } from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
@@ -98,94 +99,102 @@
 {/snippet}
 
 {#snippet actions(pending: boolean)}
-	<button type="button" disabled={pending} onclick={start}>生成</button>
+	<button type="button" class="generate" disabled={pending} onclick={start}>生成</button>
 {/snippet}
 
-<div {@attach release}>
-	{#if generation.playback}
-		{#await generation.playback}
-			<div class="stage">
-				{@render placeholder()}
-				<progress aria-label="生成中"></progress>
-			</div>
-		{:then url}
-			<PlaybackControls
-				playing={session.playing}
-				frame={session.frame}
-				maxFrame={session.maxFrame}
-				fps={session.fps}
-				onplaybackchange={(next) => session.setPlaying(next)}
-				onframechange={(next) => session.seek(next)}
-			>
+<OutputLayout>
+	{#snippet media()}
+		<div {@attach release}>
+			{#if generation.playback}
+				{#await generation.playback}
+					<div class="stage">
+						{@render placeholder()}
+						<progress aria-label="生成中"></progress>
+					</div>
+				{:then url}
+					<PlaybackControls
+						playing={session.playing}
+						frame={session.frame}
+						maxFrame={session.maxFrame}
+						fps={session.fps}
+						onplaybackchange={(next) => session.setPlaying(next)}
+						onframechange={(next) => session.seek(next)}
+					>
+						<div class="stage">
+							<!-- svelte-ignore a11y_media_has_caption -->
+							<video
+								class="media"
+								src={url}
+								playsinline
+								aria-label="生成した動画"
+								{@attach (element) => {
+									const detach = playbackSide.attach(element);
+									return () => {
+										detach();
+										URL.revokeObjectURL(url);
+									};
+								}}
+							></video>
+						</div>
+					</PlaybackControls>
+				{:catch}
+					<div class="stage">
+						{@render placeholder()}
+					</div>
+				{/await}
+			{:else}
 				<div class="stage">
-					<!-- svelte-ignore a11y_media_has_caption -->
-					<video
-						class="media"
-						src={url}
-						playsinline
-						aria-label="生成した動画"
-						{@attach (element) => {
-							const detach = playbackSide.attach(element);
-							return () => {
-								detach();
-								URL.revokeObjectURL(url);
-							};
-						}}
-					></video>
+					{@render placeholder()}
 				</div>
-			</PlaybackControls>
-		{:catch}
-			<div class="stage">
-				{@render placeholder()}
-			</div>
-		{/await}
-	{:else}
-		<div class="stage">
-			{@render placeholder()}
+			{/if}
 		</div>
-	{/if}
-</div>
-<div onchange={invalidate}>
-	{@render outputTypeSelector()}
-	<div class="grid">
-		<label>
-			解像度
-			<select bind:value={resolution}>
-				{#each resolutions as option (option.value)}
-					<option value={option.value}>{option.label}</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			ビデオコーデック
-			<select value={videoCodec} onchange={onVideoCodecChange}>
-				{#each videoCodecs as videoCodecOption (videoCodecOption)}
-					<option value={videoCodecOption}>{videoCodecOption}</option>
-				{/each}
-			</select>
-		</label>
-		<label>
-			オーディオコーデック
-			<select value={audioCodec} onchange={onAudioCodecChange}>
-				{#each audioCodecs as audioCodecOption (audioCodecOption)}
-					<option value={audioCodecOption}>{audioCodecOption}</option>
-				{/each}
-			</select>
-		</label>
-	</div>
-</div>
-{#if generation.playback}
-	{#await generation.playback}
-		{@render actions(true)}
-	{:then}
-		{@render actions(false)}
-	{:catch error}
-		{@render actions(false)}
-		<p role="alert">{errorMessage(error)}</p>
-	{/await}
-{:else}
-	{@render actions(false)}
-{/if}
+	{/snippet}
+	{#snippet settings()}
+		<div class="settings-form" onchange={invalidate}>
+			{@render outputTypeSelector()}
+			<div class="output-fields">
+				<label>
+					解像度
+					<select bind:value={resolution}>
+						{#each resolutions as option (option.value)}
+							<option value={option.value}>{option.label}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					ビデオコーデック
+					<select value={videoCodec} onchange={onVideoCodecChange}>
+						{#each videoCodecs as videoCodecOption (videoCodecOption)}
+							<option value={videoCodecOption}>{videoCodecOption}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					オーディオコーデック
+					<select value={audioCodec} onchange={onAudioCodecChange}>
+						{#each audioCodecs as audioCodecOption (audioCodecOption)}
+							<option value={audioCodecOption}>{audioCodecOption}</option>
+						{/each}
+					</select>
+				</label>
+			</div>
+			<div class="settings-actions">
+				{#if generation.playback}
+					{#await generation.playback}
+						{@render actions(true)}
+					{:then}
+						{@render actions(false)}
+					{:catch error}
+						{@render actions(false)}
+						<p role="alert">{errorMessage(error)}</p>
+					{/await}
+				{:else}
+					{@render actions(false)}
+				{/if}
+			</div>
+		</div>
+	{/snippet}
+</OutputLayout>
 
 <style>
 	.stage {
@@ -207,6 +216,26 @@
 		grid-area: 1 / 1;
 		place-self: center;
 		width: 40%;
+		margin: 0;
+	}
+
+	.settings-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pico-spacing, 1rem);
+		flex: 1;
+		min-height: 100%;
+	}
+
+	.settings-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-top: auto;
+	}
+
+	.generate {
+		width: 100%;
 		margin: 0;
 	}
 </style>
