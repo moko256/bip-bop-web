@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-	isVideoOutputType,
-	outputCategory,
-	parseResolution,
-	supportedAudioCodecs,
-	supportedVideoCodecs,
-	videoOutputFormat
-} from './output';
+import { isVideoOutputType, outputCategory, parseResolution } from './output';
+import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
 
 describe('outputCategory', () => {
 	it('keeps page as page', () => {

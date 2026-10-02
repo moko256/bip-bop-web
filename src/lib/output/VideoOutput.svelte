@@ -1,19 +1,16 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
-	import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
-	import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
+	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
+	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
-	import { clampFrame } from '$lib/playback/time';
-	import { VIDEO_DURATION_SECONDS, VIDEO_FPS, generatePlayback } from './generate-video';
-	import {
-		resolutions,
-		supportedAudioCodecs,
-		supportedVideoCodecs,
-		type Resolution,
-		type VideoOutputType
-	} from './output';
+	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
+	import { videoPlayback } from '$lib/playback/video-playback';
+	import { generatePlayback } from './generate-video';
+	import { VideoGeneration } from './VideoGeneration.svelte';
+	import { resolutions, type Resolution, type VideoOutputType } from './output';
+	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
 	let {
 		outputType,
@@ -26,12 +23,13 @@
 	let resolution = $state<Resolution>('1920x1080');
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
-	let defaultAudioCodec = $state<AudioCodec | null>(null);
-	let playback = $state<Promise<string> | null>(null);
-	let playing = $state(false);
-	let frame = $state(0);
-	let video: HTMLVideoElement | undefined;
-	const maxFrame = VIDEO_FPS * VIDEO_DURATION_SECONDS;
+	const generation = new VideoGeneration(generatePlayback);
+	const playbackSide = videoPlayback(browserPlaybackClock());
+	const session = new PlaybackSession({
+		maxFrame: BIP_BOP_MAX_FRAME,
+		fps: BIP_BOP_FPS,
+		connect: playbackSide.connect
+	});
 
 	let videoCodecs = $derived(supportedVideoCodecs(outputType));
 	let videoCodec = $derived(
@@ -43,49 +41,33 @@
 	let audioCodec = $derived(
 		audioCodecChoice !== null && audioCodecs.includes(audioCodecChoice)
 			? audioCodecChoice
-			: (defaultAudioCodec ?? audioCodecs[0])
+			: (generation.defaultAudioCodec ?? audioCodecs[0])
 	);
 
 	$effect(() => {
-		const type = outputType;
-		const options = supportedAudioCodecs(type);
-		let canceled = false;
-		void getFirstEncodableAudioCodec(options, {
-			numberOfChannels: 1,
-			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
-			quality: new Quality('high')
-		}).then((match) => {
-			if (!canceled && type === outputType) defaultAudioCodec = match;
-		});
-		return () => {
-			canceled = true;
-		};
+		void generation.loadDefaultAudioCodec(outputType);
 	});
 
-	let abort = new AbortController();
-
 	function invalidate() {
-		abort.abort();
-		abort = new AbortController();
-		playback = null;
-		playing = false;
-		frame = 0;
+		generation.cancel();
+		session.reset();
 	}
 
 	function start() {
-		playing = false;
-		frame = 0;
-		playback = generatePlayback({
+		session.reset();
+		generation.start({
 			outputType,
 			videoCodec,
 			audioCodec,
-			resolution,
-			signal: abort.signal
+			resolution
 		});
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
-		return () => abort.abort();
+		return () => {
+			session.dispose();
+			generation.dispose();
+		};
 	};
 
 	function onVideoCodecChange(event: Event) {
@@ -99,71 +81,6 @@
 		const match = audioCodecs.find((item) => item === value);
 		if (match) audioCodecChoice = match;
 	}
-
-	function frameAt(currentTime: number): number {
-		if (!Number.isFinite(currentTime) || currentTime <= 0) return 0;
-		return Math.min(maxFrame, Math.round(currentTime * VIDEO_FPS));
-	}
-
-	function onplaybackchange(next: boolean) {
-		const element = video;
-		if (!next) {
-			playing = false;
-			element?.pause();
-			return;
-		}
-		if (element && (element.ended || frame >= maxFrame)) {
-			element.currentTime = 0;
-			frame = 0;
-		}
-		playing = true;
-		void element?.play().catch(() => {
-			playing = false;
-		});
-	}
-
-	function onframechange(next: number) {
-		const clamped = clampFrame(next, maxFrame);
-		frame = clamped;
-		if (video) video.currentTime = clamped / VIDEO_FPS;
-	}
-
-	const sync: Attachment<HTMLVideoElement> = (element) => {
-		video = element;
-		let raf = 0;
-		const updateFrame = () => {
-			frame = frameAt(element.currentTime);
-		};
-		const tick = () => {
-			updateFrame();
-			raf = requestAnimationFrame(tick);
-		};
-		const onPlay = () => {
-			playing = true;
-			cancelAnimationFrame(raf);
-			raf = requestAnimationFrame(tick);
-		};
-		const onPause = () => {
-			playing = false;
-			cancelAnimationFrame(raf);
-			updateFrame();
-		};
-		element.addEventListener('play', onPlay);
-		element.addEventListener('pause', onPause);
-		element.addEventListener('ended', onPause);
-		element.addEventListener('seeked', updateFrame);
-		element.addEventListener('timeupdate', updateFrame);
-		updateFrame();
-		return () => {
-			if (video === element) video = undefined;
-			cancelAnimationFrame(raf);
-			element.removeEventListener('play', onPlay);
-			element.removeEventListener('pause', onPause);
-			element.removeEventListener('ended', onPause);
-			element.removeEventListener('seeked', updateFrame);
-			element.removeEventListener('timeupdate', updateFrame);
-		};
-	};
 
 	function errorMessage(error: unknown): string {
 		if (error instanceof Error && error.message !== '') return error.message;
@@ -180,20 +97,20 @@
 {/snippet}
 
 <div {@attach release}>
-	{#if playback}
-		{#await playback}
+	{#if generation.playback}
+		{#await generation.playback}
 			<div class="stage">
 				{@render placeholder()}
 				<progress aria-label="生成中"></progress>
 			</div>
 		{:then url}
 			<PlaybackControls
-				{playing}
-				{frame}
-				{maxFrame}
-				fps={VIDEO_FPS}
-				{onplaybackchange}
-				{onframechange}
+				playing={session.playing}
+				frame={session.frame}
+				maxFrame={session.maxFrame}
+				fps={session.fps}
+				onplaybackchange={(next) => session.setPlaying(next)}
+				onframechange={(next) => session.seek(next)}
 			>
 				<div class="stage">
 					<!-- svelte-ignore a11y_media_has_caption -->
@@ -202,8 +119,13 @@
 						src={url}
 						playsinline
 						aria-label="生成した動画"
-						{@attach sync}
-						{@attach () => () => URL.revokeObjectURL(url)}
+						{@attach (element) => {
+							const detach = playbackSide.attach(element);
+							return () => {
+								detach();
+								URL.revokeObjectURL(url);
+							};
+						}}
 					></video>
 				</div>
 			</PlaybackControls>
@@ -247,8 +169,8 @@
 		</label>
 	</div>
 </div>
-{#if playback}
-	{#await playback}
+{#if generation.playback}
+	{#await generation.playback}
 		{@render actions(true)}
 	{:then}
 		{@render actions(false)}

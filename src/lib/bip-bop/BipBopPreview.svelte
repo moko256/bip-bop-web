@@ -1,155 +1,19 @@
 <script lang="ts">
+	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
-	import { clampFrame } from '$lib/playback/time';
+	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { BipBopAudioRenderer, bipBopPreviewPictureMs, planBipBopPreviewCue } from './audio';
+	import { canvasPlayback } from './canvas-playback';
 	import { loadBipBopFont } from './font';
-	import {
-		BIP_BOP_CYCLE_FRAMES,
-		BipBopRenderer,
-		bipBopFrameIndex,
-		createBipBopDimensions
-	} from './renderer';
+	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './timeline';
 
 	const PREVIEW_LABEL = 'Bip-Bop preview';
-	const FPS = BIP_BOP_CYCLE_FRAMES;
-	/** Ten seconds, the same length as an exported video. */
-	const MAX_FRAME = FPS * 10;
-
-	let playing = $state(false);
-	let frame = $state(0);
-
-	let rafId = 0;
-	let toneTimer = 0;
-	let originMs = 0;
-	let startedAt = 0;
-	let pictureShiftMs = 0;
-	let renderedMs = 0;
-	let scheduleStartup = false;
-	let audio: AudioContext | null = null;
-	let disposed = false;
-
-	/** `AudioContext.outputLatency` in milliseconds. Missing or negative reads as 0. */
-	function outputLeadMs(context: AudioContext): number {
-		const latency = context.outputLatency;
-		if (!Number.isFinite(latency) || latency <= 0) return 0;
-		return latency * 1000;
-	}
-
-	function audioElapsedMs(now = Date.now()): number {
-		return now - startedAt;
-	}
-
-	function pictureElapsedMs(now = Date.now()): number {
-		const next = bipBopPreviewPictureMs(audioElapsedMs(now), pictureShiftMs, renderedMs);
-		renderedMs = next;
-		return next;
-	}
-
-	function silence() {
-		window.clearTimeout(toneTimer);
-		toneTimer = 0;
-		const previous = audio;
-		audio = null;
-		if (previous) void previous.close();
-	}
-
-	function stopClock() {
-		cancelAnimationFrame(rafId);
-		rafId = 0;
-		silence();
-	}
-
-	function scheduleTone(pictureMs: number) {
-		if (disposed || !playing) return;
-		const context = audio;
-		if (!context || context.state !== 'running') return;
-		const cue = planBipBopPreviewCue(
-			pictureMs,
-			outputLeadMs(context),
-			pictureShiftMs,
-			scheduleStartup
-		);
-		scheduleStartup = false;
-		pictureShiftMs = cue.pictureShiftMs;
-		BipBopAudioRenderer(context, cue.delayMs, cue.frequencyHz);
-		// Stay on this second until the picture hold has elapsed, then wake
-		// after the burst so the next plan targets the following second.
-		const holdRemaining = Math.max(0, pictureShiftMs - (Date.now() - originMs));
-		toneTimer = window.setTimeout(
-			() => scheduleTone(pictureElapsedMs()),
-			cue.waitMs + holdRemaining
-		);
-	}
-
-	function beginPlayback(elapsedMs: number) {
-		pictureShiftMs = 0;
-		renderedMs = elapsedMs;
-		originMs = Date.now();
-		startedAt = originMs - elapsedMs;
-		scheduleStartup = true;
-		// A burst at the current instant is dropped. Place it one outputLatency
-		// ahead so it is heard, then start the picture one outputLatency later.
-		scheduleTone(elapsedMs);
-		rafId = requestAnimationFrame(tick);
-	}
-
-	function tick() {
-		if (disposed || !playing) return;
-		const next = Math.min(MAX_FRAME, bipBopFrameIndex(pictureElapsedMs()));
-		if (next !== frame) frame = next;
-		if (next >= MAX_FRAME) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		rafId = requestAnimationFrame(tick);
-	}
-
-	function startFromCurrentFrame() {
-		stopClock();
-		const elapsedMs = (frame * 1000) / FPS;
-		playing = true;
-		// Playback favors a steady buffer. outputLatency is how long that buffer
-		// holds a burst, so the opening sound is scheduled past it.
-		const context = new AudioContext({ latencyHint: 'playback' });
-		audio = context;
-		const run = () => {
-			if (disposed || !playing || audio !== context) return;
-			beginPlayback(elapsedMs);
-		};
-		if (context.state === 'running') {
-			run();
-			return;
-		}
-		void context
-			.resume()
-			.then(run)
-			.catch(() => {
-				// Unmount closes the context while this promise can still be pending.
-			});
-	}
-
-	function onplaybackchange(next: boolean) {
-		if (!next) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		if (frame >= MAX_FRAME) frame = 0;
-		startFromCurrentFrame();
-	}
-
-	function onframechange(next: number) {
-		frame = clampFrame(next, MAX_FRAME);
-		if (!playing) return;
-		if (frame >= MAX_FRAME) {
-			playing = false;
-			stopClock();
-			return;
-		}
-		startFromCurrentFrame();
-	}
+	const session = new PlaybackSession({
+		maxFrame: BIP_BOP_MAX_FRAME,
+		fps: BIP_BOP_FPS,
+		connect: canvasPlayback(browserPlaybackClock())
+	});
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
 		const dpr = window.devicePixelRatio || 1;
@@ -186,18 +50,18 @@
 		void loadBipBopFont().finally(() => {
 			if (canceled) return;
 			ready = true;
-			draw(frame);
+			draw(session.frame);
 		});
 
 		$effect(() => {
-			const current = frame;
+			const current = session.frame;
 			if (!ready) return;
 			draw(current);
 		});
 
 		const observer = new ResizeObserver(() => {
 			if (!ready) return;
-			draw(frame);
+			draw(session.frame);
 		});
 		observer.observe(host);
 
@@ -208,20 +72,17 @@
 	};
 
 	const release: Attachment<HTMLDivElement> = () => {
-		return () => {
-			disposed = true;
-			stopClock();
-		};
+		return () => session.dispose();
 	};
 </script>
 
 <PlaybackControls
-	{playing}
-	{frame}
-	maxFrame={MAX_FRAME}
-	fps={FPS}
-	{onplaybackchange}
-	{onframechange}
+	playing={session.playing}
+	frame={session.frame}
+	maxFrame={session.maxFrame}
+	fps={session.fps}
+	onplaybackchange={(next) => session.setPlaying(next)}
+	onframechange={(next) => session.seek(next)}
 >
 	<div class="preview" {@attach paint} {@attach release}></div>
 </PlaybackControls>

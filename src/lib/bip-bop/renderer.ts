@@ -1,15 +1,9 @@
-export const BIP_BOP_CYCLE_FRAMES = 60;
-/** Two-second color loop at 60 fps. Endpoints are one second apart. */
-const COLOR_PERIOD_FRAMES = BIP_BOP_CYCLE_FRAMES * 2;
+import { BIP_BOP_FPS } from './timeline';
 
-/**
- * Frame index for a preview clock. One second is {@link BIP_BOP_CYCLE_FRAMES} frames.
- * Elapsed time is truncated, same as the corner clock.
- */
-export function bipBopFrameIndex(elapsedMs: number): number {
-	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;
-	return Math.floor((elapsedMs * BIP_BOP_CYCLE_FRAMES) / 1000);
-}
+/** One drawing cycle is one Timeline second. */
+const CYCLE_FRAMES = BIP_BOP_FPS;
+/** Two-second color loop. Endpoints are one second apart. */
+const COLOR_PERIOD_FRAMES = CYCLE_FRAMES * 2;
 
 const BLACK = '#000000';
 
@@ -192,32 +186,32 @@ export function BipBopRenderer(
 		colorBarX,
 		colorBarY
 	} = dimensions;
-	const cycleFrame = nonNegativeMod(frame, BIP_BOP_CYCLE_FRAMES);
+	const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
-	const turn = Math.floor(frame / BIP_BOP_CYCLE_FRAMES);
-	const startDegrees = 1 + cycleFrame * (360 / BIP_BOP_CYCLE_FRAMES);
+	const turn = Math.floor(frame / CYCLE_FRAMES);
+	const startDegrees = 1 + cycleFrame * (360 / CYCLE_FRAMES);
 	const towardMidpoint =
-		periodFrame <= BIP_BOP_CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
+		periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
 	const circleSwapped = nonNegativeMod(turn, 2) === 1;
-	const circleMix = circleSwapped ? BIP_BOP_CYCLE_FRAMES : 0;
+	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
 
 	ctx.setTransform(1, 0, 0, 1, 0, 0);
 	// Page canvas and video frames share this draw. Anti-aliasing stays off.
 	ctx.imageSmoothingEnabled = false;
 
-	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
 
 	ctx.beginPath();
 	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, circleMix, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES);
 	ctx.fill();
 
 	ctx.beginPath();
 	ctx.moveTo(centerX, centerY);
 	ctx.arc(centerX, centerY, radius, radiansFromTop(startDegrees), radiansFromTop(360));
 	ctx.closePath();
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, circleMix, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES);
 	ctx.fill();
 
 	ctx.fillStyle = BLACK;
@@ -229,11 +223,11 @@ export function BipBopRenderer(
 	if (cycleFrame === 0) {
 		ctx.font = monospaceFont(labelFontSize);
 		ctx.textBaseline = 'bottom';
-		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
 		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, labelY);
 	}
 
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, BIP_BOP_CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, CYCLE_FRAMES);
 	ctx.font = monospaceFont(clockFontSize);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
@@ -261,7 +255,7 @@ function formatFrameCount(frame: number): string {
 
 /** `HH:MM:SS.CC` from a 60 fps frame index. Centiseconds are truncated, not rounded. */
 function formatElapsedClock(frame: number): string {
-	const centisecondsTotal = Math.floor((Math.trunc(frame) * 100) / BIP_BOP_CYCLE_FRAMES);
+	const centisecondsTotal = Math.floor((Math.trunc(frame) * 100) / CYCLE_FRAMES);
 	const centiseconds = centisecondsTotal % 100;
 	const secondsTotal = Math.floor(centisecondsTotal / 100);
 	const seconds = secondsTotal % 60;
