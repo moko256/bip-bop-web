@@ -1,6 +1,6 @@
 import type { AudioSample, AudioSampleSource } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
-import { placeBipBopTone } from './tone-schedule';
+import { placeBipBopTone } from './video-tone';
 
 function correlation(samples: Float32Array, frequencyHz: number, sampleRate: number): number {
 	const frameCount = Math.min(samples.length, Math.round(sampleRate * 0.016));

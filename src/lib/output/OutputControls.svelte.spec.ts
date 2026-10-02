@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import OutputControls from './OutputControls.svelte';
 import { preferredAudioCodec } from './generate-video';
-import { supportedAudioCodecs, supportedVideoCodecs } from './output';
+import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
 const { generatePlayback } = vi.hoisted(() => ({
 	generatePlayback: vi.fn()
