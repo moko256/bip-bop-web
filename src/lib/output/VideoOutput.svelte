@@ -53,6 +53,11 @@
 		session.reset();
 	}
 
+	$effect(() => {
+		outputType;
+		invalidate();
+	});
+
 	function start() {
 		session.reset();
 		generation.start({
