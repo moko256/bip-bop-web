@@ -151,6 +151,21 @@ describe('PlaybackSession', () => {
 		expect(adapter.events.at(-1)).toBe('stop');
 	});
 
+	it('keeps playing past the old ten second cap when no length is given', () => {
+		const adapter = recordingAdapter();
+		const session = new PlaybackSession({
+			fps: 60,
+			connect: adapter.connect
+		});
+		session.setPlaying(true);
+
+		adapter.advance(900);
+
+		expect(session.frame).toBe(900);
+		expect(session.playing).toBe(true);
+		expect(adapter.events).toEqual(['start:0']);
+	});
+
 	it('resets to a stopped first frame', () => {
 		const adapter = recordingAdapter();
 		const session = sessionWith(adapter);

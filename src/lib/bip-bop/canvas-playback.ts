@@ -1,7 +1,7 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
 import type { PlaybackClock } from '$lib/playback/clock';
 import { bipBopPreviewPictureMs } from './audio';
-import { BIP_BOP_MAX_FRAME, frameAtElapsedMs, secondsAtFrame } from './timeline';
+import { frameAtElapsedMs, secondsAtFrame } from './timeline';
 import { scheduleLiveTones } from './tone-schedule';
 
 /** Live Bip/Bop bursts while the canvas clock is running. */
@@ -102,7 +102,7 @@ export function canvasPlayback(
 				audio.pictureShiftMs(),
 				startElapsedMs
 			);
-			const next = Math.min(BIP_BOP_MAX_FRAME, frameAtElapsedMs(pictureMs));
+			const next = frameAtElapsedMs(pictureMs);
 			host.advance(next);
 			if (disposed || !running) return;
 			rafId = clock.requestFrame(tick);

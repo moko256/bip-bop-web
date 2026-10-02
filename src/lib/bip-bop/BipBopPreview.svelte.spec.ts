@@ -229,19 +229,20 @@ describe('BipBopPreview', () => {
 		}
 	});
 
-	it('seeks a stopped 10 second preview from the frame field', async () => {
+	it('seeks a stopped preview from the frame field without a length cap', async () => {
 		render(BipBopPreview);
 
-		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
 		const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 		await expect.element(input).toHaveValue(0);
+		expect((input.element() as HTMLInputElement).hasAttribute('max')).toBe(false);
+		expect(page.getByRole('slider', { name: m.playback_position_aria() }).query()).toBeNull();
 
 		await input.fill('120');
 
-		await expect.element(page.getByText('00:02 / 00:10')).toBeVisible();
 		await expect.element(input).toHaveValue(120);
-		const progress = page.getByRole('slider', { name: m.playback_position_aria() }).element();
-		expect(progress.getAttribute('aria-valuenow')).toBe('120');
-		expect(progress.getAttribute('aria-valuemax')).toBe('600');
+
+		await input.fill('999999');
+
+		await expect.element(input).toHaveValue(999999);
 	});
 });

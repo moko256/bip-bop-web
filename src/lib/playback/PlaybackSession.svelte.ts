@@ -24,13 +24,13 @@ export type PlaybackAdapter = {
 export class PlaybackSession {
 	playing = $state(false);
 	frame = $state(0);
-	readonly maxFrame: number;
+	readonly maxFrame?: number;
 	readonly fps: number;
 	private readonly adapter: PlaybackAdapter;
 	private disposed = false;
 
 	constructor(options: {
-		maxFrame: number;
+		maxFrame?: number;
 		fps: number;
 		connect: (host: PlaybackHost) => PlaybackAdapter;
 	}) {
@@ -49,7 +49,12 @@ export class PlaybackSession {
 			this.adapter.stop();
 			return;
 		}
-		if (this.frame >= this.maxFrame || this.adapter.atEnd()) this.frame = 0;
+		if (
+			this.maxFrame !== undefined &&
+			(this.frame >= this.maxFrame || this.adapter.atEnd())
+		) {
+			this.frame = 0;
+		}
 		this.playing = true;
 		this.adapter.start(this.frame);
 	}
@@ -58,7 +63,7 @@ export class PlaybackSession {
 		if (this.disposed) return;
 		const frame = clampFrame(next, this.maxFrame);
 		this.frame = frame;
-		if (this.playing && frame >= this.maxFrame) {
+		if (this.maxFrame !== undefined && this.playing && frame >= this.maxFrame) {
 			this.playing = false;
 			this.adapter.stop();
 			this.adapter.place(frame);
@@ -86,7 +91,7 @@ export class PlaybackSession {
 		if (this.disposed) return;
 		const next = clampFrame(frame, this.maxFrame);
 		if (next !== this.frame) this.frame = next;
-		if (!this.playing || next < this.maxFrame) return;
+		if (!this.playing || this.maxFrame === undefined || next < this.maxFrame) return;
 		this.playing = false;
 		this.adapter.stop();
 	}
