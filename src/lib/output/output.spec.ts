@@ -26,15 +26,15 @@ describe('videoOutputFormat', () => {
 	});
 
 	it('lists the video codecs the format can contain', () => {
-		expect(supportedVideoCodecs('mp4')).toEqual(['avc', 'hevc', 'vp9', 'av1', 'vp8', 'prores']);
-		expect(supportedVideoCodecs('webm')).toEqual(['vp9', 'av1', 'vp8']);
+		expect(supportedVideoCodecs('mp4')).toEqual(['avc', 'hevc', 'av1', 'vp9', 'vp8', 'prores']);
+		expect(supportedVideoCodecs('webm')).toEqual(['av1', 'vp9', 'vp8']);
 	});
 
 	it('lists the audio codecs the format can contain', () => {
 		expect(supportedAudioCodecs('mp4')).toEqual([
 			'aac',
-			'opus',
 			'mp3',
+			'opus',
 			'vorbis',
 			'flac',
 			'ac3',
