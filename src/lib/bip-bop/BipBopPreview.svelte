@@ -2,7 +2,7 @@
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { clampFrame } from '$lib/playback/time';
 	import type { Attachment } from 'svelte/attachments';
-	import { BipBopAudioRenderer, planBipBopTone } from './audio';
+	import { BipBopAudioRenderer, bipBopPreviewPictureMs, planBipBopPreviewCue } from './audio';
 	import { loadBipBopFont } from './font';
 	import {
 		BIP_BOP_CYCLE_FRAMES,
@@ -22,8 +22,27 @@
 	let rafId = 0;
 	let toneTimer = 0;
 	let startedAt = 0;
+	let pictureShiftMs = 0;
+	let renderedMs = 0;
 	let audio: AudioContext | null = null;
 	let disposed = false;
+
+	/** `AudioContext.outputLatency` in milliseconds. Missing or negative reads as 0. */
+	function outputLeadMs(context: AudioContext): number {
+		const latency = context.outputLatency;
+		if (!Number.isFinite(latency) || latency <= 0) return 0;
+		return latency * 1000;
+	}
+
+	function audioElapsedMs(now = Date.now()): number {
+		return now - startedAt;
+	}
+
+	function pictureElapsedMs(now = Date.now()): number {
+		const next = bipBopPreviewPictureMs(audioElapsedMs(now), pictureShiftMs, renderedMs);
+		renderedMs = next;
+		return next;
+	}
 
 	function silence() {
 		window.clearTimeout(toneTimer);
@@ -43,33 +62,25 @@
 		if (disposed || !playing) return;
 		const context = audio;
 		if (!context || context.state !== 'running') return;
-		const plan = planBipBopTone(elapsedMs);
-		BipBopAudioRenderer(context, plan.delayMs, plan.frequencyHz);
-		toneTimer = window.setTimeout(() => scheduleTone(Date.now() - startedAt), plan.waitMs);
+		const cue = planBipBopPreviewCue(elapsedMs, outputLeadMs(context), pictureShiftMs);
+		pictureShiftMs = cue.pictureShiftMs;
+		BipBopAudioRenderer(context, cue.delayMs, cue.frequencyHz);
+		toneTimer = window.setTimeout(() => scheduleTone(audioElapsedMs()), cue.waitMs);
 	}
 
-	function startAudio(elapsedMs: number) {
-		const context = audio;
-		if (!context) return;
-		const run = (elapsed: number) => {
-			if (disposed || !playing || audio !== context) return;
-			scheduleTone(elapsed);
-		};
-		if (context.state === 'running') {
-			run(elapsedMs);
-			return;
-		}
-		void context
-			.resume()
-			.then(() => run(Math.max(elapsedMs, Date.now() - startedAt)))
-			.catch(() => {
-				// Unmount closes the context while this promise can still be pending.
-			});
+	function beginPlayback(elapsedMs: number) {
+		pictureShiftMs = 0;
+		renderedMs = elapsedMs;
+		startedAt = Date.now() - elapsedMs;
+		// Queue the burst before drawing. outputLatency is how long the device
+		// holds it, so the picture meets the sound when the burst comes out.
+		scheduleTone(elapsedMs);
+		rafId = requestAnimationFrame(tick);
 	}
 
 	function tick() {
 		if (disposed || !playing) return;
-		const next = Math.min(MAX_FRAME, bipBopFrameIndex(Date.now() - startedAt));
+		const next = Math.min(MAX_FRAME, bipBopFrameIndex(pictureElapsedMs()));
 		if (next !== frame) frame = next;
 		if (next >= MAX_FRAME) {
 			playing = false;
@@ -82,11 +93,25 @@
 	function startFromCurrentFrame() {
 		stopClock();
 		const elapsedMs = (frame * 1000) / FPS;
-		startedAt = Date.now() - elapsedMs;
 		playing = true;
-		audio = new AudioContext();
-		rafId = requestAnimationFrame(tick);
-		startAudio(elapsedMs);
+		// Playback favors a steady buffer over the lowest delay. The cue uses
+		// outputLatency so that buffer does not put the sound behind the picture.
+		const context = new AudioContext({ latencyHint: 'playback' });
+		audio = context;
+		const run = () => {
+			if (disposed || !playing || audio !== context) return;
+			beginPlayback(elapsedMs);
+		};
+		if (context.state === 'running') {
+			run();
+			return;
+		}
+		void context
+			.resume()
+			.then(run)
+			.catch(() => {
+				// Unmount closes the context while this promise can still be pending.
+			});
 	}
 
 	function onplaybackchange(next: boolean) {

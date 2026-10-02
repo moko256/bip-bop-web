@@ -11,13 +11,18 @@ type StartedTone = {
 
 class PreviewAudioContext {
 	static instances: PreviewAudioContext[] = [];
+	static outputLatencySeconds = 0;
 
 	state: AudioContextState = 'running';
 	currentTime = 0;
 	destination = {} as AudioDestinationNode;
+	outputLatency: number;
+	latencyHint: AudioContextLatencyCategory | number | undefined;
 	tones: StartedTone[] = [];
 
-	constructor() {
+	constructor(options?: AudioContextOptions) {
+		this.outputLatency = PreviewAudioContext.outputLatencySeconds;
+		this.latencyHint = options?.latencyHint;
 		PreviewAudioContext.instances.push(this);
 	}
 
@@ -78,6 +83,7 @@ describe('BipBopPreview', () => {
 		}
 		window.AudioContext = originalAudioContext;
 		PreviewAudioContext.instances = [];
+		PreviewAudioContext.outputLatencySeconds = 0;
 	});
 
 	it('creates a canvas at the host size times devicePixelRatio, draws it, and places it in the host', async () => {
@@ -128,6 +134,7 @@ describe('BipBopPreview', () => {
 				.toBeGreaterThan(0);
 
 			const audio = PreviewAudioContext.instances[0]!;
+			expect(audio.latencyHint).toBe('playback');
 			const opening = audio.tones[0]!;
 			expect(opening.frequencyHz).toBe(1500);
 			expect(opening.start).toBeCloseTo(0);
@@ -138,6 +145,76 @@ describe('BipBopPreview', () => {
 			expect(next.frequencyHz).toBe(475);
 			expect(next.start).toBeCloseTo(0.984);
 			expect(next.stop - next.start).toBeCloseTo(0.016);
+		} finally {
+			window.AudioContext = realAudioContext;
+		}
+	});
+
+	function frameValue(): number {
+		const input = page.getByRole('spinbutton', { name: 'フレーム' }).element() as HTMLInputElement;
+		return input.valueAsNumber;
+	}
+
+	it('prepares the opening burst before the picture moves by outputLatency', async () => {
+		PreviewAudioContext.instances = [];
+		PreviewAudioContext.outputLatencySeconds = 1;
+		const realAudioContext = window.AudioContext;
+		window.AudioContext = PreviewAudioContext as unknown as typeof AudioContext;
+
+		try {
+			render(BipBopPreview);
+			await expect.element(page.getByRole('button', { name: '再生' }).first()).toBeVisible();
+
+			const started = Date.now();
+			await page.getByRole('button', { name: '再生' }).first().click();
+
+			await expect
+				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
+				.toBeGreaterThan(1);
+
+			const audio = PreviewAudioContext.instances[0]!;
+			expect(audio.latencyHint).toBe('playback');
+			expect(audio.tones[0]?.start).toBeCloseTo(0);
+			expect(audio.tones[0]?.frequencyHz).toBe(1500);
+			expect(audio.tones[1]?.start).toBeCloseTo(0.984);
+			expect(audio.tones[1]?.frequencyHz).toBe(475);
+			expect(frameValue()).toBe(0);
+			expect(Date.now() - started).toBeLessThan(1000);
+
+			await expect.poll(() => frameValue(), { timeout: 3000 }).toBeGreaterThan(0);
+			expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
+		} finally {
+			window.AudioContext = realAudioContext;
+		}
+	});
+
+	it('starts a mid-second burst early and lets the picture move immediately', async () => {
+		PreviewAudioContext.instances = [];
+		PreviewAudioContext.outputLatencySeconds = 0.4;
+		const realAudioContext = window.AudioContext;
+		window.AudioContext = PreviewAudioContext as unknown as typeof AudioContext;
+
+		try {
+			render(BipBopPreview);
+			const input = page.getByRole('spinbutton', { name: 'フレーム' });
+			await expect.element(input).toBeVisible();
+			await input.fill('30');
+			await expect.element(input).toHaveValue(30);
+
+			const started = Date.now();
+			await page.getByRole('button', { name: '再生' }).first().click();
+
+			await expect
+				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
+				.toBeGreaterThan(0);
+
+			const opening = PreviewAudioContext.instances[0]!.tones[0]!;
+			expect(opening.frequencyHz).toBe(475);
+			expect(opening.start).toBeCloseTo(0.1);
+			expect(opening.stop - opening.start).toBeCloseTo(0.016);
+
+			await expect.poll(() => frameValue()).toBeGreaterThan(30);
+			expect(Date.now() - started).toBeLessThan(400);
 		} finally {
 			window.AudioContext = realAudioContext;
 		}
