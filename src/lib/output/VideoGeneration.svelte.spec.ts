@@ -1,3 +1,4 @@
+import type { AudioCodec } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 import { VideoGeneration, type GeneratePlayback } from './VideoGeneration.svelte';
 

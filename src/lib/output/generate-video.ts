@@ -2,7 +2,7 @@ import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
-import { placeBipBopTone } from '$lib/bip-bop/tone-schedule';
+import { placeBipBopTone } from '$lib/bip-bop/video-tone';
 import {
 	AudioSampleSource,
 	BufferTarget,
@@ -14,13 +14,8 @@ import {
 	type AudioCodec,
 	type VideoCodec
 } from 'mediabunny';
-import {
-	parseResolution,
-	supportedAudioCodecs,
-	videoOutputFormat,
-	type Resolution,
-	type VideoOutputType
-} from './output';
+import { parseResolution, type Resolution, type VideoOutputType } from './output';
+import { supportedAudioCodecs, videoOutputFormat } from './video-container';
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;

@@ -9,13 +9,8 @@
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
-	import {
-		resolutions,
-		supportedAudioCodecs,
-		supportedVideoCodecs,
-		type Resolution,
-		type VideoOutputType
-	} from './output';
+	import { resolutions, type Resolution, type VideoOutputType } from './output';
+	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
 	let {
 		outputType,
