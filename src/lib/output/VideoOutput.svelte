@@ -1,15 +1,17 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
+	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
 	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
+	import { seekBarHeight } from '$lib/playback/seek-bar';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
-	import { resolutions, type Resolution, type VideoOutputType } from './output';
+	import { parseResolution, resolutions, type Resolution, type VideoOutputType } from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
 	let {
@@ -21,6 +23,7 @@
 	} = $props();
 
 	let resolution = $state<Resolution>('1920x1080');
+	let bitmap = $derived(parseResolution(resolution));
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	const generation = new VideoGeneration(generatePlayback);
@@ -89,7 +92,14 @@
 </script>
 
 {#snippet placeholder()}
-	<div class="media placeholder" role="img" aria-label="動画のプレースホルダー"></div>
+	<div
+		class="media placeholder"
+		style:padding-bottom={seekBarHeight}
+		role="img"
+		aria-label="動画のプレースホルダー"
+	>
+		<BipBopStill width={bitmap.width} height={bitmap.height} />
+	</div>
 {/snippet}
 
 {#snippet actions(pending: boolean)}
@@ -195,7 +205,13 @@
 		grid-area: 1 / 1;
 		width: 100%;
 		height: 100%;
+		min-width: 0;
+		min-height: 0;
 		object-fit: contain;
+	}
+
+	.placeholder {
+		box-sizing: border-box;
 	}
 
 	.stage > progress {
