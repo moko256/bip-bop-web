@@ -27,9 +27,14 @@ export function formatPlaybackTime(frame: number, maxFrame: number, fps: number)
 	return `${formatPart(frame, fps, withHours)} / ${formatPart(maxFrame, fps, withHours)}`;
 }
 
-/** Frame index accepted by the transport, from 0 through `maxFrame`. */
-export function clampFrame(frame: number, maxFrame: number): number {
-	const limit = Number.isFinite(maxFrame) ? Math.max(0, Math.trunc(maxFrame)) : 0;
+/**
+ * Frame index accepted by the transport.
+ * Stops at `maxFrame` when a length is given. Otherwise only the zero bound applies.
+ */
+export function clampFrame(frame: number, maxFrame?: number): number {
 	if (!Number.isFinite(frame)) return 0;
-	return Math.min(limit, Math.max(0, Math.trunc(frame)));
+	const index = Math.max(0, Math.trunc(frame));
+	if (maxFrame === undefined) return index;
+	const limit = Number.isFinite(maxFrame) ? Math.max(0, Math.trunc(maxFrame)) : 0;
+	return Math.min(limit, index);
 }

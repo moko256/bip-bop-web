@@ -1,7 +1,7 @@
 import { page, userEvent } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import SeekBar from './SeekBar.svelte';
+import PlaybackSeekBar from './PlaybackSeekBar.svelte';
 
 function centerX(element: Element) {
 	const box = element.getBoundingClientRect();
@@ -27,7 +27,7 @@ function pointer(target: Element, type: string, clientX: number, buttons = 1) {
 
 async function mount(frame = 0, maxFrame = 100) {
 	const frames: number[] = [];
-	const view = await render(SeekBar, {
+	const view = await render(PlaybackSeekBar, {
 		frame,
 		maxFrame,
 		onframechange: (next: number) => frames.push(next)
@@ -41,7 +41,7 @@ async function mount(frame = 0, maxFrame = 100) {
 	return { frames, view, slider, bar, knob };
 }
 
-describe('SeekBar', () => {
+describe('PlaybackSeekBar', () => {
 	it('draws a 4px rounded bar and a 12px knob inside padding that fits the 18px knob', async () => {
 		const { slider, bar, knob } = await mount(0, 100);
 		await userEvent.unhover(slider);
