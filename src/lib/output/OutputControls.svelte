@@ -2,7 +2,6 @@
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
 	import { isVideoOutputType, outputTypeLabels, outputTypes, type OutputType } from './output';
 	import PageOutput from './PageOutput.svelte';
-	import VideoOutput from './VideoOutput.svelte';
 
 	let outputType = $state<OutputType>('page');
 </script>
@@ -25,7 +24,9 @@
 {/snippet}
 
 {#if isVideoOutputType(outputType)}
-	<VideoOutput {outputType} {outputTypeSelector} />
+	{#await import('./VideoOutput.svelte') then { default: VideoOutput }}
+		<VideoOutput {outputType} {outputTypeSelector} />
+	{/await}
 {:else if outputType === 'fullscreen-url'}
 	<FullscreenUrlOutput {outputTypeSelector} />
 {:else}

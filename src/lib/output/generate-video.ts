@@ -1,31 +1,21 @@
-import {
-	BIP_BOP_AUDIO_SAMPLE_RATE,
-	BipBopAudioRenderer,
-	bipBopFrequencyHz,
-	bipBopToneFrameCount
-} from '$lib/bip-bop/audio';
+import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
+import { placeBipBopTone } from '$lib/bip-bop/video-tone';
 import {
-	AudioSample,
 	AudioSampleSource,
 	BufferTarget,
 	CanvasSource,
 	canEncodeAudio,
+	getFirstEncodableAudioCodec,
 	Output,
 	Quality,
 	type AudioCodec,
 	type VideoCodec
 } from 'mediabunny';
-import {
-	parseResolution,
-	videoOutputFormat,
-	type Resolution,
-	type VideoOutputType
-} from './output';
-
-export const VIDEO_FPS = 60;
-export const VIDEO_DURATION_SECONDS = 10;
+import { parseResolution, type Resolution, type VideoOutputType } from './output';
+import { supportedAudioCodecs, videoOutputFormat } from './video-container';
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
@@ -64,13 +54,13 @@ export async function generateBipBopVideo(options: {
 		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
-	output.addVideoTrack(source, { frameRate: VIDEO_FPS });
+	output.addVideoTrack(source, { frameRate: BIP_BOP_FPS });
 	output.addAudioTrack(audioSource);
 
 	try {
 		await output.start();
-		const frameCount = options.frameCount ?? VIDEO_FPS * VIDEO_DURATION_SECONDS;
-		const frameDuration = 1 / VIDEO_FPS;
+		const frameCount = options.frameCount ?? BIP_BOP_MAX_FRAME;
+		const frameDuration = 1 / BIP_BOP_FPS;
 		for (let frame = 0; frame < frameCount; frame += 1) {
 			if (options.signal?.aborted) throw aborted();
 			BipBopRenderer(canvas, dimensions, frame, {
@@ -78,7 +68,7 @@ export async function generateBipBopVideo(options: {
 				videoCodec: options.videoCodec,
 				audioCodec: options.audioCodec
 			});
-			if (frame % VIDEO_FPS === 0) await addBipBopTone(audioSource, frame / VIDEO_FPS);
+			if (frame % BIP_BOP_FPS === 0) await placeBipBopTone(audioSource, frame / BIP_BOP_FPS);
 			await source.add(frame * frameDuration, frameDuration);
 		}
 		if (options.signal?.aborted) throw aborted();
@@ -90,6 +80,15 @@ export async function generateBipBopVideo(options: {
 
 	if (!target.buffer) throw new Error('動画の生成に失敗しました');
 	return new Blob([target.buffer], { type: format.mimeType });
+}
+
+/** First audio codec this browser can encode into `type`. */
+export async function preferredAudioCodec(type: VideoOutputType): Promise<AudioCodec | null> {
+	return getFirstEncodableAudioCodec(supportedAudioCodecs(type), {
+		numberOfChannels: 1,
+		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
+		quality: new Quality('high')
+	});
 }
 
 export async function generatePlayback(options: {
@@ -116,25 +115,6 @@ export async function generatePlayback(options: {
 	}
 	options.signal?.addEventListener('abort', () => URL.revokeObjectURL(url), { once: true });
 	return url;
-}
-
-/**
- * Renders one burst at the start of an offline context (0ms from `currentTime`)
- * and places it on `second`.
- */
-async function addBipBopTone(source: AudioSampleSource, second: number): Promise<void> {
-	const length = bipBopToneFrameCount(BIP_BOP_AUDIO_SAMPLE_RATE);
-	const context = new OfflineAudioContext(1, length, BIP_BOP_AUDIO_SAMPLE_RATE);
-	BipBopAudioRenderer(context, 0, bipBopFrequencyHz(second));
-	const buffer = await context.startRendering();
-	const samples = AudioSample.fromAudioBuffer(buffer, second);
-	for (const sample of samples) {
-		try {
-			await source.add(sample);
-		} finally {
-			sample.close();
-		}
-	}
 }
 
 function aborted(): DOMException {
