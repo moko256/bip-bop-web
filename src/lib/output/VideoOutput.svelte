@@ -8,6 +8,7 @@
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import { seekBarHeight } from '$lib/playback/seek-bar';
+	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
@@ -111,7 +112,10 @@
 		{#await generation.playback}
 			<div class="stage">
 				{@render placeholder()}
-				<progress aria-label="生成中"></progress>
+				<div class="loading" style:padding-bottom={seekBarHeight}>
+					<div class="veil" style:background={stoppedVeilColor}></div>
+					<progress aria-label="生成中"></progress>
+				</div>
 			</div>
 		{:then url}
 			<PlaybackControls
@@ -214,8 +218,21 @@
 		box-sizing: border-box;
 	}
 
-	.stage > progress {
+	.loading {
 		grid-area: 1 / 1;
+		display: grid;
+		box-sizing: border-box;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.veil {
+		grid-area: 1 / 1;
+	}
+
+	.loading > progress {
+		grid-area: 1 / 1;
+		z-index: 1;
 		place-self: center;
 		width: 40%;
 		margin: 0;

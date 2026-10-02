@@ -168,12 +168,27 @@ describe('OutputControls', () => {
 		expect(placeholder.clientWidth).toBeGreaterThan(0);
 		expect(progress.hasAttribute('value')).toBe(false);
 		const seekBarPadding = parseFloat(getComputedStyle(placeholder).paddingBottom);
+		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
+		const cover = progress.parentElement?.querySelector('.veil');
+		if (!(cover instanceof HTMLElement)) throw new Error('覆いがありません');
+		expect(getComputedStyle(cover).backgroundColor).toBe('rgba(0, 0, 0, 0.3)');
+		const canvasBox = canvas.getBoundingClientRect();
+		const veilBox = cover.getBoundingClientRect();
+		expect(Math.abs(veilBox.top - canvasBox.top)).toBeLessThan(1);
+		expect(Math.abs(veilBox.left - canvasBox.left)).toBeLessThan(1);
+		expect(Math.abs(veilBox.width - canvasBox.width)).toBeLessThan(1);
+		expect(Math.abs(veilBox.height - canvasBox.height)).toBeLessThan(1);
 		const place = placeholder.getBoundingClientRect();
+		expect(Math.abs(veilBox.bottom - (place.bottom - seekBarPadding))).toBeLessThan(1);
 		const bar = progress.getBoundingClientRect();
 		expect(bar.width).toBeGreaterThan(0);
-		expect(bar.width).toBeLessThan(place.width);
-		expect(Math.abs(bar.left + bar.width / 2 - (place.left + place.width / 2))).toBeLessThan(1);
-		expect(Math.abs(bar.top + bar.height / 2 - (place.top + place.height / 2))).toBeLessThan(1);
+		expect(bar.width).toBeLessThan(veilBox.width);
+		expect(Math.abs(bar.left + bar.width / 2 - (veilBox.left + veilBox.width / 2))).toBeLessThan(1);
+		expect(Math.abs(bar.top + bar.height / 2 - (veilBox.top + veilBox.height / 2))).toBeLessThan(1);
+		expect(document.elementFromPoint(veilBox.left + 4, veilBox.top + 4)).toBe(cover);
+		expect(document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2)).toBe(
+			progress
+		);
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			videoCodec: 'avc',

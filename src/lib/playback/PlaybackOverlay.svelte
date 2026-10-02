@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import PlaybackIcon from './PlaybackIcon.svelte';
+	import { stoppedVeilColor } from './veil';
 
 	let {
 		playing,
@@ -20,6 +21,7 @@
 	<button
 		type="button"
 		class={['veil', { playing }]}
+		style:--stopped-veil={stoppedVeilColor}
 		aria-label={playing ? '停止' : '再生'}
 		onclick={() => onplaybackchange(!playing)}
 	>
@@ -47,7 +49,7 @@
 		padding: 0;
 		border: 0;
 		border-radius: 0;
-		background: rgb(0 0 0 / 30%);
+		background: var(--stopped-veil);
 		color: #fff;
 		box-shadow: none;
 		cursor: pointer;
