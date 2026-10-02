@@ -12,11 +12,25 @@ export type CanvasAudio = {
 	pictureShiftMs(): number;
 };
 
+/**
+ * Frames to wait for `AudioContext.outputLatency` after the play click.
+ * Chrome reports 0 in that turn, then the real latency once the device starts.
+ */
+const OUTPUT_LATENCY_WAIT_FRAMES = 8;
+
+/** `AudioContext.outputLatency` in milliseconds. Missing or not yet reported reads as 0. */
+function reportedOutputLatencyMs(context: AudioContext): number {
+	const latency = context.outputLatency;
+	if (typeof latency !== 'number' || !Number.isFinite(latency) || latency <= 0) return 0;
+	return latency * 1000;
+}
+
 export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 	let audio: AudioContext | null = null;
 	let active = false;
 	let getElapsed = () => 0;
 	let cancelTones = () => {};
+	let cancelLatencyWait = () => {};
 	let pictureShiftMs = 0;
 
 	return {
@@ -24,6 +38,8 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 		start(elapsedMs, elapsed, onReady) {
 			active = true;
 			getElapsed = elapsed;
+			cancelLatencyWait();
+			cancelLatencyWait = () => {};
 			const previous = audio;
 			// Playback favors a steady buffer. outputLatency is how long that
 			// buffer holds a burst, so the opening sound is scheduled past it.
@@ -46,15 +62,45 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 				pictureShiftMs = stop.pictureShiftMs;
 				cancelTones = stop;
 			};
+			// A 16ms burst scheduled while outputLatency is still 0 ends before
+			// the context clock jumps, so the opening Bip never reaches the speakers.
+			const begin = () => {
+				if (!active || audio !== context) return;
+				if (reportedOutputLatencyMs(context) > 0) {
+					run(elapsedMs);
+					return;
+				}
+				let frames = 0;
+				let frameId = 0;
+				let waiting = true;
+				const stopWaiting = () => {
+					waiting = false;
+					clock.cancelFrame(frameId);
+					frameId = 0;
+				};
+				cancelLatencyWait = stopWaiting;
+				const step = () => {
+					if (!waiting || !active || audio !== context) return;
+					frames += 1;
+					if (reportedOutputLatencyMs(context) > 0 || frames >= OUTPUT_LATENCY_WAIT_FRAMES) {
+						stopWaiting();
+						cancelLatencyWait = () => {};
+						run(elapsedMs);
+						return;
+					}
+					frameId = clock.requestFrame(step);
+				};
+				frameId = clock.requestFrame(step);
+			};
 			if (context.state === 'running') {
-				run(elapsedMs);
+				begin();
 				return;
 			}
 			void context
 				.resume()
 				.then(() => {
 					if (!active || audio !== context) return;
-					run(elapsedMs);
+					begin();
 				})
 				.catch(() => {
 					// Unmount closes the context while this promise can still be pending.
@@ -63,6 +109,8 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 		stop() {
 			active = false;
 			pictureShiftMs = 0;
+			cancelLatencyWait();
+			cancelLatencyWait = () => {};
 			cancelTones();
 			cancelTones = () => {};
 			const previous = audio;
