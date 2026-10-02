@@ -11,7 +11,7 @@
 		onframechange: (frame: number) => void;
 	} = $props();
 
-	// The hot knob is 24px. The area stays that tall, and pads the bar by half of
+	// The hot knob is 18px. The area stays that tall, and pads the bar by half of
 	// that knob, so the enlarged knob stays inside the area at either end.
 	let dragging = $state(false);
 	let ratio = $derived(maxFrame > 0 ? frame / maxFrame : 0);
@@ -102,8 +102,8 @@
 
 <style>
 	.seek {
-		--knob-rest: 16px;
-		--knob-hot: 24px;
+		--knob-rest: 12px;
+		--knob-hot: 18px;
 		--bar-rest: 4px;
 		--bar-hot: 6px;
 		--pad: calc(var(--knob-hot) / 2);

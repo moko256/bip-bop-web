@@ -42,7 +42,7 @@ async function mount(frame = 0, maxFrame = 100) {
 }
 
 describe('SeekBar', () => {
-	it('draws a 4px rounded bar and a 16px knob inside padding that fits the 24px knob', async () => {
+	it('draws a 4px rounded bar and a 12px knob inside padding that fits the 18px knob', async () => {
 		const { slider, bar, knob } = await mount(0, 100);
 		await userEvent.unhover(slider);
 
@@ -58,13 +58,13 @@ describe('SeekBar', () => {
 
 		expect(Math.abs(barBox.height - 4)).toBeLessThan(0.6);
 		expect(parseFloat(getComputedStyle(bar).borderTopLeftRadius)).toBeGreaterThanOrEqual(2);
-		expect(Math.abs(knobBox.width - 16)).toBeLessThan(0.6);
-		expect(Math.abs(knobBox.height - 16)).toBeLessThan(0.6);
-		expect(parseFloat(getComputedStyle(knob).borderTopLeftRadius)).toBeGreaterThanOrEqual(8);
-		expect(midY - seekBox.top).toBeGreaterThanOrEqual(11.5);
-		expect(seekBox.bottom - midY).toBeGreaterThanOrEqual(11.5);
-		expect(barBox.left - seekBox.left).toBeGreaterThanOrEqual(11.5);
-		expect(seekBox.right - barBox.right).toBeGreaterThanOrEqual(11.5);
+		expect(Math.abs(knobBox.width - 12)).toBeLessThan(0.6);
+		expect(Math.abs(knobBox.height - 12)).toBeLessThan(0.6);
+		expect(parseFloat(getComputedStyle(knob).borderTopLeftRadius)).toBeGreaterThanOrEqual(6);
+		expect(midY - seekBox.top).toBeGreaterThanOrEqual(8.5);
+		expect(seekBox.bottom - midY).toBeGreaterThanOrEqual(8.5);
+		expect(barBox.left - seekBox.left).toBeGreaterThanOrEqual(8.5);
+		expect(seekBox.right - barBox.right).toBeGreaterThanOrEqual(8.5);
 		expect(Math.abs(centerX(knob) - barBox.left)).toBeLessThan(1.5);
 	});
 
@@ -82,9 +82,9 @@ describe('SeekBar', () => {
 		expect(parseFloat(getComputedStyle(knob).transitionDuration)).toBeGreaterThan(0);
 
 		await userEvent.hover(slider);
-		await expect.poll(() => bar.getBoundingClientRect().height).toBeGreaterThan(5.5);
-		await expect.poll(() => knob.getBoundingClientRect().width).toBeGreaterThan(23);
-		await expect.poll(() => knob.getBoundingClientRect().height).toBeGreaterThan(23);
+		await expect.poll(() => Math.abs(bar.getBoundingClientRect().height - 6)).toBeLessThan(0.6);
+		await expect.poll(() => Math.abs(knob.getBoundingClientRect().width - 18)).toBeLessThan(0.6);
+		await expect.poll(() => Math.abs(knob.getBoundingClientRect().height - 18)).toBeLessThan(0.6);
 
 		const before = centerX(knob);
 		await view.rerender({
