@@ -107,4 +107,11 @@ describe('resolutionGroups', () => {
 			expect(pixels).toEqual([...pixels].sort((a, b) => b - a));
 		}
 	});
+
+	it('uses precomputed aspect ratio labels for optgroups', () => {
+		const sixteenByNine = resolutionGroups.find((group) => group.label === '16:9');
+		expect(sixteenByNine?.options.map((option) => option.value)).toContain('1920x1080');
+		expect(resolutionGroups.find((group) => group.label === '8:5')).toBeDefined();
+		expect(resolutionGroups.find((group) => group.label === '64:27')).toBeDefined();
+	});
 });
