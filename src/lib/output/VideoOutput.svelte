@@ -99,7 +99,7 @@
 {/snippet}
 
 {#snippet actions(pending: boolean)}
-	<button type="button" disabled={pending} onclick={start}>生成</button>
+	<button type="button" class="generate" disabled={pending} onclick={start}>生成</button>
 {/snippet}
 
 <OutputLayout>
@@ -178,21 +178,23 @@
 					</select>
 				</label>
 			</div>
+			<div class="settings-actions">
+				{#if generation.playback}
+					{#await generation.playback}
+						{@render actions(true)}
+					{:then}
+						{@render actions(false)}
+					{:catch error}
+						{@render actions(false)}
+						<p role="alert">{errorMessage(error)}</p>
+					{/await}
+				{:else}
+					{@render actions(false)}
+				{/if}
+			</div>
 		</div>
 	{/snippet}
 </OutputLayout>
-{#if generation.playback}
-	{#await generation.playback}
-		{@render actions(true)}
-	{:then}
-		{@render actions(false)}
-	{:catch error}
-		{@render actions(false)}
-		<p role="alert">{errorMessage(error)}</p>
-	{/await}
-{:else}
-	{@render actions(false)}
-{/if}
 
 <style>
 	.stage {
@@ -221,5 +223,19 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--pico-spacing, 1rem);
+		flex: 1;
+		min-height: 100%;
+	}
+
+	.settings-actions {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		margin-top: auto;
+	}
+
+	.generate {
+		width: 100%;
+		margin: 0;
 	}
 </style>

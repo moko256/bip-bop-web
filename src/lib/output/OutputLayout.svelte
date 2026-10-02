@@ -48,7 +48,7 @@
 	@media (min-width: 721px) {
 		.output-layout {
 			flex-direction: row;
-			align-items: flex-start;
+			align-items: stretch;
 		}
 
 		.media {
