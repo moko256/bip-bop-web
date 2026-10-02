@@ -4,6 +4,7 @@ import {
 	isVideoOutputType,
 	outputCategory,
 	parseResolution,
+	resolutionCatalog,
 	resolutionGroups
 } from './output';
 import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
@@ -106,6 +107,13 @@ describe('resolutionGroups', () => {
 			);
 			expect(pixels).toEqual([...pixels].sort((a, b) => b - a));
 		}
+	});
+
+	it('lists the flat catalog in grouped-select order', () => {
+		const fromGroups = resolutionGroups.flatMap((group) =>
+			group.options.map((option) => option.value)
+		);
+		expect(resolutionCatalog.map((entry) => entry.value)).toEqual(fromGroups);
 	});
 
 	it('uses precomputed aspect ratio labels for optgroups', () => {
