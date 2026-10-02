@@ -177,7 +177,7 @@ describe('OutputControls', () => {
 			.element(page.getByRole('img', { name: '動画のプレースホルダー' }))
 			.not.toBeInTheDocument();
 		await expect.element(page.getByRole('progressbar', { name: '生成中' })).not.toBeInTheDocument();
-		await expect.element(page.getByRole('progressbar', { name: '再生位置' })).toBeVisible();
+		await expect.element(page.getByRole('slider', { name: '再生位置' })).toBeVisible();
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
 		const video = page.getByLabelText('生成した動画').element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
