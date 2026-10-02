@@ -2,10 +2,13 @@
 	import BipBopPreview from '$lib/bip-bop/BipBopPreview.svelte';
 	import OutputLayout from './OutputLayout.svelte';
 	import type { Snippet } from 'svelte';
-	import { resolutions } from './output';
+	import ResolutionSelect from './ResolutionSelect.svelte';
+	import { defaultResolution, type Resolution } from './output';
 	import * as m from '$lib/paraglide/messages';
 
 	let { outputTypeSelector }: { outputTypeSelector: Snippet } = $props();
+
+	let resolution = $state<Resolution>(defaultResolution);
 </script>
 
 <OutputLayout>
@@ -15,14 +18,7 @@
 	{#snippet settings()}
 		{@render outputTypeSelector()}
 		<div class="output-fields">
-			<label>
-				{m.resolution()}
-				<select>
-					{#each resolutions as resolution (resolution.value)}
-						<option value={resolution.value}>{resolution.label}</option>
-					{/each}
-				</select>
-			</label>
+			<ResolutionSelect bind:value={resolution} />
 		</div>
 		<label>
 			{m.url_label()}

@@ -13,7 +13,8 @@
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
-	import { parseResolution, resolutions, type Resolution, type VideoOutputType } from './output';
+	import ResolutionSelect from './ResolutionSelect.svelte';
+	import { parseResolution, defaultResolution, type Resolution, type VideoOutputType } from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 	import * as m from '$lib/paraglide/messages';
 
@@ -25,7 +26,7 @@
 		outputTypeSelector: Snippet;
 	} = $props();
 
-	let resolution = $state<Resolution>('1920x1080');
+	let resolution = $state<Resolution>(defaultResolution);
 	let bitmap = $derived(parseResolution(resolution));
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
@@ -168,14 +169,7 @@
 		<div class="settings-form" onchange={invalidate}>
 			{@render outputTypeSelector()}
 			<div class="output-fields">
-				<label>
-					{m.resolution()}
-					<select bind:value={resolution}>
-						{#each resolutions as option (option.value)}
-							<option value={option.value}>{option.label}</option>
-						{/each}
-					</select>
-				</label>
+				<ResolutionSelect bind:value={resolution} />
 				<label>
 					{m.video_codec()}
 					<select value={videoCodec} onchange={onVideoCodecChange}>

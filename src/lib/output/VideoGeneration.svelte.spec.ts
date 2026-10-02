@@ -47,7 +47,7 @@ describe('VideoGeneration', () => {
 			outputType: 'webm' as const,
 			videoCodec: 'vp9' as const,
 			audioCodec: 'opus' as const,
-			resolution: '720x480' as const
+			resolution: '640x480' as const
 		};
 
 		generation.start(request);

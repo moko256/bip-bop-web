@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isVideoOutputType, outputCategory, parseResolution } from './output';
+import * as m from '$lib/paraglide/messages';
+import {
+	defaultResolution,
+	isVideoOutputType,
+	outputCategory,
+	parseResolution,
+	resolutionGroups
+} from './output';
 import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
 
 describe('outputCategory', () => {
@@ -58,6 +65,32 @@ describe('videoOutputFormat', () => {
 describe('parseResolution', () => {
 	it('reads the selected pixel size', () => {
 		expect(parseResolution('1920x1080')).toEqual({ width: 1920, height: 1080 });
-		expect(parseResolution('720x480')).toEqual({ width: 720, height: 480 });
+		expect(parseResolution('640x480')).toEqual({ width: 640, height: 480 });
+	});
+
+	it('rejects values that are not in the catalog', () => {
+		expect(() => parseResolution('720x480' as '1920x1080')).toThrow();
+	});
+});
+
+describe('resolutionGroups', () => {
+	it('defaults to full HD', () => {
+		expect(defaultResolution).toBe('1920x1080');
+	});
+
+	it('orders aspect groups from 16:9 toward 4:3, then wider than 16:9', () => {
+		const labels = resolutionGroups.map((group) => group.label);
+		expect(labels.indexOf('16:9')).toBeLessThan(labels.indexOf('16:10'));
+		expect(labels.indexOf('16:10')).toBeLessThan(labels.indexOf('4:3'));
+		expect(labels.at(-1)).toBe(m.resolution_aspect_ultrawide());
+	});
+
+	it('lists the highest pixel count first within each group', () => {
+		for (const group of resolutionGroups) {
+			const pixels = group.options.map(
+				(option) => parseResolution(option.value).width * parseResolution(option.value).height
+			);
+			expect(pixels).toEqual([...pixels].sort((a, b) => b - a));
+		}
 	});
 });
