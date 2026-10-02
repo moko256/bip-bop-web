@@ -104,8 +104,10 @@ describe('OutputControls', () => {
 			false
 		);
 		expect(getComputedStyle(canvas).objectFit).toBe('contain');
-		const pad = parseFloat(getComputedStyle(placeholder).paddingBottom);
-		expect(Math.abs(placeholder.clientHeight - canvas.clientHeight - pad)).toBeLessThan(1);
+		expect(Math.abs(placeholder.clientWidth / placeholder.clientHeight - 16 / 9)).toBeLessThan(
+			0.02
+		);
+		expect(Math.abs(placeholder.clientHeight - canvas.clientHeight)).toBeLessThan(1);
 		expect(canvas.clientWidth).toBe(placeholder.clientWidth);
 		assertPrecedes(
 			page.getByRole('img', { name: m.video_placeholder_aria() }),
@@ -172,7 +174,9 @@ describe('OutputControls', () => {
 		expect(placeholder.getAttribute('aria-busy')).toBeNull();
 		expect(placeholder.clientWidth).toBeGreaterThan(0);
 		expect(progress.hasAttribute('value')).toBe(false);
-		const seekBarPadding = parseFloat(getComputedStyle(placeholder).paddingBottom);
+		const seekReserve = placeholder.nextElementSibling;
+		if (!(seekReserve instanceof HTMLElement)) throw new Error('Expected seek reserve element');
+		const seekBarPadding = seekReserve.clientHeight;
 		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
 		const cover = progress.parentElement?.querySelector('.veil');
 		if (!(cover instanceof HTMLElement)) throw new Error('Expected veil element');
@@ -184,7 +188,7 @@ describe('OutputControls', () => {
 		expect(Math.abs(veilBox.width - canvasBox.width)).toBeLessThan(1);
 		expect(Math.abs(veilBox.height - canvasBox.height)).toBeLessThan(1);
 		const place = placeholder.getBoundingClientRect();
-		expect(Math.abs(veilBox.bottom - (place.bottom - seekBarPadding))).toBeLessThan(1);
+		expect(Math.abs(veilBox.bottom - place.bottom)).toBeLessThan(1);
 		const bar = progress.getBoundingClientRect();
 		expect(bar.width).toBeGreaterThan(0);
 		expect(bar.width).toBeLessThan(veilBox.width);
@@ -265,16 +269,11 @@ describe('OutputControls', () => {
 		await expect.element(page.getByLabelText(m.generated_video_aria())).not.toBeInTheDocument();
 		const host = page.getByRole('img', { name: m.video_placeholder_aria() }).element();
 		const canvas = host.querySelector('canvas') as HTMLCanvasElement;
-		const stage = host.parentElement!;
 		expect(canvas.width).toBe(640);
 		expect(canvas.height).toBe(480);
-		expect(Math.abs(stage.clientWidth / stage.clientHeight - 16 / 9)).toBeLessThan(0.02);
+		expect(Math.abs(host.clientWidth / host.clientHeight - 640 / 480)).toBeLessThan(0.02);
 		expect(canvas.clientWidth).toBe(host.clientWidth);
-		expect(
-			Math.abs(
-				host.clientHeight - canvas.clientHeight - parseFloat(getComputedStyle(host).paddingBottom)
-			)
-		).toBeLessThan(1);
+		expect(Math.abs(host.clientHeight - canvas.clientHeight)).toBeLessThan(1);
 
 		await page.getByRole('button', { name: m.generate() }).click();
 		expect(generatePlayback).toHaveBeenLastCalledWith({

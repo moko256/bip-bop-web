@@ -28,6 +28,7 @@
 
 	let resolution = $state<Resolution>(defaultResolution);
 	let bitmap = $derived(parseResolution(resolution));
+	let videoAspectRatio = $derived(`${bitmap.width} / ${bitmap.height}`);
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	const generation = new VideoGeneration(generatePlayback);
@@ -100,14 +101,20 @@
 	}
 </script>
 
-{#snippet placeholder()}
-	<div
-		class="media placeholder"
-		style:padding-bottom={seekBarHeight}
-		role="img"
-		aria-label={m.video_placeholder_aria()}
-	>
-		<BipBopStill width={bitmap.width} height={bitmap.height} />
+{#snippet placeholderViewport(overlay?: Snippet)}
+	<div class="stage">
+		<div
+			class="viewport"
+			style:aspect-ratio={videoAspectRatio}
+			role="img"
+			aria-label={m.video_placeholder_aria()}
+		>
+			<BipBopStill width={bitmap.width} height={bitmap.height} />
+			{#if overlay}
+				{@render overlay()}
+			{/if}
+		</div>
+		<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>
 	</div>
 {/snippet}
 
@@ -120,13 +127,7 @@
 		<div {@attach release}>
 			{#if generation.playback}
 				{#await generation.playback}
-					<div class="stage">
-						{@render placeholder()}
-						<div class="loading" style:padding-bottom={seekBarHeight}>
-							<div class="veil" style:background={stoppedVeilColor}></div>
-							<progress aria-label={m.generating_aria()}></progress>
-						</div>
-					</div>
+					{@render placeholderViewport(loadingOverlay)}
 				{:then url}
 					<PlaybackControls
 						playing={session.playing}
@@ -136,7 +137,7 @@
 						onplaybackchange={(next) => session.setPlaying(next)}
 						onframechange={(next) => session.seek(next)}
 					>
-						<div class="stage">
+						<div class="viewport" style:aspect-ratio={videoAspectRatio}>
 							<!-- svelte-ignore a11y_media_has_caption -->
 							<video
 								class="media"
@@ -154,14 +155,10 @@
 						</div>
 					</PlaybackControls>
 				{:catch}
-					<div class="stage">
-						{@render placeholder()}
-					</div>
+					{@render placeholderViewport()}
 				{/await}
 			{:else}
-				<div class="stage">
-					{@render placeholder()}
-				</div>
+				{@render placeholderViewport()}
 			{/if}
 		</div>
 	{/snippet}
@@ -205,11 +202,24 @@
 	{/snippet}
 </OutputLayout>
 
+{#snippet loadingOverlay()}
+	<div class="loading">
+		<div class="veil" style:background={stoppedVeilColor}></div>
+		<progress aria-label={m.generating_aria()}></progress>
+	</div>
+{/snippet}
+
 <style>
 	.stage {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+	}
+
+	.viewport {
 		display: grid;
 		width: 100%;
-		aspect-ratio: 16 / 9;
+		min-width: 0;
 		background: #000;
 		outline: 1px solid var(--pico-muted-border-color, #ccc);
 	}
@@ -223,8 +233,17 @@
 		object-fit: contain;
 	}
 
-	.placeholder {
-		box-sizing: border-box;
+	.viewport :global(canvas) {
+		grid-area: 1 / 1;
+		width: 100%;
+		height: 100%;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.seek-reserve {
+		flex-shrink: 0;
+		width: 100%;
 	}
 
 	.loading {
