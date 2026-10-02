@@ -70,7 +70,9 @@ describe('OutputControls', () => {
 
 		await page.getByRole('button', { name: 'mp4' }).click();
 
-		await expect.element(page.getByRole('button', { name: 'mp4' })).toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('button', { name: 'mp4' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
 		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText('Bip-Bop preview')).not.toBeInTheDocument();
@@ -93,6 +95,17 @@ describe('OutputControls', () => {
 		}
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
 		await expect.element(page.getByRole('option', { name: '720×480' })).toBeInTheDocument();
+		const placeholder = page.getByRole('img', { name: '動画のプレースホルダー' }).element();
+		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
+		expect(canvas.width).toBe(1920);
+		expect(canvas.height).toBe(1080);
+		expect(canvas.clientWidth === canvas.width && canvas.clientHeight === canvas.height).toBe(
+			false
+		);
+		expect(getComputedStyle(canvas).objectFit).toBe('contain');
+		const pad = parseFloat(getComputedStyle(placeholder).paddingBottom);
+		expect(Math.abs(placeholder.clientHeight - canvas.clientHeight - pad)).toBeLessThan(1);
+		expect(canvas.clientWidth).toBe(placeholder.clientWidth);
 		assertPrecedes(
 			page.getByRole('img', { name: '動画のプレースホルダー' }),
 			page.getByRole('group', { name: 'OutputType' })
@@ -108,7 +121,9 @@ describe('OutputControls', () => {
 
 		await page.getByRole('button', { name: 'webm' }).click();
 
-		await expect.element(page.getByRole('button', { name: 'webm' })).toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('button', { name: 'webm' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect
 			.element(page.getByRole('combobox', { name: 'ビデオコーデック' }))
 			.toHaveValue(supportedVideoCodecs('webm')[0]);
@@ -158,12 +173,28 @@ describe('OutputControls', () => {
 		expect(placeholder.getAttribute('aria-busy')).toBeNull();
 		expect(placeholder.clientWidth).toBeGreaterThan(0);
 		expect(progress.hasAttribute('value')).toBe(false);
+		const seekBarPadding = parseFloat(getComputedStyle(placeholder).paddingBottom);
+		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
+		const cover = progress.parentElement?.querySelector('.veil');
+		if (!(cover instanceof HTMLElement)) throw new Error('覆いがありません');
+		expect(getComputedStyle(cover).backgroundColor).toBe('rgba(0, 0, 0, 0.3)');
+		const canvasBox = canvas.getBoundingClientRect();
+		const veilBox = cover.getBoundingClientRect();
+		expect(Math.abs(veilBox.top - canvasBox.top)).toBeLessThan(1);
+		expect(Math.abs(veilBox.left - canvasBox.left)).toBeLessThan(1);
+		expect(Math.abs(veilBox.width - canvasBox.width)).toBeLessThan(1);
+		expect(Math.abs(veilBox.height - canvasBox.height)).toBeLessThan(1);
 		const place = placeholder.getBoundingClientRect();
+		expect(Math.abs(veilBox.bottom - (place.bottom - seekBarPadding))).toBeLessThan(1);
 		const bar = progress.getBoundingClientRect();
 		expect(bar.width).toBeGreaterThan(0);
-		expect(bar.width).toBeLessThan(place.width);
-		expect(Math.abs(bar.left + bar.width / 2 - (place.left + place.width / 2))).toBeLessThan(1);
-		expect(Math.abs(bar.top + bar.height / 2 - (place.top + place.height / 2))).toBeLessThan(1);
+		expect(bar.width).toBeLessThan(veilBox.width);
+		expect(Math.abs(bar.left + bar.width / 2 - (veilBox.left + veilBox.width / 2))).toBeLessThan(1);
+		expect(Math.abs(bar.top + bar.height / 2 - (veilBox.top + veilBox.height / 2))).toBeLessThan(1);
+		expect(document.elementFromPoint(veilBox.left + 4, veilBox.top + 4)).toBe(cover);
+		expect(document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2)).toBe(
+			progress
+		);
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			videoCodec: 'avc',
@@ -181,6 +212,8 @@ describe('OutputControls', () => {
 		await expect.element(page.getByRole('progressbar', { name: '生成中' })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('slider', { name: '再生位置' })).toBeVisible();
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
+		const seekBar = page.getByRole('slider', { name: '再生位置' }).element();
+		expect(seekBar.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
 		const video = page.getByLabelText('生成した動画').element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeEnabled();
@@ -225,6 +258,18 @@ describe('OutputControls', () => {
 
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
 		await expect.element(page.getByLabelText('生成した動画')).not.toBeInTheDocument();
+		const host = page.getByRole('img', { name: '動画のプレースホルダー' }).element();
+		const canvas = host.querySelector('canvas') as HTMLCanvasElement;
+		const stage = host.parentElement!;
+		expect(canvas.width).toBe(720);
+		expect(canvas.height).toBe(480);
+		expect(Math.abs(stage.clientWidth / stage.clientHeight - 16 / 9)).toBeLessThan(0.02);
+		expect(canvas.clientWidth).toBe(host.clientWidth);
+		expect(
+			Math.abs(
+				host.clientHeight - canvas.clientHeight - parseFloat(getComputedStyle(host).paddingBottom)
+			)
+		).toBeLessThan(1);
 
 		await page.getByRole('button', { name: '生成' }).click();
 		expect(generatePlayback).toHaveBeenLastCalledWith({

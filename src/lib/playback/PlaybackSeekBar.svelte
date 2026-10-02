@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { seekBarHeight } from './seek-bar';
 	import { clampFrame } from './time';
 
 	let {
@@ -83,6 +84,7 @@
 <div
 	class={['seek', { dragging }]}
 	style:--ratio={ratio}
+	style:--knob-hot={seekBarHeight}
 	role="slider"
 	tabindex="0"
 	aria-label="再生位置"
@@ -103,7 +105,6 @@
 <style>
 	.seek {
 		--knob-rest: 12px;
-		--knob-hot: 18px;
 		--bar-rest: 4px;
 		--bar-hot: 6px;
 		--pad: calc(var(--knob-hot) / 2);

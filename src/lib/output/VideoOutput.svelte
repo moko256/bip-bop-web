@@ -1,16 +1,19 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
+	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
 	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
+	import { seekBarHeight } from '$lib/playback/seek-bar';
+	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
-	import { resolutions, type Resolution, type VideoOutputType } from './output';
+	import { parseResolution, resolutions, type Resolution, type VideoOutputType } from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
 	let {
@@ -22,6 +25,7 @@
 	} = $props();
 
 	let resolution = $state<Resolution>('1920x1080');
+	let bitmap = $derived(parseResolution(resolution));
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	const generation = new VideoGeneration(generatePlayback);
@@ -55,7 +59,7 @@
 	}
 
 	$effect(() => {
-		outputType;
+		void outputType;
 		invalidate();
 	});
 
@@ -95,7 +99,14 @@
 </script>
 
 {#snippet placeholder()}
-	<div class="media placeholder" role="img" aria-label="動画のプレースホルダー"></div>
+	<div
+		class="media placeholder"
+		style:padding-bottom={seekBarHeight}
+		role="img"
+		aria-label="動画のプレースホルダー"
+	>
+		<BipBopStill width={bitmap.width} height={bitmap.height} />
+	</div>
 {/snippet}
 
 {#snippet actions(pending: boolean)}
@@ -109,7 +120,10 @@
 				{#await generation.playback}
 					<div class="stage">
 						{@render placeholder()}
-						<progress aria-label="生成中"></progress>
+						<div class="loading" style:padding-bottom={seekBarHeight}>
+							<div class="veil" style:background={stoppedVeilColor}></div>
+							<progress aria-label="生成中"></progress>
+						</div>
 					</div>
 				{:then url}
 					<PlaybackControls
@@ -209,11 +223,30 @@
 		grid-area: 1 / 1;
 		width: 100%;
 		height: 100%;
+		min-width: 0;
+		min-height: 0;
 		object-fit: contain;
 	}
 
-	.stage > progress {
+	.placeholder {
+		box-sizing: border-box;
+	}
+
+	.loading {
 		grid-area: 1 / 1;
+		display: grid;
+		box-sizing: border-box;
+		min-width: 0;
+		min-height: 0;
+	}
+
+	.veil {
+		grid-area: 1 / 1;
+	}
+
+	.loading > progress {
+		grid-area: 1 / 1;
+		z-index: 1;
 		place-self: center;
 		width: 40%;
 		margin: 0;
