@@ -10,6 +10,7 @@ type StartedTone = {
 class FakeAudioContext {
 	state: AudioContextState = 'running';
 	currentTime = 0;
+	outputLatency = 0;
 	destination = {} as AudioDestinationNode;
 	tones: StartedTone[] = [];
 
@@ -105,6 +106,33 @@ describe('scheduleLiveTones', () => {
 
 		expect(context.tones[0]?.frequencyHz).toBe(1500);
 		expect(context.tones[0]?.start).toBeCloseTo(0.984);
+	});
+
+	it('plays the opening burst one outputLatency ahead and holds the next wait', () => {
+		const time = manualClock();
+		const context = new FakeAudioContext();
+		context.outputLatency = 0.04;
+		let elapsed = 0;
+		const stop = scheduleLiveTones({
+			context: context as unknown as AudioContext,
+			elapsedMs: 0,
+			getElapsed: () => elapsed,
+			clock: time.clock,
+			active: () => true
+		});
+
+		expect(stop.pictureShiftMs).toBe(80);
+		expect(context.tones[0]?.frequencyHz).toBe(1500);
+		expect(context.tones[0]?.start).toBeCloseTo(0.04);
+
+		elapsed = 16;
+		time.advance(16);
+		expect(context.tones).toHaveLength(1);
+
+		elapsed = 96;
+		time.advance(80);
+		expect(context.tones[1]?.frequencyHz).toBe(475);
+		expect(context.tones[1]?.start).toBeCloseTo(0.944);
 	});
 
 	it('cancels the wait for the next burst', () => {

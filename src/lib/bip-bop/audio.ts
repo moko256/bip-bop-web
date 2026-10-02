@@ -50,6 +50,69 @@ export function planBipBopTone(elapsedMs: number): BipBopTonePlan {
 	};
 }
 
+export type BipBopPreviewCue = {
+	/** Milliseconds from now until the graph starts the burst. Never sooner than the output lead. */
+	delayMs: number;
+	frequencyHz: number;
+	/** Milliseconds from now until this burst's second has finished on the picture clock. */
+	waitMs: number;
+	/**
+	 * Milliseconds the picture waits at playback start.
+	 * The opening burst plays, then the video begins one output lead later.
+	 */
+	pictureShiftMs: number;
+};
+
+/**
+ * One preview burst.
+ * `outputLeadMs` is `AudioContext.outputLatency` in milliseconds. A burst
+ * scheduled at the current instant is dropped, so the graph start is at least
+ * that far ahead. On `startup`, if the burst had to be pushed out to that
+ * horizon, the picture waits until one output lead after the burst starts:
+ * the sound plays, then the video begins.
+ * Later calls keep the picture shift already chosen.
+ * Video export does not use this. An offline context has no output latency.
+ */
+export function planBipBopPreviewCue(
+	elapsedMs: number,
+	outputLeadMs: number,
+	pictureShiftMs: number,
+	startup = false
+): BipBopPreviewCue {
+	const plan = planBipBopTone(elapsedMs);
+	const lead = Number.isFinite(outputLeadMs) && outputLeadMs > 0 ? outputLeadMs : 0;
+	const shift = Number.isFinite(pictureShiftMs) && pictureShiftMs > 0 ? pictureShiftMs : 0;
+	const synced = plan.delayMs - lead;
+	const delayMs = Math.max(lead, synced);
+	let nextShift = shift;
+	if (startup && synced < lead) {
+		nextShift = Math.max(shift, lead + lead - plan.delayMs);
+	}
+	return {
+		delayMs,
+		frequencyHz: plan.frequencyHz,
+		waitMs: plan.waitMs,
+		pictureShiftMs: nextShift
+	};
+}
+
+/**
+ * Picture time for the web preview, in milliseconds.
+ * `audioElapsedMs` runs from the play click. `pictureShiftMs` holds the
+ * picture at `earliestMs` while the opening burst plays; the video then
+ * starts. The picture never moves earlier than `earliestMs`.
+ */
+export function bipBopPreviewPictureMs(
+	audioElapsedMs: number,
+	pictureShiftMs: number,
+	earliestMs: number
+): number {
+	const audioElapsed = Number.isFinite(audioElapsedMs) ? audioElapsedMs : 0;
+	const earliest = Number.isFinite(earliestMs) ? earliestMs : 0;
+	const shift = Number.isFinite(pictureShiftMs) && pictureShiftMs > 0 ? pictureShiftMs : 0;
+	return Math.max(earliest, audioElapsed - shift);
+}
+
 /** Samples in one burst at `sampleRate`. */
 export function bipBopToneFrameCount(sampleRate: number): number {
 	return Math.round((sampleRate * BIP_BOP_TONE_MS) / 1000);
@@ -58,9 +121,9 @@ export function bipBopToneFrameCount(sampleRate: number): number {
 /**
  * Schedules one sine burst on `context`.
  * The burst starts `delayMs` after `context.currentTime` and lasts {@link BIP_BOP_TONE_MS}.
- * The web preview passes the wait until the next second. Video writing passes `0`:
- * the burst is the first 16ms of an offline context, and the caller places that
- * buffer on the second it belongs to.
+ * The web preview passes how long until the burst should enter the graph, already
+ * shifted by output latency. Video writing passes `0`: the burst is the first 16ms
+ * of an offline context, and the caller places that buffer on the second it belongs to.
  */
 export function BipBopAudioRenderer(
 	context: BipBopAudioContext,
