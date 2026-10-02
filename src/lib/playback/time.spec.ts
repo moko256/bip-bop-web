@@ -32,4 +32,11 @@ describe('clampFrame', () => {
 		expect(clampFrame(900, 600)).toBe(600);
 		expect(clampFrame(Number.NaN, 600)).toBe(0);
 	});
+
+	it('leaves the index unbounded when no length is given', () => {
+		expect(clampFrame(999999)).toBe(999999);
+		expect(clampFrame(12.9)).toBe(12);
+		expect(clampFrame(-4)).toBe(0);
+		expect(clampFrame(Number.POSITIVE_INFINITY)).toBe(0);
+	});
 });
