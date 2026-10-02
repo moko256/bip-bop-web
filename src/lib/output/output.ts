@@ -1,4 +1,21 @@
 import * as m from '$lib/paraglide/messages';
+import {
+	defaultResolution,
+	resolutionCatalog,
+	resolutionGroups,
+	resolutions,
+	type Resolution,
+	type ResolutionGroup
+} from './resolution-catalog';
+
+export {
+	defaultResolution,
+	resolutionCatalog,
+	resolutionGroups,
+	resolutions,
+	type Resolution,
+	type ResolutionGroup
+};
 
 export const outputTypes = ['page', 'mp4', 'webm', 'fullscreen-url'] as const;
 
@@ -38,15 +55,18 @@ export function outputTypeLabel(type: OutputType): string {
 	}
 }
 
-export const resolutions = [
-	{ value: '1920x1080', label: '1920x1080' },
-	{ value: '720x480', label: '720×480' }
-] as const;
+const resolutionByValue = new Map(
+	resolutionCatalog.map((entry) => [entry.value, entry] as const)
+);
 
-export type Resolution = (typeof resolutions)[number]['value'];
+export function resolutionPixelLabel(value: Resolution): string {
+	const entry = resolutionByValue.get(value);
+	if (!entry) return '';
+	return entry.pixelLabel;
+}
 
 export function parseResolution(value: Resolution): { width: number; height: number } {
-	const match = /^(\d+)x(\d+)$/.exec(value);
-	if (!match) throw new Error(m.error_unknown_resolution({ value }));
-	return { width: Number(match[1]), height: Number(match[2]) };
+	const entry = resolutionByValue.get(value);
+	if (!entry) throw new Error(m.error_unknown_resolution({ value }));
+	return { width: entry.width, height: entry.height };
 }

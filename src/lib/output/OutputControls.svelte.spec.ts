@@ -95,7 +95,7 @@ describe('OutputControls', () => {
 				.toBeInTheDocument();
 		}
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
-		await expect.element(page.getByRole('option', { name: '720×480' })).toBeInTheDocument();
+		await expect.element(page.getByRole('option', { name: '640×480' })).toBeInTheDocument();
 		const placeholder = page.getByRole('img', { name: m.video_placeholder_aria() }).element();
 		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
 		expect(canvas.width).toBe(1920);
@@ -259,14 +259,14 @@ describe('OutputControls', () => {
 		await page.getByRole('button', { name: m.generate() }).click();
 		await expect.element(page.getByLabelText(m.generated_video_aria())).toBeVisible();
 
-		await page.getByRole('combobox', { name: m.resolution() }).selectOptions('720x480');
+		await page.getByRole('combobox', { name: m.resolution() }).selectOptions('640x480');
 
 		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
 		await expect.element(page.getByLabelText(m.generated_video_aria())).not.toBeInTheDocument();
 		const host = page.getByRole('img', { name: m.video_placeholder_aria() }).element();
 		const canvas = host.querySelector('canvas') as HTMLCanvasElement;
 		const stage = host.parentElement!;
-		expect(canvas.width).toBe(720);
+		expect(canvas.width).toBe(640);
 		expect(canvas.height).toBe(480);
 		expect(Math.abs(stage.clientWidth / stage.clientHeight - 16 / 9)).toBeLessThan(0.02);
 		expect(canvas.clientWidth).toBe(host.clientWidth);
@@ -281,7 +281,7 @@ describe('OutputControls', () => {
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
-			resolution: '720x480',
+			resolution: '640x480',
 			signal: expect.any(AbortSignal)
 		});
 	});

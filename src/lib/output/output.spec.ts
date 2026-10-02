@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isVideoOutputType, outputCategory, parseResolution } from './output';
+import {
+	defaultResolution,
+	isVideoOutputType,
+	outputCategory,
+	parseResolution,
+	resolutionCatalog,
+	resolutionGroups
+} from './output';
 import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
 
 describe('outputCategory', () => {
@@ -58,6 +65,61 @@ describe('videoOutputFormat', () => {
 describe('parseResolution', () => {
 	it('reads the selected pixel size', () => {
 		expect(parseResolution('1920x1080')).toEqual({ width: 1920, height: 1080 });
-		expect(parseResolution('720x480')).toEqual({ width: 720, height: 480 });
+		expect(parseResolution('640x480')).toEqual({ width: 640, height: 480 });
+	});
+
+	it('rejects values that are not in the catalog', () => {
+		expect(() => parseResolution('720x480' as '1920x1080')).toThrow();
+	});
+});
+
+describe('resolutionGroups', () => {
+	it('defaults to full HD', () => {
+		expect(defaultResolution).toBe('1920x1080');
+	});
+
+	it('orders aspect-ratio groups from 16:9 toward 4:3, then wider than 16:9', () => {
+		const ratios = resolutionGroups.map((group) => {
+			const [width, height] = group.label.split(':').map(Number);
+			return width / height;
+		});
+		const sixteenByNine = 16 / 9;
+		const firstWiderIndex = ratios.findIndex((ratio) => ratio > sixteenByNine);
+		expect(firstWiderIndex).toBeGreaterThan(0);
+		expect(ratios.indexOf(sixteenByNine)).toBeLessThan(ratios.indexOf(16 / 10));
+		expect(ratios.indexOf(16 / 10)).toBeLessThan(ratios.indexOf(4 / 3));
+		const upToSixteenByNine = ratios.slice(0, firstWiderIndex);
+		expect(upToSixteenByNine).toEqual([...upToSixteenByNine].sort((a, b) => b - a));
+		const widerGroups = ratios.slice(firstWiderIndex);
+		expect(widerGroups).toEqual([...widerGroups].sort((a, b) => b - a));
+		for (const ratio of upToSixteenByNine) {
+			expect(ratio).toBeLessThanOrEqual(sixteenByNine + 1e-9);
+		}
+		for (const ratio of widerGroups) {
+			expect(ratio).toBeGreaterThan(sixteenByNine);
+		}
+	});
+
+	it('lists the highest pixel count first within each group', () => {
+		for (const group of resolutionGroups) {
+			const pixels = group.options.map(
+				(option) => parseResolution(option.value).width * parseResolution(option.value).height
+			);
+			expect(pixels).toEqual([...pixels].sort((a, b) => b - a));
+		}
+	});
+
+	it('lists the flat catalog in grouped-select order', () => {
+		const fromGroups = resolutionGroups.flatMap((group) =>
+			group.options.map((option) => option.value)
+		);
+		expect(resolutionCatalog.map((entry) => entry.value)).toEqual(fromGroups);
+	});
+
+	it('uses precomputed aspect ratio labels for optgroups', () => {
+		const sixteenByNine = resolutionGroups.find((group) => group.label === '16:9');
+		expect(sixteenByNine?.options.map((option) => option.value)).toContain('1920x1080');
+		expect(resolutionGroups.find((group) => group.label === '8:5')).toBeDefined();
+		expect(resolutionGroups.find((group) => group.label === '64:27')).toBeDefined();
 	});
 });
