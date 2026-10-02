@@ -50,7 +50,9 @@ describe('OutputControls', () => {
 	it('starts on page with the live canvas above OutputType', async () => {
 		render(OutputControls);
 
-		await expect.element(page.getByRole('radio', { name: 'ページ' })).toBeChecked();
+		await expect
+			.element(page.getByRole('button', { name: 'ページ' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect.element(page.getByLabelText('Bip-Bop preview')).toBeVisible();
 		await expect.element(page.getByRole('button', { name: '生成' })).not.toBeInTheDocument();
 		await expect
@@ -66,9 +68,11 @@ describe('OutputControls', () => {
 	it('shows a 16:9 placeholder and the container codecs for mp4 and webm', async () => {
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 
-		await expect.element(page.getByRole('radio', { name: 'mp4' })).toBeChecked();
+		await expect
+			.element(page.getByRole('button', { name: 'mp4' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
 		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText('Bip-Bop preview')).not.toBeInTheDocument();
@@ -115,9 +119,11 @@ describe('OutputControls', () => {
 			page.getByRole('button', { name: '生成' })
 		);
 
-		await page.getByRole('radio', { name: 'webm' }).click();
+		await page.getByRole('button', { name: 'webm' }).click();
 
-		await expect.element(page.getByRole('radio', { name: 'webm' })).toBeChecked();
+		await expect
+			.element(page.getByRole('button', { name: 'webm' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect
 			.element(page.getByRole('combobox', { name: 'ビデオコーデック' }))
 			.toHaveValue(supportedVideoCodecs('webm')[0]);
@@ -128,9 +134,9 @@ describe('OutputControls', () => {
 	it('keeps a video codec that both containers support', async () => {
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('combobox', { name: 'ビデオコーデック' }).selectOptions('vp9');
-		await page.getByRole('radio', { name: 'webm' }).click();
+		await page.getByRole('button', { name: 'webm' }).click();
 
 		await expect
 			.element(page.getByRole('combobox', { name: 'ビデオコーデック' }))
@@ -140,9 +146,9 @@ describe('OutputControls', () => {
 	it('keeps an audio codec that both containers support', async () => {
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('combobox', { name: 'オーディオコーデック' }).selectOptions('opus');
-		await page.getByRole('radio', { name: 'webm' }).click();
+		await page.getByRole('button', { name: 'webm' }).click();
 
 		await expect
 			.element(page.getByRole('combobox', { name: 'オーディオコーデック' }))
@@ -154,7 +160,7 @@ describe('OutputControls', () => {
 		generatePlayback.mockReturnValue(pending.promise);
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('button', { name: '生成' }).click();
 
 		await expect.element(page.getByRole('button', { name: '生成' })).toBeDisabled();
@@ -204,9 +210,9 @@ describe('OutputControls', () => {
 			.element(page.getByRole('img', { name: '動画のプレースホルダー' }))
 			.not.toBeInTheDocument();
 		await expect.element(page.getByRole('progressbar', { name: '生成中' })).not.toBeInTheDocument();
-		await expect.element(page.getByRole('progressbar', { name: '再生位置' })).toBeVisible();
+		await expect.element(page.getByRole('slider', { name: '再生位置' })).toBeVisible();
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
-		const seekBar = page.getByRole('progressbar', { name: '再生位置' }).element();
+		const seekBar = page.getByRole('slider', { name: '再生位置' }).element();
 		expect(seekBar.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
 		const video = page.getByLabelText('生成した動画').element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
@@ -220,7 +226,7 @@ describe('OutputControls', () => {
 			generatePlayback.mockResolvedValue(videoUrl());
 			render(OutputControls);
 
-			await page.getByRole('radio', { name: 'mp4' }).click();
+			await page.getByRole('button', { name: 'mp4' }).click();
 			await page.getByRole('button', { name: '生成' }).click();
 			await expect.element(page.getByLabelText('生成した動画')).toBeVisible();
 
@@ -244,7 +250,7 @@ describe('OutputControls', () => {
 		generatePlayback.mockResolvedValue(videoUrl());
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('button', { name: '生成' }).click();
 		await expect.element(page.getByLabelText('生成した動画')).toBeVisible();
 
@@ -280,9 +286,9 @@ describe('OutputControls', () => {
 		generatePlayback.mockReturnValue(pending.promise);
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('button', { name: '生成' }).click();
-		await page.getByRole('radio', { name: 'webm' }).click();
+		await page.getByRole('button', { name: 'webm' }).click();
 		pending.resolve(videoUrl());
 
 		await expect.element(page.getByRole('img', { name: '動画のプレースホルダー' })).toBeVisible();
@@ -294,7 +300,7 @@ describe('OutputControls', () => {
 		generatePlayback.mockRejectedValue(new Error('このコーデックはエンコードできません'));
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: 'mp4' }).click();
 		await page.getByRole('button', { name: '生成' }).click();
 
 		await expect
@@ -308,9 +314,11 @@ describe('OutputControls', () => {
 	it('shows the live canvas and fullscreen url controls', async () => {
 		render(OutputControls);
 
-		await page.getByRole('radio', { name: 'フルスクリーンURL' }).click();
+		await page.getByRole('button', { name: 'フルスクリーンURL' }).click();
 
-		await expect.element(page.getByRole('radio', { name: 'フルスクリーンURL' })).toBeChecked();
+		await expect
+			.element(page.getByRole('button', { name: 'フルスクリーンURL' }))
+			.toHaveAttribute('aria-current', 'true');
 		await expect.element(page.getByLabelText('Bip-Bop preview')).toBeVisible();
 		await expect.element(page.getByRole('combobox', { name: '解像度' })).toBeInTheDocument();
 		await expect.element(page.getByRole('textbox', { name: 'URL' })).toBeInTheDocument();

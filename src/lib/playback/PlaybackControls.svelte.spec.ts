@@ -32,7 +32,7 @@ describe('PlaybackControls', () => {
 
 		const veil = page.getByRole('button', { name: '再生' }).first();
 		const play = page.getByRole('button', { name: '再生' }).nth(1);
-		const progress = page.getByRole('progressbar', { name: '再生位置' });
+		const progress = page.getByRole('slider', { name: '再生位置' });
 		const clock = page.getByText('00:00 / 00:10');
 		const input = page.getByRole('spinbutton', { name: 'フレーム' });
 
@@ -41,10 +41,10 @@ describe('PlaybackControls', () => {
 		expect(play.element().querySelector('path')?.getAttribute('d')).toBe(playArrowPath);
 		expect(getComputedStyle(clock.element()).fontFamily).toContain('monospace');
 
-		const bar = progress.element() as HTMLProgressElement;
-		expect(bar.value).toBe(30);
-		expect(bar.max).toBe(600);
-		expect(bar.hasAttribute('value')).toBe(true);
+		const bar = progress.element();
+		expect(bar.getAttribute('aria-valuenow')).toBe('30');
+		expect(bar.getAttribute('aria-valuemin')).toBe('0');
+		expect(bar.getAttribute('aria-valuemax')).toBe('600');
 		await expect.element(input).toHaveValue(30);
 
 		const veilBox = boxOf(veil.element());
@@ -103,6 +103,8 @@ describe('PlaybackControls', () => {
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
 		await expect.element(page.getByText('01:00:00 / 01:00:00')).toBeVisible();
-		expect(page.getByRole('button', { name: '停止' }).first().element().querySelector('path')).toBeNull();
+		expect(
+			page.getByRole('button', { name: '停止' }).first().element().querySelector('path')
+		).toBeNull();
 	});
 });

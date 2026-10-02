@@ -7,14 +7,20 @@
 </script>
 
 {#snippet outputTypeSelector()}
-	<fieldset aria-label="OutputType">
+	<div class="output-type-switcher" role="group" aria-label="OutputType">
 		{#each outputTypes as type (type)}
-			<label>
-				<input type="radio" name="output-type" value={type} bind:group={outputType} />
+			<button
+				type="button"
+				class={outputType === type ? undefined : 'outline'}
+				aria-current={outputType === type ? true : undefined}
+				onclick={() => {
+					outputType = type;
+				}}
+			>
 				{outputTypeLabels[type]}
-			</label>
+			</button>
 		{/each}
-	</fieldset>
+	</div>
 {/snippet}
 
 {#if isVideoOutputType(outputType)}
@@ -26,3 +32,24 @@
 {:else}
 	<PageOutput {outputTypeSelector} />
 {/if}
+
+<style>
+	.output-type-switcher {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		width: 100%;
+		margin-bottom: 0;
+		border-radius: 0;
+		box-shadow: none;
+		vertical-align: baseline;
+	}
+
+	.output-type-switcher > :global(button) {
+		flex: 1 1 calc(50% - 0.25rem);
+		width: auto;
+		min-width: 0;
+		margin: 0;
+		border-radius: var(--pico-border-radius);
+	}
+</style>

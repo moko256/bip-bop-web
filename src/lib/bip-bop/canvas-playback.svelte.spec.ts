@@ -51,11 +51,15 @@ function recordingAudio(): CanvasAudio & { events: string[] } {
 	const events: string[] = [];
 	return {
 		events,
-		start(elapsedMs) {
+		start(elapsedMs, _elapsed, onReady) {
 			events.push(`start:${elapsedMs}`);
+			onReady();
 		},
 		stop() {
 			events.push('stop');
+		},
+		pictureShiftMs() {
+			return 0;
 		}
 	};
 }

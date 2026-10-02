@@ -27,7 +27,7 @@
 
 {#snippet transport()}
 	<PlaybackToggle {playing} {onplaybackchange} />
-	<PlaybackSeekBar {frame} {maxFrame} />
+	<PlaybackSeekBar {frame} {maxFrame} {onframechange} />
 	<PlaybackClock {frame} {maxFrame} {fps} />
 	<PlaybackFrameField {frame} {maxFrame} {onframechange} />
 {/snippet}
