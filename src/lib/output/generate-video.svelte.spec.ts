@@ -1,19 +1,6 @@
 import { AudioBufferSink, BlobSource, Input, MP4 } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
-import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
-import { generateBipBopVideo } from './generate-video';
-import { supportedAudioCodecs } from './output';
-import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
-
-async function defaultMp4AudioCodec() {
-	const audioCodec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
-		numberOfChannels: 1,
-		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
-		quality: new Quality('high')
-	});
-	if (!audioCodec) throw new Error('音声コーデックを利用できません');
-	return audioCodec;
-}
+import { generateBipBopVideo, preferredAudioCodec } from './generate-video';
 
 function correlation(samples: Float32Array, frequencyHz: number, sampleRate: number): number {
 	const frameCount = Math.min(samples.length, Math.round(sampleRate * 0.016));
@@ -23,6 +10,12 @@ function correlation(samples: Float32Array, frequencyHz: number, sampleRate: num
 		sum += sample * Math.sin((2 * Math.PI * frequencyHz * index) / sampleRate);
 	}
 	return Math.abs(sum) / frameCount;
+}
+
+async function defaultMp4AudioCodec() {
+	const audioCodec = await preferredAudioCodec('mp4');
+	if (!audioCodec) throw new Error('音声コーデックを利用できません');
+	return audioCodec;
 }
 
 describe('generateBipBopVideo', () => {

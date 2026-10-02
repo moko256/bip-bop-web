@@ -1,9 +1,8 @@
 import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { getFirstEncodableAudioCodec, Quality } from 'mediabunny';
-import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import OutputControls from './OutputControls.svelte';
+import { preferredAudioCodec } from './generate-video';
 import { supportedAudioCodecs, supportedVideoCodecs } from './output';
 
 const { generatePlayback } = vi.hoisted(() => ({
@@ -43,11 +42,7 @@ describe('OutputControls', () => {
 
 	beforeEach(async () => {
 		generatePlayback.mockReset();
-		const audioCodec = await getFirstEncodableAudioCodec(supportedAudioCodecs('mp4'), {
-			numberOfChannels: 1,
-			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
-			quality: new Quality('high')
-		});
+		const audioCodec = await preferredAudioCodec('mp4');
 		if (!audioCodec) throw new Error('音声コーデックを利用できません');
 		defaultMp4AudioCodec = audioCodec;
 	});
