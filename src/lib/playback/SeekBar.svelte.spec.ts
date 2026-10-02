@@ -25,9 +25,9 @@ function pointer(target: Element, type: string, clientX: number, buttons = 1) {
 	);
 }
 
-function mount(frame = 0, maxFrame = 100) {
+async function mount(frame = 0, maxFrame = 100) {
 	const frames: number[] = [];
-	const view = render(SeekBar, {
+	const view = await render(SeekBar, {
 		frame,
 		maxFrame,
 		onframechange: (next: number) => frames.push(next)
@@ -43,7 +43,7 @@ function mount(frame = 0, maxFrame = 100) {
 
 describe('SeekBar', () => {
 	it('draws a 4px rounded bar and a 16px knob inside padding that fits the 24px knob', async () => {
-		const { slider, bar, knob } = mount(0, 100);
+		const { slider, bar, knob } = await mount(0, 100);
 		await userEvent.unhover(slider);
 
 		const seek = slider.element();
@@ -69,7 +69,7 @@ describe('SeekBar', () => {
 	});
 
 	it('grows the bar and knob on hover, and does not animate the seek position', async () => {
-		const { view, slider, bar, knob } = mount(0, 100);
+		const { view, slider, bar, knob } = await mount(0, 100);
 
 		const barTransition = getComputedStyle(bar);
 		expect(barTransition.transitionProperty).toBe('height');
@@ -99,7 +99,7 @@ describe('SeekBar', () => {
 	});
 
 	it('moves the knob to a click on the bar and leaves it there while the pointer moves', async () => {
-		const { frames, slider, bar } = mount(0, 100);
+		const { frames, slider, bar } = await mount(0, 100);
 		const box = bar.getBoundingClientRect();
 
 		await slider.click({
@@ -117,8 +117,18 @@ describe('SeekBar', () => {
 		expect(frames).toEqual([50, 25]);
 	});
 
+	it('steps the frame from the keyboard', async () => {
+		const { frames, slider } = await mount(10, 100);
+		slider
+			.element()
+			.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+		slider.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+		slider.element().dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+		expect(frames).toEqual([11, 0, 100]);
+	});
+
 	it('follows the pointer with the knob only while the knob is held', async () => {
-		const { frames, bar, knob } = mount(0, 100);
+		const { frames, bar, knob } = await mount(0, 100);
 		const box = bar.getBoundingClientRect();
 
 		pointer(knob, 'pointerdown', box.left);

@@ -45,7 +45,6 @@
 		} else {
 			onframechange(frameAt(event.clientX, track));
 		}
-		surface.focus();
 	}
 
 	function onPointerMove(event: PointerEvent) {
