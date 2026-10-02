@@ -1,24 +1,23 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import type { PlaybackContent } from './playback-content';
 	import PlaybackOverlay from './PlaybackOverlay.svelte';
 
 	let {
 		playing,
 		onplaybackchange,
 		transport,
-		children
+		content
 	}: {
 		playing: boolean;
 		onplaybackchange: (playing: boolean) => void;
 		transport: Snippet;
-		children: Snippet;
+		content: PlaybackContent;
 	} = $props();
 </script>
 
 <div class="player">
-	<PlaybackOverlay {playing} {onplaybackchange}>
-		{@render children()}
-	</PlaybackOverlay>
+	<PlaybackOverlay {playing} {onplaybackchange} {content} />
 	<div class="transport">
 		{@render transport()}
 	</div>

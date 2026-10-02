@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import type { PlaybackContent } from './playback-content';
 	import PlaybackClock from './PlaybackClock.svelte';
 	import PlaybackFrameField from './PlaybackFrameField.svelte';
 	import PlaybackSeekBar from './PlaybackSeekBar.svelte';
@@ -13,7 +13,7 @@
 		fps,
 		onplaybackchange,
 		onframechange,
-		children
+		content
 	}: {
 		playing: boolean;
 		frame: number;
@@ -21,7 +21,7 @@
 		fps: number;
 		onplaybackchange: (playing: boolean) => void;
 		onframechange: (frame: number) => void;
-		children: Snippet;
+		content: PlaybackContent;
 	} = $props();
 </script>
 
@@ -32,4 +32,4 @@
 	<PlaybackFrameField {frame} {maxFrame} {onframechange} />
 {/snippet}
 
-<PlaybackShell {playing} {onplaybackchange} {transport} {children} />
+<PlaybackShell {playing} {onplaybackchange} {transport} {content} />

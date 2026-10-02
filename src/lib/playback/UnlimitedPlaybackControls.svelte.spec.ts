@@ -1,14 +1,10 @@
-import { createRawSnippet } from 'svelte';
 import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { pausePath, playArrowPath, playCirclePath } from './icons';
+import { playbackTestContent } from './playback-test-content';
 import UnlimitedPlaybackControls from './UnlimitedPlaybackControls.svelte';
-
-const children = createRawSnippet(() => ({
-	render: () => '<div data-testid="content" style="width:100%;height:120px">picture</div>'
-}));
 
 function boxOf(element: Element) {
 	return element.getBoundingClientRect();
@@ -23,17 +19,17 @@ describe('UnlimitedPlaybackControls', () => {
 			frame: 30,
 			onplaybackchange: (next: boolean) => playback.push(next),
 			onframechange: (next: number) => frames.push(next),
-			children
+			content: playbackTestContent
 		});
 
 		await expect.element(page.getByTestId('content')).toBeVisible();
 
-		const veil = page.getByRole('button', { name: m.playback_play() }).first();
-		const play = page.getByRole('button', { name: m.playback_play() }).nth(1);
+		const veilElement = document.querySelector('.veil')!;
+		const play = page.getByRole('button', { name: m.playback_play() });
 		const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 
 		await expect.element(play).toBeVisible();
-		expect(veil.element().querySelector('path')?.getAttribute('d')).toBe(playCirclePath);
+		expect(veilElement.querySelector('path')?.getAttribute('d')).toBe(playCirclePath);
 		expect(play.element().querySelector('path')?.getAttribute('d')).toBe(playArrowPath);
 
 		const transport = play.element().parentElement!;
@@ -45,7 +41,7 @@ describe('UnlimitedPlaybackControls', () => {
 		expect(field.hasAttribute('max')).toBe(false);
 		expect(field.min).toBe('0');
 
-		const veilBox = boxOf(veil.element());
+		const veilBox = boxOf(veilElement);
 		const transportBox = boxOf(transport);
 		expect(transportBox.top).toBeGreaterThanOrEqual(veilBox.bottom - 1);
 
@@ -79,7 +75,7 @@ describe('UnlimitedPlaybackControls', () => {
 			frame: 0,
 			onplaybackchange,
 			onframechange: () => undefined,
-			children
+			content: playbackTestContent
 		});
 
 		await view.rerender({
@@ -87,15 +83,13 @@ describe('UnlimitedPlaybackControls', () => {
 			frame: 216000,
 			onplaybackchange,
 			onframechange: () => undefined,
-			children
+			content: playbackTestContent
 		});
 
-		const pause = page.getByRole('button', { name: m.playback_pause() }).nth(1);
+		const pause = page.getByRole('button', { name: m.playback_pause() });
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
-		expect(
-			page.getByRole('button', { name: m.playback_pause() }).first().element().querySelector('path')
-		).toBeNull();
+		expect(document.querySelector('.veil')?.querySelector('path')).toBeNull();
 		expect(pause.element().parentElement?.querySelector('progress')).toBeNull();
 		expect(pause.element().parentElement?.textContent).not.toMatch(/\d{2}:\d{2}/);
 

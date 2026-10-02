@@ -226,6 +226,33 @@ describe('OutputControls', () => {
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
 	});
 
+	it('toggles playback from the video surface and leaves context menu events alone', async () => {
+		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+		try {
+			generatePlayback.mockResolvedValue(videoUrl());
+			render(OutputControls);
+
+			await page.getByRole('button', { name: 'mp4' }).click();
+			await page.getByRole('button', { name: m.generate() }).click();
+			await expect.element(page.getByLabelText(m.generated_video_aria())).toBeVisible();
+
+			const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
+			const menu = new Event('contextmenu', { bubbles: true, cancelable: true });
+			video.dispatchEvent(menu);
+			expect(menu.defaultPrevented).toBe(false);
+
+			await page.getByLabelText(m.generated_video_aria()).click();
+			expect(play).toHaveBeenCalled();
+
+			await page.getByLabelText(m.generated_video_aria()).click();
+			expect(pause).toHaveBeenCalled();
+		} finally {
+			play.mockRestore();
+			pause.mockRestore();
+		}
+	});
+
 	it('plays, seeks, and pauses the generated video from the transport', async () => {
 		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});

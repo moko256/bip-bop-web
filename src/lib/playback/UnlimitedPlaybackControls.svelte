@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import type { PlaybackContent } from './playback-content';
 	import PlaybackFrameField from './PlaybackFrameField.svelte';
 	import PlaybackShell from './PlaybackShell.svelte';
 	import PlaybackToggle from './PlaybackToggle.svelte';
@@ -9,13 +9,13 @@
 		frame,
 		onplaybackchange,
 		onframechange,
-		children
+		content
 	}: {
 		playing: boolean;
 		frame: number;
 		onplaybackchange: (playing: boolean) => void;
 		onframechange: (frame: number) => void;
-		children: Snippet;
+		content: PlaybackContent;
 	} = $props();
 </script>
 
@@ -24,4 +24,4 @@
 	<PlaybackFrameField {frame} {onframechange} />
 {/snippet}
 
-<PlaybackShell {playing} {onplaybackchange} {transport} {children} />
+<PlaybackShell {playing} {onplaybackchange} {transport} {content} />

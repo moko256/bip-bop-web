@@ -1,35 +1,36 @@
 <script lang="ts">
-	import * as m from '$lib/paraglide/messages';
-	import type { Snippet } from 'svelte';
+	import type { PlaybackContent } from './playback-content';
 	import PlaybackIcon from './PlaybackIcon.svelte';
 	import { stoppedVeilColor } from './veil';
 
 	let {
 		playing,
 		onplaybackchange,
-		children
+		content
 	}: {
 		playing: boolean;
 		onplaybackchange: (playing: boolean) => void;
-		children: Snippet;
+		content: PlaybackContent;
 	} = $props();
+
+	function togglePlayback() {
+		onplaybackchange(!playing);
+	}
 </script>
 
 <div class="surface">
 	<div class="content">
-		{@render children()}
+		{@render content({ onclick: togglePlayback })}
 	</div>
-	<button
-		type="button"
+	<div
 		class={['veil', { playing }]}
 		style:--stopped-veil={stoppedVeilColor}
-		aria-label={playing ? m.playback_pause() : m.playback_play()}
-		onclick={() => onplaybackchange(!playing)}
+		aria-hidden="true"
 	>
 		{#if !playing}
 			<PlaybackIcon name="play-circle" size="4rem" />
 		{/if}
-	</button>
+	</div>
 </div>
 
 <style>
@@ -37,7 +38,12 @@
 		position: relative;
 	}
 
-	button.veil {
+	.content {
+		position: relative;
+		z-index: 0;
+	}
+
+	div.veil {
 		position: absolute;
 		inset: 0;
 		z-index: 1;
@@ -52,12 +58,10 @@
 		border-radius: 0;
 		background: var(--stopped-veil);
 		color: #fff;
-		box-shadow: none;
-		cursor: pointer;
-		transition: none;
+		pointer-events: none;
 	}
 
-	button.veil.playing {
+	div.veil.playing {
 		background: transparent;
 	}
 </style>

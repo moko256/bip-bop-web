@@ -1,14 +1,10 @@
-import { createRawSnippet } from 'svelte';
 import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { pausePath, playArrowPath, playCirclePath } from './icons';
+import { playbackTestContent } from './playback-test-content';
 import PlaybackControls from './PlaybackControls.svelte';
-
-const children = createRawSnippet(() => ({
-	render: () => '<div data-testid="content" style="width:100%;height:120px">picture</div>'
-}));
 
 function boxOf(element: Element) {
 	return element.getBoundingClientRect();
@@ -25,20 +21,20 @@ describe('PlaybackControls', () => {
 			fps: 60,
 			onplaybackchange: (next: boolean) => playback.push(next),
 			onframechange: (next: number) => frames.push(next),
-			children
+			content: playbackTestContent
 		});
 
 		await expect.element(page.getByTestId('content')).toBeVisible();
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
 
-		const veil = page.getByRole('button', { name: m.playback_play() }).first();
-		const play = page.getByRole('button', { name: m.playback_play() }).nth(1);
+		const veilElement = document.querySelector('.veil')!;
+		const play = page.getByRole('button', { name: m.playback_play() });
 		const progress = page.getByRole('slider', { name: m.playback_position_aria() });
 		const clock = page.getByText('00:00 / 00:10');
 		const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 
 		await expect.element(play).toBeVisible();
-		expect(veil.element().querySelector('path')?.getAttribute('d')).toBe(playCirclePath);
+		expect(veilElement.querySelector('path')?.getAttribute('d')).toBe(playCirclePath);
 		expect(play.element().querySelector('path')?.getAttribute('d')).toBe(playArrowPath);
 		expect(getComputedStyle(clock.element()).fontFamily).toContain('monospace');
 
@@ -48,7 +44,7 @@ describe('PlaybackControls', () => {
 		expect(bar.getAttribute('aria-valuemax')).toBe('600');
 		await expect.element(input).toHaveValue(30);
 
-		const veilBox = boxOf(veil.element());
+		const veilBox = boxOf(veilElement);
 		const transportBox = boxOf(play.element().parentElement!);
 		expect(transportBox.top).toBeGreaterThanOrEqual(veilBox.bottom - 1);
 
@@ -85,7 +81,7 @@ describe('PlaybackControls', () => {
 			fps: 60,
 			onplaybackchange: () => undefined,
 			onframechange: () => undefined,
-			children
+			content: playbackTestContent
 		});
 
 		await expect.element(page.getByText('00:59:59 / 01:00:00')).toBeVisible();
@@ -97,15 +93,13 @@ describe('PlaybackControls', () => {
 			fps: 60,
 			onplaybackchange: () => undefined,
 			onframechange: () => undefined,
-			children
+			content: playbackTestContent
 		});
 
-		const pause = page.getByRole('button', { name: m.playback_pause() }).nth(1);
+		const pause = page.getByRole('button', { name: m.playback_pause() });
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
 		await expect.element(page.getByText('01:00:00 / 01:00:00')).toBeVisible();
-		expect(
-			page.getByRole('button', { name: m.playback_pause() }).first().element().querySelector('path')
-		).toBeNull();
+		expect(document.querySelector('.veil')?.querySelector('path')).toBeNull();
 	});
 });
