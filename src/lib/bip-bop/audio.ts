@@ -51,40 +51,42 @@ export function planBipBopTone(elapsedMs: number): BipBopTonePlan {
 }
 
 export type BipBopPreviewCue = {
-	/** Milliseconds from now until the graph starts the burst. Never negative. */
+	/** Milliseconds from now until the graph starts the burst. Never sooner than the output lead. */
 	delayMs: number;
 	frequencyHz: number;
-	/** Milliseconds from now until this burst has finished on the audio clock. */
+	/** Milliseconds from now until this burst's second has finished on the picture clock. */
 	waitMs: number;
 	/**
-	 * Milliseconds the picture stays behind the audio clock.
-	 * Grows when part of the output lead was already in the past.
+	 * Milliseconds the picture waits at playback start.
+	 * The opening burst plays, then the video begins one output lead later.
 	 */
 	pictureShiftMs: number;
 };
 
 /**
- * One preview burst, prepared `outputLeadMs` before the picture.
- * `outputLeadMs` is `AudioContext.outputLatency` in milliseconds. The graph
- * starts the burst that early so the device plays it as the matching frame
- * appears. `pictureShiftMs` is lead the picture is already waiting out; lead
- * that would start the burst before now is added there instead.
+ * One preview burst.
+ * `outputLeadMs` is `AudioContext.outputLatency` in milliseconds. A burst
+ * scheduled at the current instant is dropped, so the graph start is at least
+ * that far ahead. On `startup`, if the burst had to be pushed out to that
+ * horizon, the picture waits until one output lead after the burst starts:
+ * the sound plays, then the video begins.
+ * Later calls keep the picture shift already chosen.
  * Video export does not use this. An offline context has no output latency.
  */
 export function planBipBopPreviewCue(
 	elapsedMs: number,
 	outputLeadMs: number,
-	pictureShiftMs: number
+	pictureShiftMs: number,
+	startup = false
 ): BipBopPreviewCue {
 	const plan = planBipBopTone(elapsedMs);
 	const lead = Number.isFinite(outputLeadMs) && outputLeadMs > 0 ? outputLeadMs : 0;
 	const shift = Number.isFinite(pictureShiftMs) && pictureShiftMs > 0 ? pictureShiftMs : 0;
-	const earlyMs = Math.max(0, lead - shift);
-	let delayMs = plan.delayMs - earlyMs;
+	const synced = plan.delayMs - lead;
+	const delayMs = Math.max(lead, synced);
 	let nextShift = shift;
-	if (delayMs < 0) {
-		nextShift += -delayMs;
-		delayMs = 0;
+	if (startup && synced < lead) {
+		nextShift = Math.max(shift, lead + lead - plan.delayMs);
 	}
 	return {
 		delayMs,
@@ -96,9 +98,9 @@ export function planBipBopPreviewCue(
 
 /**
  * Picture time for the web preview, in milliseconds.
- * Tones are scheduled on `audioElapsedMs`. `pictureShiftMs` is how long the
- * picture waits behind that clock so a burst already in the graph is heard
- * with its frame. The picture never moves earlier than `earliestMs`.
+ * `audioElapsedMs` runs from the play click. `pictureShiftMs` holds the
+ * picture at `earliestMs` while the opening burst plays; the video then
+ * starts. The picture never moves earlier than `earliestMs`.
  */
 export function bipBopPreviewPictureMs(
 	audioElapsedMs: number,

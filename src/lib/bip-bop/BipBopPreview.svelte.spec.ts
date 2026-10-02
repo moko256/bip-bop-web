@@ -155,9 +155,9 @@ describe('BipBopPreview', () => {
 		return input.valueAsNumber;
 	}
 
-	it('prepares the opening burst before the picture moves by outputLatency', async () => {
+	it('plays the opening burst one outputLatency ahead, then starts the picture', async () => {
 		PreviewAudioContext.instances = [];
-		PreviewAudioContext.outputLatencySeconds = 1;
+		PreviewAudioContext.outputLatencySeconds = 0.8;
 		const realAudioContext = window.AudioContext;
 		window.AudioContext = PreviewAudioContext as unknown as typeof AudioContext;
 
@@ -170,27 +170,29 @@ describe('BipBopPreview', () => {
 
 			await expect
 				.poll(() => PreviewAudioContext.instances[0]?.tones.length ?? 0)
-				.toBeGreaterThan(1);
+				.toBeGreaterThan(0);
 
-			const audio = PreviewAudioContext.instances[0]!;
-			expect(audio.latencyHint).toBe('playback');
-			expect(audio.tones[0]?.start).toBeCloseTo(0);
-			expect(audio.tones[0]?.frequencyHz).toBe(1500);
-			expect(audio.tones[1]?.start).toBeCloseTo(0.984);
-			expect(audio.tones[1]?.frequencyHz).toBe(475);
+			const opening = PreviewAudioContext.instances[0]!.tones[0]!;
+			expect(PreviewAudioContext.instances[0]!.latencyHint).toBe('playback');
+			expect(opening.frequencyHz).toBe(1500);
+			expect(opening.start).toBeCloseTo(0.8);
+			expect(opening.stop - opening.start).toBeCloseTo(0.016);
 			expect(frameValue()).toBe(0);
-			expect(Date.now() - started).toBeLessThan(1000);
+
+			await new Promise((resolve) => setTimeout(resolve, 1100));
+			expect(frameValue()).toBe(0);
+			expect(Date.now() - started).toBeGreaterThan(800);
 
 			await expect.poll(() => frameValue(), { timeout: 3000 }).toBeGreaterThan(0);
-			expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
+			expect(Date.now() - started).toBeGreaterThanOrEqual(1600);
 		} finally {
 			window.AudioContext = realAudioContext;
 		}
 	});
 
-	it('starts a mid-second burst early and lets the picture move immediately', async () => {
+	it('starts a later burst early and lets the picture move without the opening hold', async () => {
 		PreviewAudioContext.instances = [];
-		PreviewAudioContext.outputLatencySeconds = 0.4;
+		PreviewAudioContext.outputLatencySeconds = 0.05;
 		const realAudioContext = window.AudioContext;
 		window.AudioContext = PreviewAudioContext as unknown as typeof AudioContext;
 
@@ -210,11 +212,11 @@ describe('BipBopPreview', () => {
 
 			const opening = PreviewAudioContext.instances[0]!.tones[0]!;
 			expect(opening.frequencyHz).toBe(475);
-			expect(opening.start).toBeCloseTo(0.1);
+			expect(opening.start).toBeCloseTo(0.45);
 			expect(opening.stop - opening.start).toBeCloseTo(0.016);
 
 			await expect.poll(() => frameValue()).toBeGreaterThan(30);
-			expect(Date.now() - started).toBeLessThan(400);
+			expect(Date.now() - started).toBeLessThan(200);
 		} finally {
 			window.AudioContext = realAudioContext;
 		}

@@ -49,38 +49,50 @@ describe('planBipBopPreviewCue', () => {
 		expect(bipBopPreviewPictureMs(540, 0, 500)).toBe(540);
 	});
 
-	it('starts the opening burst now and holds the picture for the whole lead', () => {
-		const cue = planBipBopPreviewCue(0, 40, 0);
+	it('plays the opening burst after the output lead, then starts the picture', () => {
+		const cue = planBipBopPreviewCue(0, 40, 0, true);
 		expect(cue).toEqual({
-			delayMs: 0,
+			delayMs: 40,
 			frequencyHz: 1500,
 			waitMs: 16,
-			pictureShiftMs: 40
+			pictureShiftMs: 80
 		});
 		expect(bipBopPreviewPictureMs(0, cue.pictureShiftMs, 0)).toBe(0);
 		expect(bipBopPreviewPictureMs(40, cue.pictureShiftMs, 0)).toBe(0);
-		expect(bipBopPreviewPictureMs(57, cue.pictureShiftMs, 0)).toBe(17);
+		expect(bipBopPreviewPictureMs(80, cue.pictureShiftMs, 0)).toBe(0);
+		expect(bipBopPreviewPictureMs(97, cue.pictureShiftMs, 0)).toBe(17);
 	});
 
-	it('keeps the next burst on time after the picture has absorbed the lead', () => {
-		expect(planBipBopPreviewCue(16, 40, 40)).toEqual({
-			delayMs: 984,
+	it('keeps the next burst one output lead before its second', () => {
+		expect(planBipBopPreviewCue(16, 40, 80, false)).toEqual({
+			delayMs: 944,
 			frequencyHz: 475,
 			waitMs: 1000,
-			pictureShiftMs: 40
+			pictureShiftMs: 80
 		});
 	});
 
-	it('holds the picture only for the lead that is already in the past', () => {
-		const cue = planBipBopPreviewCue(980, 40, 0);
+	it('pushes a startup burst that would land inside the output lead', () => {
+		const cue = planBipBopPreviewCue(980, 40, 0, true);
 		expect(cue).toEqual({
-			delayMs: 0,
+			delayMs: 40,
 			frequencyHz: 475,
 			waitMs: 36,
-			pictureShiftMs: 20
+			pictureShiftMs: 60
 		});
 		expect(bipBopPreviewPictureMs(980, cue.pictureShiftMs, 980)).toBe(980);
-		expect(bipBopPreviewPictureMs(1020, cue.pictureShiftMs, 980)).toBe(1000);
+		expect(bipBopPreviewPictureMs(1020, cue.pictureShiftMs, 980)).toBe(980);
+		expect(bipBopPreviewPictureMs(1040, cue.pictureShiftMs, 980)).toBe(980);
+		expect(bipBopPreviewPictureMs(1060, cue.pictureShiftMs, 980)).toBe(1000);
+	});
+
+	it('does not freeze the picture for a later burst inside the output lead', () => {
+		expect(planBipBopPreviewCue(980, 40, 80, false)).toEqual({
+			delayMs: 40,
+			frequencyHz: 475,
+			waitMs: 36,
+			pictureShiftMs: 80
+		});
 	});
 
 	it('ignores a missing output latency', () => {

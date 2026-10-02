@@ -21,9 +21,11 @@
 
 	let rafId = 0;
 	let toneTimer = 0;
+	let originMs = 0;
 	let startedAt = 0;
 	let pictureShiftMs = 0;
 	let renderedMs = 0;
+	let scheduleStartup = false;
 	let audio: AudioContext | null = null;
 	let disposed = false;
 
@@ -58,22 +60,36 @@
 		silence();
 	}
 
-	function scheduleTone(elapsedMs: number) {
+	function scheduleTone(pictureMs: number) {
 		if (disposed || !playing) return;
 		const context = audio;
 		if (!context || context.state !== 'running') return;
-		const cue = planBipBopPreviewCue(elapsedMs, outputLeadMs(context), pictureShiftMs);
+		const cue = planBipBopPreviewCue(
+			pictureMs,
+			outputLeadMs(context),
+			pictureShiftMs,
+			scheduleStartup
+		);
+		scheduleStartup = false;
 		pictureShiftMs = cue.pictureShiftMs;
 		BipBopAudioRenderer(context, cue.delayMs, cue.frequencyHz);
-		toneTimer = window.setTimeout(() => scheduleTone(audioElapsedMs()), cue.waitMs);
+		// Stay on this second until the picture hold has elapsed, then wake
+		// after the burst so the next plan targets the following second.
+		const holdRemaining = Math.max(0, pictureShiftMs - (Date.now() - originMs));
+		toneTimer = window.setTimeout(
+			() => scheduleTone(pictureElapsedMs()),
+			cue.waitMs + holdRemaining
+		);
 	}
 
 	function beginPlayback(elapsedMs: number) {
 		pictureShiftMs = 0;
 		renderedMs = elapsedMs;
-		startedAt = Date.now() - elapsedMs;
-		// Queue the burst before drawing. outputLatency is how long the device
-		// holds it, so the picture meets the sound when the burst comes out.
+		originMs = Date.now();
+		startedAt = originMs - elapsedMs;
+		scheduleStartup = true;
+		// A burst at the current instant is dropped. Place it one outputLatency
+		// ahead so it is heard, then start the picture one outputLatency later.
 		scheduleTone(elapsedMs);
 		rafId = requestAnimationFrame(tick);
 	}
@@ -94,8 +110,8 @@
 		stopClock();
 		const elapsedMs = (frame * 1000) / FPS;
 		playing = true;
-		// Playback favors a steady buffer over the lowest delay. The cue uses
-		// outputLatency so that buffer does not put the sound behind the picture.
+		// Playback favors a steady buffer. outputLatency is how long that buffer
+		// holds a burst, so the opening sound is scheduled past it.
 		const context = new AudioContext({ latencyHint: 'playback' });
 		audio = context;
 		const run = () => {
