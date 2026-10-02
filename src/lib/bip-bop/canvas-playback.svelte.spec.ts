@@ -110,6 +110,24 @@ describe('canvas playback', () => {
 		expect(audio.events.at(-1)).toBe('start:2000');
 	});
 
+	it('keeps advancing after ten seconds when the session has no length', () => {
+		const time = manualClock();
+		const audio = recordingAudio();
+		const session = new PlaybackSession({
+			fps: BIP_BOP_FPS,
+			connect: canvasPlayback(time.clock, audio)
+		});
+
+		session.setPlaying(true);
+		time.advance(10_000);
+		expect(session.frame).toBe(600);
+		expect(session.playing).toBe(true);
+
+		time.advance(1000);
+		expect(session.frame).toBe(660);
+		expect(session.playing).toBe(true);
+	});
+
 	it('keeps a paused seek on the frame without starting audio', () => {
 		const time = manualClock();
 		const audio = recordingAudio();

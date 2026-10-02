@@ -1,15 +1,14 @@
 <script lang="ts">
 	import { browserPlaybackClock } from '$lib/playback/clock';
-	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
+	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import { canvasPlayback } from './canvas-playback';
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
 	import * as m from '$lib/paraglide/messages';
-	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './timeline';
+	import { BIP_BOP_FPS } from './timeline';
 	const session = new PlaybackSession({
-		maxFrame: BIP_BOP_MAX_FRAME,
 		fps: BIP_BOP_FPS,
 		connect: canvasPlayback(browserPlaybackClock())
 	});
@@ -75,16 +74,14 @@
 	};
 </script>
 
-<PlaybackControls
+<UnlimitedPlaybackControls
 	playing={session.playing}
 	frame={session.frame}
-	maxFrame={session.maxFrame}
-	fps={session.fps}
 	onplaybackchange={(next) => session.setPlaying(next)}
 	onframechange={(next) => session.seek(next)}
 >
 	<div class="preview" {@attach paint} {@attach release}></div>
-</PlaybackControls>
+</UnlimitedPlaybackControls>
 
 <style>
 	.preview {
