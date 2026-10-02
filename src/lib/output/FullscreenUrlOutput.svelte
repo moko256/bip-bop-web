@@ -13,14 +13,16 @@
 	{/snippet}
 	{#snippet settings()}
 		{@render outputTypeSelector()}
-		<label>
-			解像度
-			<select>
-				{#each resolutions as resolution (resolution.value)}
-					<option value={resolution.value}>{resolution.label}</option>
-				{/each}
-			</select>
-		</label>
+		<div class="output-fields">
+			<label>
+				解像度
+				<select>
+					{#each resolutions as resolution (resolution.value)}
+						<option value={resolution.value}>{resolution.label}</option>
+					{/each}
+				</select>
+			</label>
+		</div>
 		<label>
 			URL
 			<input type="url" readonly placeholder="URL" />

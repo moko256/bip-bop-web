@@ -26,7 +26,23 @@
 	}
 
 	.settings {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pico-spacing, 1rem);
 		width: 100%;
+	}
+
+	.settings :global(.output-fields) {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pico-spacing, 1rem);
+	}
+
+	.settings :global(.output-fields > label) {
+		display: flex;
+		flex-direction: column;
+		gap: 0.25rem;
+		margin: 0;
 	}
 
 	@media (min-width: 721px) {

@@ -150,9 +150,9 @@
 		</div>
 	{/snippet}
 	{#snippet settings()}
-		<div onchange={invalidate}>
+		<div class="settings-form" onchange={invalidate}>
 			{@render outputTypeSelector()}
-			<div class="grid">
+			<div class="output-fields">
 				<label>
 					解像度
 					<select bind:value={resolution}>
@@ -215,5 +215,11 @@
 		place-self: center;
 		width: 40%;
 		margin: 0;
+	}
+
+	.settings-form {
+		display: flex;
+		flex-direction: column;
+		gap: var(--pico-spacing, 1rem);
 	}
 </style>
