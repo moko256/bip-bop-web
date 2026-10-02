@@ -32,21 +32,14 @@
 		return clampFrame(next, maxFrame);
 	}
 
-	function isKnob(target: EventTarget | null): boolean {
-		return target instanceof Element && target.closest('.knob') !== null;
-	}
-
 	function onPointerDown(event: PointerEvent) {
 		if (event.button !== 0) return;
 		const surface = event.currentTarget;
 		const track = trackFrom(event);
 		if (!(surface instanceof HTMLElement) || !track) return;
-		if (isKnob(event.target)) {
-			dragging = true;
-			if (event.isTrusted) surface.setPointerCapture(event.pointerId);
-		} else {
-			onframechange(frameAt(event.clientX, track));
-		}
+		dragging = true;
+		if (event.isTrusted) surface.setPointerCapture(event.pointerId);
+		onframechange(frameAt(event.clientX, track));
 	}
 
 	function onPointerMove(event: PointerEvent) {
