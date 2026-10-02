@@ -6,9 +6,8 @@
 	import { canvasPlayback } from './canvas-playback';
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './timeline';
-
-	const PREVIEW_LABEL = 'Bip-Bop preview';
 	const session = new PlaybackSession({
 		maxFrame: BIP_BOP_MAX_FRAME,
 		fps: BIP_BOP_FPS,
@@ -27,7 +26,7 @@
 		const canvas = document.createElement('canvas');
 		canvas.width = width;
 		canvas.height = height;
-		canvas.setAttribute('aria-label', PREVIEW_LABEL);
+		canvas.setAttribute('aria-label', m.bip_bop_preview_aria());
 		return canvas;
 	}
 

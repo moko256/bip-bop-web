@@ -15,6 +15,7 @@
 	import OutputLayout from './OutputLayout.svelte';
 	import { parseResolution, resolutions, type Resolution, type VideoOutputType } from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
+	import * as m from '$lib/paraglide/messages';
 
 	let {
 		outputType,
@@ -94,7 +95,7 @@
 
 	function errorMessage(error: unknown): string {
 		if (error instanceof Error && error.message !== '') return error.message;
-		return '動画の生成に失敗しました';
+		return m.error_video_generation_failed();
 	}
 </script>
 
@@ -103,14 +104,14 @@
 		class="media placeholder"
 		style:padding-bottom={seekBarHeight}
 		role="img"
-		aria-label="動画のプレースホルダー"
+		aria-label={m.video_placeholder_aria()}
 	>
 		<BipBopStill width={bitmap.width} height={bitmap.height} />
 	</div>
 {/snippet}
 
 {#snippet actions(pending: boolean)}
-	<button type="button" class="generate" disabled={pending} onclick={start}>生成</button>
+	<button type="button" class="generate" disabled={pending} onclick={start}>{m.generate()}</button>
 {/snippet}
 
 <OutputLayout>
@@ -122,7 +123,7 @@
 						{@render placeholder()}
 						<div class="loading" style:padding-bottom={seekBarHeight}>
 							<div class="veil" style:background={stoppedVeilColor}></div>
-							<progress aria-label="生成中"></progress>
+							<progress aria-label={m.generating_aria()}></progress>
 						</div>
 					</div>
 				{:then url}
@@ -140,7 +141,7 @@
 								class="media"
 								src={url}
 								playsinline
-								aria-label="生成した動画"
+								aria-label={m.generated_video_aria()}
 								{@attach (element) => {
 									const detach = playbackSide.attach(element);
 									return () => {
@@ -168,7 +169,7 @@
 			{@render outputTypeSelector()}
 			<div class="output-fields">
 				<label>
-					解像度
+					{m.resolution()}
 					<select bind:value={resolution}>
 						{#each resolutions as option (option.value)}
 							<option value={option.value}>{option.label}</option>
@@ -176,7 +177,7 @@
 					</select>
 				</label>
 				<label>
-					ビデオコーデック
+					{m.video_codec()}
 					<select value={videoCodec} onchange={onVideoCodecChange}>
 						{#each videoCodecs as videoCodecOption (videoCodecOption)}
 							<option value={videoCodecOption}>{videoCodecOption}</option>
@@ -184,7 +185,7 @@
 					</select>
 				</label>
 				<label>
-					オーディオコーデック
+					{m.audio_codec()}
 					<select value={audioCodec} onchange={onAudioCodecChange}>
 						{#each audioCodecs as audioCodecOption (audioCodecOption)}
 							<option value={audioCodecOption}>{audioCodecOption}</option>

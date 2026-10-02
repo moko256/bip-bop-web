@@ -1,13 +1,14 @@
 <script lang="ts">
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
-	import { isVideoOutputType, outputTypeLabels, outputTypes, type OutputType } from './output';
+	import * as m from '$lib/paraglide/messages';
+	import { isVideoOutputType, outputTypeLabel, outputTypes, type OutputType } from './output';
 	import PageOutput from './PageOutput.svelte';
 
 	let outputType = $state<OutputType>('page');
 </script>
 
 {#snippet outputTypeSelector()}
-	<div class="output-type-switcher" role="group" aria-label="OutputType">
+	<div class="output-type-switcher" role="group" aria-label={m.output_type_group_aria_label()}>
 		{#each outputTypes as type (type)}
 			<button
 				type="button"
@@ -17,7 +18,7 @@
 					outputType = type;
 				}}
 			>
-				{outputTypeLabels[type]}
+				{outputTypeLabel(type)}
 			</button>
 		{/each}
 	</div>

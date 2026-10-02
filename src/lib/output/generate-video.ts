@@ -14,6 +14,7 @@ import {
 	type AudioCodec,
 	type VideoCodec
 } from 'mediabunny';
+import * as m from '$lib/paraglide/messages';
 import { parseResolution, type Resolution, type VideoOutputType } from './output';
 import { supportedAudioCodecs, videoOutputFormat } from './video-container';
 
@@ -32,14 +33,14 @@ export async function generateBipBopVideo(options: {
 
 	const format = videoOutputFormat(options.outputType);
 	if (!format.getSupportedAudioCodecs().includes(options.audioCodec)) {
-		throw new Error('このオーディオコーデックはコンテナで利用できません');
+		throw new Error(m.error_audio_codec_unavailable_in_container());
 	}
 	const encodable = await canEncodeAudio(options.audioCodec, {
 		numberOfChannels: 1,
 		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
 		quality: new Quality('high')
 	});
-	if (!encodable) throw new Error('このオーディオコーデックはエンコードできません');
+	if (!encodable) throw new Error(m.error_audio_codec_cannot_encode());
 	if (options.signal?.aborted) throw aborted();
 
 	const canvas = new OffscreenCanvas(options.width, options.height);
@@ -78,7 +79,7 @@ export async function generateBipBopVideo(options: {
 		throw error;
 	}
 
-	if (!target.buffer) throw new Error('動画の生成に失敗しました');
+	if (!target.buffer) throw new Error(m.error_video_generation_failed());
 	return new Blob([target.buffer], { type: format.mimeType });
 }
 
@@ -118,7 +119,7 @@ export async function generatePlayback(options: {
 }
 
 function aborted(): DOMException {
-	return new DOMException('動画の生成を中断しました', 'AbortError');
+	return new DOMException(m.error_video_generation_aborted(), 'AbortError');
 }
 
 async function cancelOutput(output: Output): Promise<void> {

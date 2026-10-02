@@ -1,4 +1,5 @@
 import { createRawSnippet } from 'svelte';
+import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
@@ -30,11 +31,11 @@ describe('PlaybackControls', () => {
 		await expect.element(page.getByTestId('content')).toBeVisible();
 		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
 
-		const veil = page.getByRole('button', { name: '再生' }).first();
-		const play = page.getByRole('button', { name: '再生' }).nth(1);
-		const progress = page.getByRole('slider', { name: '再生位置' });
+		const veil = page.getByRole('button', { name: m.playback_play() }).first();
+		const play = page.getByRole('button', { name: m.playback_play() }).nth(1);
+		const progress = page.getByRole('slider', { name: m.playback_position_aria() });
 		const clock = page.getByText('00:00 / 00:10');
-		const input = page.getByRole('spinbutton', { name: 'フレーム' });
+		const input = page.getByRole('spinbutton', { name: m.frame_aria() });
 
 		await expect.element(play).toBeVisible();
 		expect(veil.element().querySelector('path')?.getAttribute('d')).toBe(playCirclePath);
@@ -99,12 +100,12 @@ describe('PlaybackControls', () => {
 			children
 		});
 
-		const pause = page.getByRole('button', { name: '停止' }).nth(1);
+		const pause = page.getByRole('button', { name: m.playback_pause() }).nth(1);
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
 		await expect.element(page.getByText('01:00:00 / 01:00:00')).toBeVisible();
 		expect(
-			page.getByRole('button', { name: '停止' }).first().element().querySelector('path')
+			page.getByRole('button', { name: m.playback_pause() }).first().element().querySelector('path')
 		).toBeNull();
 	});
 });

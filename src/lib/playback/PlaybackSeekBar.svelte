@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages';
 	import { seekBarHeight } from './seek-bar';
 	import { clampFrame } from './time';
 
@@ -87,7 +88,7 @@
 	style:--knob-hot={seekBarHeight}
 	role="slider"
 	tabindex="0"
-	aria-label="再生位置"
+	aria-label={m.playback_position_aria()}
 	aria-orientation="horizontal"
 	aria-valuemin="0"
 	aria-valuemax={maxFrame}

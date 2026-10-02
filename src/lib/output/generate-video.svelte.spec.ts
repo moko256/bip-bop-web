@@ -14,7 +14,7 @@ function correlation(samples: Float32Array, frequencyHz: number, sampleRate: num
 
 async function defaultMp4AudioCodec() {
 	const audioCodec = await preferredAudioCodec('mp4');
-	if (!audioCodec) throw new Error('音声コーデックを利用できません');
+	if (!audioCodec) throw new Error(m.error_audio_codec_unavailable());
 	return audioCodec;
 }
 

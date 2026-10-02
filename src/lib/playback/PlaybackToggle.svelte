@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages';
 	import PlaybackIcon from './PlaybackIcon.svelte';
 
 	let {
@@ -12,7 +13,7 @@
 
 <button
 	type="button"
-	aria-label={playing ? '停止' : '再生'}
+	aria-label={playing ? m.playback_pause() : m.playback_play()}
 	onclick={() => onplaybackchange(!playing)}
 >
 	<PlaybackIcon name={playing ? 'pause' : 'play-arrow'} size="1.5rem" />

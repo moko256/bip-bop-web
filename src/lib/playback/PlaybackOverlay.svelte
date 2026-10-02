@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages';
 	import type { Snippet } from 'svelte';
 	import PlaybackIcon from './PlaybackIcon.svelte';
 	import { stoppedVeilColor } from './veil';
@@ -22,7 +23,7 @@
 		type="button"
 		class={['veil', { playing }]}
 		style:--stopped-veil={stoppedVeilColor}
-		aria-label={playing ? '停止' : '再生'}
+		aria-label={playing ? m.playback_pause() : m.playback_play()}
 		onclick={() => onplaybackchange(!playing)}
 	>
 		{#if !playing}

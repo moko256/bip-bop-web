@@ -1,4 +1,5 @@
 <script lang="ts">
+	import * as m from '$lib/paraglide/messages';
 	import { clampFrame } from './time';
 
 	let {
@@ -24,7 +25,7 @@
 	max={maxFrame}
 	step="1"
 	value={frame}
-	aria-label="フレーム"
+	aria-label={m.frame_aria()}
 	oninput={onFrameInput}
 />
 
