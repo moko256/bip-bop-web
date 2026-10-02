@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import * as m from '$lib/paraglide/messages';
 import {
 	defaultResolution,
 	isVideoOutputType,
@@ -78,11 +77,26 @@ describe('resolutionGroups', () => {
 		expect(defaultResolution).toBe('1920x1080');
 	});
 
-	it('orders aspect groups from 16:9 toward 4:3, then wider than 16:9', () => {
-		const labels = resolutionGroups.map((group) => group.label);
-		expect(labels.indexOf('16:9')).toBeLessThan(labels.indexOf('16:10'));
-		expect(labels.indexOf('16:10')).toBeLessThan(labels.indexOf('4:3'));
-		expect(labels.at(-1)).toBe(m.resolution_aspect_ultrawide());
+	it('orders aspect-ratio groups from 16:9 toward 4:3, then wider than 16:9', () => {
+		const ratios = resolutionGroups.map((group) => {
+			const [width, height] = group.label.split(':').map(Number);
+			return width / height;
+		});
+		const sixteenByNine = 16 / 9;
+		const firstWiderIndex = ratios.findIndex((ratio) => ratio > sixteenByNine);
+		expect(firstWiderIndex).toBeGreaterThan(0);
+		expect(ratios.indexOf(sixteenByNine)).toBeLessThan(ratios.indexOf(16 / 10));
+		expect(ratios.indexOf(16 / 10)).toBeLessThan(ratios.indexOf(4 / 3));
+		const upToSixteenByNine = ratios.slice(0, firstWiderIndex);
+		expect(upToSixteenByNine).toEqual([...upToSixteenByNine].sort((a, b) => b - a));
+		const widerGroups = ratios.slice(firstWiderIndex);
+		expect(widerGroups).toEqual([...widerGroups].sort((a, b) => b - a));
+		for (const ratio of upToSixteenByNine) {
+			expect(ratio).toBeLessThanOrEqual(sixteenByNine + 1e-9);
+		}
+		for (const ratio of widerGroups) {
+			expect(ratio).toBeGreaterThan(sixteenByNine);
+		}
 	});
 
 	it('lists the highest pixel count first within each group', () => {

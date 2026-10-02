@@ -7,7 +7,6 @@
 	"output_type_fullscreen_url": "フルスクリーンURL",
 	"output_type_group_aria_label": "出力形式",
 	"resolution": "解像度",
-	"resolution_aspect_ultrawide": "16:9より横長",
 	"video_codec": "ビデオコーデック",
 	"audio_codec": "オーディオコーデック",
 	"generate": "生成",

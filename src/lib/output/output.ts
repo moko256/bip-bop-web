@@ -87,46 +87,19 @@ function gcd(a: number, b: number): number {
 }
 
 const SIXTEEN_BY_NINE = 16 / 9;
-const SIXTEEN_BY_TEN = 16 / 10;
-const FOUR_BY_THREE = 4 / 3;
-const ASPECT_EPSILON = 1e-4;
 
 function aspectRatioLabel(width: number, height: number): string {
 	const g = gcd(width, height);
 	return `${width / g}:${height / g}`;
 }
 
-function isUltrawide(width: number, height: number): boolean {
-	return width / height > SIXTEEN_BY_NINE;
-}
-
-function matchesAspect(width: number, height: number, ratio: number): boolean {
-	return Math.abs(width / height - ratio) < ASPECT_EPSILON;
-}
-
-function resolutionGroupLabel(width: number, height: number): string {
-	if (isUltrawide(width, height)) return m.resolution_aspect_ultrawide();
-	if (matchesAspect(width, height, SIXTEEN_BY_NINE)) return '16:9';
-	if (matchesAspect(width, height, SIXTEEN_BY_TEN)) return '16:10';
-	if (matchesAspect(width, height, FOUR_BY_THREE)) return '4:3';
-	return aspectRatioLabel(width, height);
-}
-
-/** Lower sorts earlier; ultrawide groups are always last. */
+/** Lower sorts earlier; ratios wider than 16:9 are always after the rest. */
 function resolutionGroupSortKey(width: number, height: number): number {
-	if (isUltrawide(width, height)) return 1_000_000;
 	const ratio = width / height;
-	if (matchesAspect(width, height, SIXTEEN_BY_NINE)) return 0;
-	if (matchesAspect(width, height, SIXTEEN_BY_TEN)) return 10_000;
-	if (matchesAspect(width, height, FOUR_BY_THREE)) return 20_000;
-	if (ratio > SIXTEEN_BY_TEN) return 5_000 - Math.round(ratio * 1_000);
-	if (ratio > FOUR_BY_THREE) return 15_000 - Math.round(ratio * 1_000);
-	return 25_000 - Math.round(ratio * 1_000);
-}
-
-function resolutionGroupId(width: number, height: number): string {
-	if (isUltrawide(width, height)) return 'ultrawide';
-	return resolutionGroupLabel(width, height);
+	if (ratio > SIXTEEN_BY_NINE) {
+		return 1_000_000 - Math.round(ratio * 10_000);
+	}
+	return -Math.round(ratio * 10_000);
 }
 
 export type Resolution = `${number}x${number}`;
@@ -156,10 +129,9 @@ function buildResolutionGroups(): ResolutionGroup[] {
 
 	for (const [width, height] of resolutionSizes) {
 		const value = `${width}x${height}` as Resolution;
-		const groupLabel = resolutionGroupLabel(width, height);
-		const id = resolutionGroupId(width, height);
+		const id = aspectRatioLabel(width, height);
 		const sortKey = resolutionGroupSortKey(width, height);
-		const entry = byGroup.get(id) ?? { id, label: groupLabel, sortKey, options: [] };
+		const entry = byGroup.get(id) ?? { id, label: id, sortKey, options: [] };
 		entry.options.push({ value, label: resolutionPixelLabel(value) });
 		byGroup.set(id, entry);
 	}
