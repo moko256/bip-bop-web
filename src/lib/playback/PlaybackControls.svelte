@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import PlaybackIcon from './PlaybackIcon.svelte';
 	import PlaybackOverlay from './PlaybackOverlay.svelte';
+	import SeekBar from './SeekBar.svelte';
 	import { clampFrame, formatPlaybackTime } from './time';
 
 	let {
@@ -43,7 +44,7 @@
 		>
 			<PlaybackIcon name={playing ? 'pause' : 'play-arrow'} size="1.5rem" />
 		</button>
-		<progress max={maxFrame} value={frame} aria-label="再生位置"></progress>
+		<SeekBar {frame} {maxFrame} {onframechange} />
 		<span class="clock">{clock}</span>
 		<input
 			type="number"
@@ -73,13 +74,6 @@
 		flex: 0 0 auto;
 		place-items: center;
 		width: auto;
-		margin: 0;
-	}
-
-	.transport progress {
-		flex: 1 1 auto;
-		width: auto;
-		min-width: 0;
 		margin: 0;
 	}
 

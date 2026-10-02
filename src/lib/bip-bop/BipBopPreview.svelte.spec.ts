@@ -154,10 +154,8 @@ describe('BipBopPreview', () => {
 
 		await expect.element(page.getByText('00:02 / 00:10')).toBeVisible();
 		await expect.element(input).toHaveValue(120);
-		const progress = page
-			.getByRole('progressbar', { name: '再生位置' })
-			.element() as HTMLProgressElement;
-		expect(progress.value).toBe(120);
-		expect(progress.max).toBe(600);
+		const progress = page.getByRole('slider', { name: '再生位置' }).element();
+		expect(progress.getAttribute('aria-valuenow')).toBe('120');
+		expect(progress.getAttribute('aria-valuemax')).toBe('600');
 	});
 });
