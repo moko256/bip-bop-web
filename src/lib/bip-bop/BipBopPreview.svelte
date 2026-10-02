@@ -74,14 +74,19 @@
 	};
 </script>
 
+{#snippet content({ onclick })}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="preview" {onclick} {@attach paint} {@attach release}></div>
+{/snippet}
+
 <UnlimitedPlaybackControls
 	playing={session.playing}
 	frame={session.frame}
 	onplaybackchange={(next) => session.setPlaying(next)}
 	onframechange={(next) => session.seek(next)}
->
-	<div class="preview" {@attach paint} {@attach release}></div>
-</UnlimitedPlaybackControls>
+	{content}
+/>
 
 <style>
 	.preview {

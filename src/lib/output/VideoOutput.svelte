@@ -14,7 +14,12 @@
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
 	import ResolutionSelect from './ResolutionSelect.svelte';
-	import { parseResolution, defaultResolution, type Resolution, type VideoOutputType } from './output';
+	import {
+		parseResolution,
+		defaultResolution,
+		type Resolution,
+		type VideoOutputType
+	} from './output';
 	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 	import * as m from '$lib/paraglide/messages';
 
@@ -129,6 +134,24 @@
 				{#await generation.playback}
 					{@render placeholderViewport(loadingOverlay)}
 				{:then url}
+					{#snippet content({ onclick })}
+						<!-- svelte-ignore a11y_media_has_caption -->
+						<video
+							class="media viewport"
+							style:aspect-ratio={videoAspectRatio}
+							src={url}
+							playsinline
+							aria-label={m.generated_video_aria()}
+							{onclick}
+							{@attach (element) => {
+								const detach = playbackSide.attach(element);
+								return () => {
+									detach();
+									URL.revokeObjectURL(url);
+								};
+							}}
+						></video>
+					{/snippet}
 					<PlaybackControls
 						playing={session.playing}
 						frame={session.frame}
@@ -136,24 +159,8 @@
 						fps={session.fps}
 						onplaybackchange={(next) => session.setPlaying(next)}
 						onframechange={(next) => session.seek(next)}
-					>
-						<div class="viewport" style:aspect-ratio={videoAspectRatio}>
-							<!-- svelte-ignore a11y_media_has_caption -->
-							<video
-								class="media"
-								src={url}
-								playsinline
-								aria-label={m.generated_video_aria()}
-								{@attach (element) => {
-									const detach = playbackSide.attach(element);
-									return () => {
-										detach();
-										URL.revokeObjectURL(url);
-									};
-								}}
-							></video>
-						</div>
-					</PlaybackControls>
+						{content}
+					/>
 				{:catch}
 					{@render placeholderViewport()}
 				{/await}

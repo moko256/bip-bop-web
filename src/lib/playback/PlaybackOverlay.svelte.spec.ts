@@ -1,14 +1,9 @@
-import { createRawSnippet } from 'svelte';
-import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import { playCirclePath } from './icons';
+import { playbackTestContent } from './playback-test-content';
 import PlaybackOverlay from './PlaybackOverlay.svelte';
-
-const children = createRawSnippet(() => ({
-	render: () => '<div data-testid="content" style="width:100%;height:160px">picture</div>'
-}));
 
 function center(element: Element) {
 	const box = element.getBoundingClientRect();
@@ -21,53 +16,51 @@ describe('PlaybackOverlay', () => {
 		render(PlaybackOverlay, {
 			playing: false,
 			onplaybackchange: (next: boolean) => changes.push(next),
-			children
+			content: playbackTestContent
 		});
 
-		const content = page.getByTestId('content');
-		const veil = page.getByRole('button', { name: m.playback_play() });
-		await expect.element(content).toBeVisible();
-		await expect.element(veil).toBeVisible();
+		const picture = page.getByTestId('content');
+		await expect.element(picture).toBeVisible();
 
-		const button = veil.element();
-		const mark = button.querySelector('path');
+		const veilElement = document.querySelector('.veil')!;
+		expect(veilElement).toBeTruthy();
+		const mark = veilElement.querySelector('path');
 		expect(mark?.getAttribute('d')).toBe(playCirclePath);
-		expect(getComputedStyle(button).backgroundColor).toBe('rgba(0, 0, 0, 0.3)');
-		expect(getComputedStyle(button).transitionDuration).toBe('0s');
+		expect(getComputedStyle(veilElement).backgroundColor).toBe('rgba(0, 0, 0, 0.3)');
+		expect(getComputedStyle(veilElement).pointerEvents).toBe('none');
 
-		const contentBox = content.element().getBoundingClientRect();
-		const veilBox = button.getBoundingClientRect();
+		const contentBox = picture.element().getBoundingClientRect();
+		const veilBox = veilElement.getBoundingClientRect();
 		expect(Math.abs(veilBox.top - contentBox.top)).toBeLessThan(1);
 		expect(Math.abs(veilBox.left - contentBox.left)).toBeLessThan(1);
 		expect(Math.abs(veilBox.width - contentBox.width)).toBeLessThan(1);
 		expect(Math.abs(veilBox.height - contentBox.height)).toBeLessThan(1);
 
 		const markBox = center(mark!);
-		const veilCenter = center(button);
+		const veilCenter = center(veilElement);
 		expect(Math.abs(markBox.x - veilCenter.x)).toBeLessThan(1);
 		expect(Math.abs(markBox.y - veilCenter.y)).toBeLessThan(1);
 
-		await veil.click();
+		await picture.click();
 		expect(changes).toEqual([true]);
 	});
 
-	it('drops the veil as soon as playback starts and stops on the next click', async () => {
+	it('drops the veil as soon as playback starts and stops on the next content click', async () => {
 		const changes: boolean[] = [];
 		const onplaybackchange = (next: boolean) => changes.push(next);
 		const view = await render(PlaybackOverlay, {
 			playing: false,
 			onplaybackchange,
-			children
+			content: playbackTestContent
 		});
 
-		await view.rerender({ playing: true, onplaybackchange, children });
+		await view.rerender({ playing: true, onplaybackchange, content: playbackTestContent });
 
-		const veil = page.getByRole('button', { name: m.playback_pause() });
-		await expect.element(veil).toBeVisible();
-		expect(veil.element().querySelector('path')).toBeNull();
-		expect(getComputedStyle(veil.element()).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+		const veilElement = document.querySelector('.veil')!;
+		expect(veilElement.querySelector('path')).toBeNull();
+		expect(getComputedStyle(veilElement).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-		await veil.click();
+		await page.getByTestId('content').click();
 		expect(changes).toEqual([false]);
 	});
 });
