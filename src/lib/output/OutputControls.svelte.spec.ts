@@ -318,6 +318,53 @@ describe('OutputControls', () => {
 		}
 	});
 
+	it('keeps the same video element and blob URL while playback advances', async () => {
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+		try {
+			const url = videoUrl();
+			generatePlayback.mockResolvedValue(url);
+			render(OutputControls);
+
+			await page.getByRole('button', { name: 'mp4' }).click();
+			await page.getByRole('button', { name: m.generate() }).click();
+			await expect.element(page.getByLabelText(m.generated_video_aria())).toBeVisible();
+
+			const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
+			let mediaTime = 0;
+			Object.defineProperty(video, 'currentTime', {
+				configurable: true,
+				get: () => mediaTime,
+				set: (value: number) => {
+					mediaTime = value;
+				}
+			});
+			revoke.mockClear();
+
+			await page.getByRole('button', { name: m.playback_play() }).first().click();
+			for (const seconds of [1, 2]) {
+				video.currentTime = seconds;
+				video.dispatchEvent(new Event('timeupdate'));
+				await expect.element(page.getByText(`00:0${seconds} / 01:00`)).toBeVisible();
+			}
+
+			expect(page.getByLabelText(m.generated_video_aria()).element()).toBe(video);
+			expect(document.querySelectorAll('video')).toHaveLength(1);
+			expect(video.src).toBe(url);
+			expect(revoke).not.toHaveBeenCalled();
+			expect(play).toHaveBeenCalledOnce();
+
+			await page.getByRole('combobox', { name: m.resolution() }).selectOptions('640x480');
+			await expect.element(page.getByLabelText(m.generated_video_aria())).not.toBeInTheDocument();
+			expect(revoke).toHaveBeenCalledWith(url);
+		} finally {
+			revoke.mockRestore();
+			play.mockRestore();
+			pause.mockRestore();
+		}
+	});
+
 	it('plays, seeks, and pauses the generated video from the transport', async () => {
 		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
