@@ -15,6 +15,7 @@
 	"url_label": "URL",
 	"video_placeholder_aria": "動画のプレースホルダー",
 	"generating_aria": "生成中",
+	"loading_video_output_aria": "動画出力を読み込み中",
 	"generated_video_aria": "生成した動画",
 	"playback_position_aria": "再生位置",
 	"frame_aria": "フレーム",
