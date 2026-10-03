@@ -121,6 +121,27 @@ function pixelsAlongShortSide(shortSide: number, numerator: number, denominator:
 type BipBopCanvas = HTMLCanvasElement | OffscreenCanvas;
 type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
+type PreparedContext = {
+	ctx: BipBopContext;
+	width: number;
+	height: number;
+};
+
+const preparedContexts = new WeakMap<BipBopCanvas, PreparedContext>();
+
+/** One 2d context per canvas. A size change configures it again. */
+function prepareContext(canvas: BipBopCanvas, width: number, height: number): BipBopContext | null {
+	const prepared = preparedContexts.get(canvas);
+	if (prepared && prepared.width === width && prepared.height === height) return prepared.ctx;
+
+	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
+	if (!ctx) return null;
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.imageSmoothingEnabled = false;
+	preparedContexts.set(canvas, { ctx, width, height });
+	return ctx;
+}
+
 export type BipBopVideoCorner = {
 	mimeType: string;
 	videoCodec: string;
@@ -165,8 +186,9 @@ export function BipBopRenderer(
 	frame: number,
 	video?: BipBopVideoCorner
 ): void {
-	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
-	if (!ctx || dimensions.width <= 0 || dimensions.height <= 0) return;
+	if (dimensions.width <= 0 || dimensions.height <= 0) return;
+	const ctx = prepareContext(canvas, dimensions.width, dimensions.height);
+	if (!ctx) return;
 
 	const {
 		width,
@@ -194,10 +216,6 @@ export function BipBopRenderer(
 		periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
 	const circleSwapped = nonNegativeMod(turn, 2) === 1;
 	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
-
-	ctx.setTransform(1, 0, 0, 1, 0, 0);
-	// Page canvas and video frames share this draw. Anti-aliasing stays off.
-	ctx.imageSmoothingEnabled = false;
 
 	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);

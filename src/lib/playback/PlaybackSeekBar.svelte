@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Attachment } from 'svelte/attachments';
 	import * as m from '$lib/paraglide/messages';
 	import { seekBarHeight } from './seek-bar';
 	import { clampFrame } from './time';
@@ -16,7 +17,40 @@
 	// The hot knob is 18px. The area stays that tall, and pads the bar by half of
 	// that knob, so the enlarged knob stays inside the area at either end.
 	let dragging = $state(false);
-	let ratio = $derived(maxFrame > 0 ? frame / maxFrame : 0);
+	let shownFrame = $state(0);
+	let travelPx = $state(0);
+	let committed = -1;
+	let shownRatio = $derived(maxFrame > 0 ? shownFrame / maxFrame : 0);
+
+	const watchTravel: Attachment<HTMLDivElement> = (bar) => {
+		const apply = () => {
+			travelPx = bar.clientWidth;
+		};
+		apply();
+		const observer = new ResizeObserver(apply);
+		observer.observe(bar);
+		return () => observer.disconnect();
+	};
+
+	// The knob and the value move only when the change is at least one pixel
+	// along the bar. The ends still snap so the range stays exact.
+	$effect(() => {
+		const next = frame;
+		const limit = maxFrame;
+		const width = travelPx;
+		if (next === committed) return;
+		const endpoint = next === 0 || (limit > 0 && next === limit);
+		if (!endpoint) {
+			// Width is unknown until layout. Hold the last mark instead of
+			// stepping through frames that may be smaller than a pixel.
+			if (limit <= 0 || width <= 0) return;
+			const delta = next - committed;
+			const distance = delta < 0 ? -delta : delta;
+			if ((distance * width) / limit < 1) return;
+		}
+		committed = next;
+		shownFrame = next;
+	});
 
 	function trackFrom(event: Event): HTMLElement | null {
 		const surface = event.currentTarget;
@@ -77,7 +111,7 @@
 
 <div
 	class={['seek', { dragging }]}
-	style:--ratio={ratio}
+	style:--ratio={shownRatio}
 	style:--knob-hot={seekBarHeight}
 	role="slider"
 	tabindex="0"
@@ -85,14 +119,14 @@
 	aria-orientation="horizontal"
 	aria-valuemin="0"
 	aria-valuemax={maxFrame}
-	aria-valuenow={frame}
+	aria-valuenow={shownFrame}
 	onpointerdown={onPointerDown}
 	onpointermove={onPointerMove}
 	onpointerup={onPointerUp}
 	onpointercancel={onPointerUp}
 	onkeydown={onKeyDown}
 >
-	<div class="bar"></div>
+	<div class="bar" {@attach watchTravel}></div>
 	<div class="knob"></div>
 </div>
 

@@ -8,6 +8,8 @@ import { scheduleLiveTones } from './tone-schedule';
 export type CanvasAudio = {
 	start(elapsedMs: number, getElapsed: () => number, onReady: () => void): void;
 	stop(): void;
+	/** Drop the playback context when the preview is gone. */
+	dispose?(): void;
 	/** How long the picture waits at playback start, in milliseconds. */
 	pictureShiftMs(): number;
 };
@@ -28,26 +30,41 @@ function reportedOutputLatencyMs(context: AudioContext): number {
 export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 	let audio: AudioContext | null = null;
 	let active = false;
+	let generation = 0;
 	let getElapsed = () => 0;
 	let cancelTones = () => {};
 	let cancelLatencyWait = () => {};
 	let pictureShiftMs = 0;
 
+	function ensureContext(): AudioContext {
+		if (!audio || audio.state === 'closed') {
+			// Playback favors a steady buffer. outputLatency is how long that
+			// buffer holds a burst, so the opening sound is scheduled past it.
+			// One context stays for the preview. Pause suspends it.
+			audio = new AudioContext({ latencyHint: 'playback' });
+		}
+		return audio;
+	}
+
+	function releaseGraph() {
+		cancelLatencyWait();
+		cancelLatencyWait = () => {};
+		cancelTones();
+		cancelTones = () => {};
+	}
+
 	return {
 		pictureShiftMs: () => pictureShiftMs,
 		start(elapsedMs, elapsed, onReady) {
 			active = true;
+			generation += 1;
+			const generationAtStart = generation;
 			getElapsed = elapsed;
-			cancelLatencyWait();
-			cancelLatencyWait = () => {};
-			const previous = audio;
-			// Playback favors a steady buffer. outputLatency is how long that
-			// buffer holds a burst, so the opening sound is scheduled past it.
-			audio = new AudioContext({ latencyHint: 'playback' });
-			if (previous) void previous.close();
-			const context = audio;
+			releaseGraph();
+			const context = ensureContext();
+			const current = () => active && audio === context && generation === generationAtStart;
 			const run = (elapsedNow: number) => {
-				if (!active || audio !== context) return;
+				if (!current()) return;
 				cancelTones();
 				// Rebase the picture clock before reading outputLatency into the cue,
 				// so the opening hold is measured from this instant.
@@ -57,7 +74,7 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 					elapsedMs: elapsedNow,
 					getElapsed,
 					clock,
-					active: () => active && audio === context
+					active: current
 				});
 				pictureShiftMs = stop.pictureShiftMs;
 				cancelTones = stop;
@@ -65,7 +82,7 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 			// A 16ms burst scheduled while outputLatency is still 0 ends before
 			// the context clock jumps, so the opening Bip never reaches the speakers.
 			const begin = () => {
-				if (!active || audio !== context) return;
+				if (!current()) return;
 				if (reportedOutputLatencyMs(context) > 0) {
 					run(elapsedMs);
 					return;
@@ -80,7 +97,7 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 				};
 				cancelLatencyWait = stopWaiting;
 				const step = () => {
-					if (!waiting || !active || audio !== context) return;
+					if (!waiting || !current()) return;
 					frames += 1;
 					if (reportedOutputLatencyMs(context) > 0 || frames >= OUTPUT_LATENCY_WAIT_FRAMES) {
 						stopWaiting();
@@ -92,30 +109,54 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 				};
 				frameId = clock.requestFrame(step);
 			};
-			if (context.state === 'running') {
-				begin();
-				return;
-			}
-			void context
-				.resume()
-				.then(() => {
-					if (!active || audio !== context) return;
+			const resumeAndBegin = () => {
+				if (!current()) return;
+				if (context.state === 'running') {
 					begin();
-				})
-				.catch(() => {
-					// Unmount closes the context while this promise can still be pending.
-				});
+					return;
+				}
+				void context
+					.resume()
+					.then(() => {
+						if (!current()) return;
+						begin();
+					})
+					.catch(() => {
+						// Unmount closes the context while this promise can still be pending.
+					});
+			};
+			resumeAndBegin();
 		},
 		stop() {
 			active = false;
 			pictureShiftMs = 0;
-			cancelLatencyWait();
-			cancelLatencyWait = () => {};
-			cancelTones();
-			cancelTones = () => {};
-			const previous = audio;
+			releaseGraph();
+			const context = audio;
+			if (!context || context.state === 'closed') return;
+			const generationAtStop = generation;
+			// arm() stops and starts in one turn. Wait a task so that restart can
+			// cancel the suspend before it reaches the device.
+			queueMicrotask(() => {
+				if (generation !== generationAtStop || active || audio !== context) return;
+				if (context.state !== 'running') return;
+				void context
+					.suspend()
+					.then(() => {
+						// A play click won the race after suspend was already issued.
+						if (!active || audio !== context || context.state !== 'suspended') return;
+						void context.resume().catch(() => {});
+					})
+					.catch(() => {});
+			});
+		},
+		dispose() {
+			active = false;
+			generation += 1;
+			pictureShiftMs = 0;
+			releaseGraph();
+			const context = audio;
 			audio = null;
-			if (previous) void previous.close();
+			if (context && context.state !== 'closed') void context.close();
 		}
 	};
 }
@@ -188,6 +229,7 @@ export function canvasPlayback(
 			dispose() {
 				disposed = true;
 				stopClock();
+				audio.dispose?.();
 			}
 		};
 	};

@@ -29,7 +29,7 @@
 	<PlaybackToggle {playing} {onplaybackchange} />
 	<PlaybackSeekBar {frame} {maxFrame} {onframechange} />
 	<PlaybackClock {frame} {maxFrame} {fps} />
-	<PlaybackFrameField {frame} {maxFrame} {onframechange} />
+	<PlaybackFrameField {frame} {maxFrame} {playing} {onframechange} />
 {/snippet}
 
 <PlaybackShell {playing} {onplaybackchange} {transport} {content} />

@@ -100,6 +100,11 @@ describe('PlaybackControls', () => {
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
 		await expect.element(page.getByText('01:00:00 / 01:00:00')).toBeVisible();
+		const playingField = page
+			.getByRole('spinbutton', { name: m.frame_aria() })
+			.element() as HTMLInputElement;
+		expect(playingField.disabled).toBe(true);
+		expect(playingField.value).toBe('');
 		expect(document.querySelector('.veil')?.querySelector('path')).toBeNull();
 	});
 });

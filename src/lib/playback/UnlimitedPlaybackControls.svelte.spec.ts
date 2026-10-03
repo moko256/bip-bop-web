@@ -89,6 +89,11 @@ describe('UnlimitedPlaybackControls', () => {
 		const pause = page.getByRole('button', { name: m.playback_pause() });
 		await expect.element(pause).toBeVisible();
 		expect(pause.element().querySelector('path')?.getAttribute('d')).toBe(pausePath);
+		const playingField = page
+			.getByRole('spinbutton', { name: m.frame_aria() })
+			.element() as HTMLInputElement;
+		expect(playingField.disabled).toBe(true);
+		expect(playingField.value).toBe('');
 		expect(document.querySelector('.veil')?.querySelector('path')).toBeNull();
 		expect(pause.element().parentElement?.querySelector('progress')).toBeNull();
 		expect(pause.element().parentElement?.textContent).not.toMatch(/\d{2}:\d{2}/);

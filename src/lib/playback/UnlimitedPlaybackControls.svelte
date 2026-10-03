@@ -21,7 +21,7 @@
 
 {#snippet transport()}
 	<PlaybackToggle {playing} {onplaybackchange} />
-	<PlaybackFrameField {frame} {onframechange} />
+	<PlaybackFrameField {frame} {playing} {onframechange} />
 {/snippet}
 
 <PlaybackShell {playing} {onplaybackchange} {transport} {content} />

@@ -66,6 +66,7 @@ function recordingAudio(): CanvasAudio & { events: string[] } {
 
 class LatencyAudioContext {
 	static latest: LatencyAudioContext | null = null;
+	static created = 0;
 
 	state: AudioContextState = 'running';
 	currentTime = 0;
@@ -74,6 +75,7 @@ class LatencyAudioContext {
 	tones: { frequencyHz: number; start: number; stop: number }[] = [];
 
 	constructor() {
+		LatencyAudioContext.created += 1;
 		LatencyAudioContext.latest = this;
 	}
 
@@ -107,6 +109,11 @@ class LatencyAudioContext {
 		return Promise.resolve();
 	}
 
+	suspend(): Promise<void> {
+		this.state = 'suspended';
+		return Promise.resolve();
+	}
+
 	close(): Promise<void> {
 		this.state = 'closed';
 		return Promise.resolve();
@@ -119,6 +126,7 @@ describe('live canvas audio', () => {
 	afterEach(() => {
 		window.AudioContext = originalAudioContext;
 		LatencyAudioContext.latest = null;
+		LatencyAudioContext.created = 0;
 	});
 
 	function useLatencyContext(): void {
@@ -165,6 +173,37 @@ describe('live canvas audio', () => {
 
 		expect(started.tones).toEqual([]);
 		expect(audio.pictureShiftMs()).toBe(0);
+	});
+
+	it('suspends one AudioContext on pause and resumes it on the next play', async () => {
+		useLatencyContext();
+		const time = manualClock();
+		const audio = liveCanvasAudio(time.clock);
+		audio.start(
+			0,
+			() => 0,
+			() => undefined
+		);
+		const started = LatencyAudioContext.latest;
+		if (!started) throw new Error('missing audio context');
+		started.outputLatency = 0.08;
+		time.flush();
+
+		audio.stop();
+		await Promise.resolve();
+		expect(started.state).toBe('suspended');
+		expect(LatencyAudioContext.created).toBe(1);
+
+		audio.start(
+			1000,
+			() => 1000,
+			() => undefined
+		);
+		await Promise.resolve();
+		expect(LatencyAudioContext.latest).toBe(started);
+		expect(LatencyAudioContext.created).toBe(1);
+		expect(started.state).toBe('running');
+		audio.dispose?.();
 	});
 });
 

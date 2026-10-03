@@ -31,15 +31,20 @@
 
 	const paint: Attachment<HTMLDivElement> = (host) => {
 		let canvas: HTMLCanvasElement | null = null;
+		let bitmapWidth = 0;
+		let bitmapHeight = 0;
+		let dimensions: ReturnType<typeof createBipBopDimensions> | null = null;
 		let ready = false;
 		let canceled = false;
 
 		const draw = (current: number) => {
 			const size = bitmapSize(host);
 			if (!size) return;
-			const dimensions = createBipBopDimensions(size.width, size.height);
-			if (!canvas || canvas.width !== size.width || canvas.height !== size.height) {
+			if (!canvas || !dimensions || bitmapWidth !== size.width || bitmapHeight !== size.height) {
 				canvas = createPreviewCanvas(size.width, size.height);
+				bitmapWidth = size.width;
+				bitmapHeight = size.height;
+				dimensions = createBipBopDimensions(size.width, size.height);
 				host.replaceChildren(canvas);
 			}
 			BipBopRenderer(canvas, dimensions, current);
