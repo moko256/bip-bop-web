@@ -509,6 +509,7 @@ describe('OutputControls', () => {
 
 		await fps.fill('60');
 		await expect.element(frames).toHaveValue(1000);
+		generatePlayback.mockResolvedValue(videoUrl());
 		await page.getByRole('button', { name: m.generate() }).click();
 		expect(generatePlayback).toHaveBeenCalledWith({
 			outputType: 'mp4',
