@@ -1,4 +1,5 @@
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
+import { untrack } from 'svelte';
 import type { PlaybackClock } from './clock';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
 
@@ -102,7 +103,9 @@ export function videoPlayback(
 			video.addEventListener('ended', onPause);
 			video.addEventListener('seeked', update);
 			video.addEventListener('timeupdate', update);
-			update();
+			// advance() reads the session. Tracking that read would re-run the
+			// caller's attachment on every frame and revoke the blob URL.
+			untrack(update);
 			detachListeners = () => {
 				if (element === video) element = undefined;
 				running = false;

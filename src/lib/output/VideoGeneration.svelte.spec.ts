@@ -1,6 +1,10 @@
 import type { AudioCodec } from 'mediabunny';
-import { describe, expect, it } from 'vitest';
-import { VideoGeneration, type GeneratePlayback } from './VideoGeneration.svelte';
+import { describe, expect, it, vi } from 'vitest';
+import {
+	VideoGeneration,
+	type GeneratePlayback,
+	type VideoGenerationRequest
+} from './VideoGeneration.svelte';
 
 function deferred<T>() {
 	let resolve: (value: T) => void = () => {};
@@ -9,6 +13,16 @@ function deferred<T>() {
 	});
 	return { promise, resolve };
 }
+
+const request: VideoGenerationRequest = {
+	outputType: 'mp4',
+	videoCodec: 'avc',
+	audioCodec: 'aac',
+	resolution: '1920x1080',
+	frameCount: 3600,
+	fps: 60,
+	videoQuality: 'high'
+};
 
 describe('VideoGeneration', () => {
 	it('passes the current signal to generate and clears playback on cancel', async () => {
@@ -30,7 +44,7 @@ describe('VideoGeneration', () => {
 			videoQuality: 'high'
 		});
 
-		expect(generation.playback).toBe(pending.promise);
+		expect(generation.playback).not.toBeNull();
 		expect(signals).toHaveLength(1);
 
 		generation.cancel();
@@ -85,6 +99,54 @@ describe('VideoGeneration', () => {
 		generation.dispose();
 
 		expect(signal?.aborted).toBe(true);
+	});
+
+	it('revokes the playback URL when a later start, cancel, or dispose drops it', async () => {
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		const signals: AbortSignal[] = [];
+		const generation = new VideoGeneration((options) => {
+			signals.push(options.signal);
+			return Promise.resolve(`blob:${signals.length}`);
+		});
+
+		try {
+			generation.start(request);
+			await generation.playback;
+			generation.start(request);
+			expect(signals[0]?.aborted).toBe(true);
+			expect(revoke).toHaveBeenCalledWith('blob:1');
+
+			await generation.playback;
+			generation.cancel();
+			expect(revoke).toHaveBeenCalledWith('blob:2');
+			expect(generation.playback).toBeNull();
+
+			generation.start(request);
+			await generation.playback;
+			generation.dispose();
+			expect(revoke).toHaveBeenCalledWith('blob:3');
+		} finally {
+			revoke.mockRestore();
+		}
+	});
+
+	it('revokes a URL that resolves after the generation was dropped', async () => {
+		const pending = deferred<string>();
+		const revoke = vi.spyOn(URL, 'revokeObjectURL');
+		const generation = new VideoGeneration(() => pending.promise);
+
+		try {
+			generation.start(request);
+			generation.cancel();
+			pending.resolve('blob:late');
+			await pending.promise;
+			await Promise.resolve();
+
+			expect(revoke).toHaveBeenCalledWith('blob:late');
+			expect(generation.playback).toBeNull();
+		} finally {
+			revoke.mockRestore();
+		}
 	});
 
 	it('keeps the latest default audio codec when the OutputType changes', async () => {

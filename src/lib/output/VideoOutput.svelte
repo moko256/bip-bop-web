@@ -237,13 +237,7 @@
 							playsinline
 							aria-label={m.generated_video_aria()}
 							{onclick}
-							{@attach (element) => {
-								const detach = playbackSide.attach(element);
-								return () => {
-									detach();
-									URL.revokeObjectURL(url);
-								};
-							}}
+							{@attach playbackSide.attach}
 						></video>
 					{/snippet}
 					<PlaybackControls
