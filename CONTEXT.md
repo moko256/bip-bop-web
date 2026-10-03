@@ -1,29 +1,28 @@
 # Bip-Bop
 
-プレビューした絵を、ページ上・動画ファイル・フルスクリーンURLとして出すための言葉。
+Words for emitting a previewed picture as a page, a video file, or a fullscreen URL.
 
 ## Language
 
 **OutputType**:
-利用者が一つだけ選ぶ出力の形式。ページ、mp4、webm、フルスクリーンURL。
-_Avoid_: フォーマット、出力先
+The one output form the user picks: page, mp4, webm, or fullscreen URL.
+_Avoid_: format, destination
 
 **OutputCategory**:
-OutputTypeから決まる出力の種類。ページ、ビデオ、フルスクリーンURL。mp4 と webm はどちらもビデオ。
-_Avoid_: 出力モード、メディア種別
+The kind fixed by an OutputType: page, video, or fullscreen URL. mp4 and webm are both video.
+_Avoid_: output mode, media type
 
 **Timeline**:
-プレビューした絵と書き出した動画が共有する時間。1秒は60フレーム、長さは10秒。
-_Avoid_: デュレーション、尺、再生時間
+Time shared by the previewed picture and the exported video. One second is 60 frames. Length is 10 seconds.
+_Avoid_: duration, runtime, play time
 
 **Playback**:
-ページのプレビューと生成した動画で、利用者が再生・停止・シークする時間位置。
-_Avoid_: プレイヤー、トランスポート
+The time position the user plays, pauses, and seeks in the page preview and the exported video.
+_Avoid_: player, transport
 
 **Bip**:
-偶数秒の開始に鳴る音。
-_Avoid_: ビープ
+The sound at the start of each even second.
+_Avoid_: beep
 
 **Bop**:
-奇数秒の開始に鳴る音。
-_Avoid_: ボップ
+The sound at the start of each odd second.
