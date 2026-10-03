@@ -42,10 +42,10 @@ export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
  * Subset {@link BIP_BOP_FONT_FAMILY} is built from. One string, sent unchanged by
  * `scripts/download-jetbrains-mono.mjs`: RFC 6838 restricted-name symbols
  * (`!#$&-^_.+`), the MIME type slash, the clock colon, ASCII digits,
- * ASCII letters, then the space in the `60 FPS` corner label.
+ * and ASCII letters.
  */
 export const BIP_BOP_FONT_TEXT =
-	'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ';
+	'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
 /**
  * Layout shared by the web preview and the video exporter.
@@ -199,7 +199,7 @@ export type BipBopVideoCorner = {
  * whole pixels.
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
  * `video.videoCodec`, `video.audioCodec`, `video.videoQuality`, and the frame rate
- * as `{fps} FPS` on the following lines. Each line is
+ * as `{fps}FPS` on the following lines. Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
  * and from the right by the clock's left inset. A page omits `video` and draws
  * the resolution only.

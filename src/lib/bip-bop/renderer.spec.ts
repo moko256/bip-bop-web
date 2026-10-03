@@ -318,7 +318,7 @@ describe('BipBopRenderer', () => {
 
 	it('requests the font subset as one precomposed string', () => {
 		expect(BIP_BOP_FONT_TEXT).toBe(
-			'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+			'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 		);
 	});
 
@@ -422,7 +422,7 @@ describe('BipBopRenderer', () => {
 			line('avc', 2),
 			line('aac', 3),
 			line('high', 4),
-			line('60 FPS', 5)
+			line('60FPS', 5)
 		]);
 	});
 
@@ -447,7 +447,7 @@ describe('BipBopRenderer', () => {
 		expect(second.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
 		expect(second.context.texts.map((text) => text.text)).toContain('Bop!');
 		expect(second.context.texts.filter((text) => text.align === 'right').at(-1)?.text).toBe(
-			'24 FPS'
+			'24FPS'
 		);
 		expect(half.context.fills.slice(0, 3)).toEqual(draw(30).context.fills.slice(0, 3));
 	});
