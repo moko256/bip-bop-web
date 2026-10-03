@@ -1,15 +1,15 @@
 /** Frames in one second of the Bip-Bop picture. */
 export const BIP_BOP_FPS = 60;
 
-/** Length shared by the live preview and an exported video. */
+/** Default length of an exported video. */
 export const BIP_BOP_DURATION_SECONDS = 10;
 
 /** Last frame index. Ten seconds at {@link BIP_BOP_FPS}. */
 export const BIP_BOP_MAX_FRAME = BIP_BOP_FPS * BIP_BOP_DURATION_SECONDS;
 
 /**
- * Frame index for an elapsed preview clock.
- * Partial frames are truncated, the same way the corner clock drops centiseconds.
+ * Frame index on the 60 fps grid for an elapsed time.
+ * Partial frames are truncated.
  */
 export function frameAtElapsedMs(elapsedMs: number): number {
 	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;

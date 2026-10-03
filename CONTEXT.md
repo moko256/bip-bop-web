@@ -13,8 +13,12 @@ The kind fixed by an OutputType: page, video, or fullscreen URL. mp4 and webm ar
 _Avoid_: output mode, media type
 
 **Timeline**:
-Time shared by the previewed picture and the exported video. One second is 60 frames. Length is 10 seconds.
+Media time of an exported video: the frame count divided by the frame rate.
 _Avoid_: duration, runtime, play time
+
+**Preview clock**:
+Time since web preview playback started. The frame counter counts animation frames and does not set this clock.
+_Avoid_: frame time, media time
 
 **Playback**:
 The time position the user plays, pauses, and seeks in the page preview and the exported video.

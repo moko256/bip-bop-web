@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { videoPictureAtFrame } from './media-time';
 import {
 	BIP_BOP_FONT_TEXT,
 	BipBopRenderer,
 	createBipBopDimensions,
+	type BipBopSample,
 	type BipBopVideoCorner
 } from './renderer';
 
@@ -76,7 +78,17 @@ function draw(frame: number, width = 1920, height = 1080, video?: BipBopVideoCor
 		getContext: () => context
 	} as unknown as HTMLCanvasElement;
 	const dimensions = createBipBopDimensions(width, height);
-	BipBopRenderer(canvas, dimensions, frame, video);
+	BipBopRenderer(canvas, dimensions, videoPictureAtFrame(frame, video?.fps ?? 60), video);
+	return { context, dimensions };
+}
+
+function drawSample(sample: BipBopSample, width = 1920, height = 1080) {
+	const context = new MockContext();
+	const canvas = {
+		getContext: () => context
+	} as unknown as HTMLCanvasElement;
+	const dimensions = createBipBopDimensions(width, height);
+	BipBopRenderer(canvas, dimensions, sample);
 	return { context, dimensions };
 }
 
@@ -186,13 +198,13 @@ describe('BipBopRenderer', () => {
 		} as unknown as HTMLCanvasElement;
 		const dimensions = createBipBopDimensions(320, 180);
 
-		BipBopRenderer(canvas, dimensions, 0);
-		BipBopRenderer(canvas, dimensions, 1);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(0, 60));
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(1, 60));
 
 		expect(calls).toBe(1);
 		expect(context.imageSmoothingEnabled).toBe(false);
 
-		BipBopRenderer(canvas, createBipBopDimensions(640, 360), 0);
+		BipBopRenderer(canvas, createBipBopDimensions(640, 360), videoPictureAtFrame(0, 60));
 		expect(calls).toBe(2);
 	});
 
@@ -478,7 +490,7 @@ describe('BipBopRenderer', () => {
 				colorBarX: 3.5,
 				colorBarY: 66.4
 			},
-			0
+			videoPictureAtFrame(0, 60)
 		);
 
 		expect(context.arcs.map(({ x, y, radius }) => ({ x, y, radius }))).toEqual([
@@ -494,6 +506,38 @@ describe('BipBopRenderer', () => {
 		expect(context.rects[0]).toMatchObject({ x: 0, y: 0, w: 101, h: 80 });
 		expect(context.rects[1]).toMatchObject({ x: 4, y: 66, w: 11, h: 11 });
 		expect(context.rects[2]).toMatchObject({ x: 15, y: 66, w: 11, h: 11 });
+	});
+
+	it('draws the supplied clock and leaves the frame counter independent of it', () => {
+		const { context } = drawSample({
+			frame: 12,
+			elapsedSeconds: 1.5,
+			clockCentiseconds: 150,
+			previousElapsedSeconds: 1.4
+		});
+		const clock = context.texts.find((text) => text.align === 'left');
+
+		expect(context.texts.map((text) => text.text)).toContain('000012');
+		expect(context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(clock?.text).toBe('00:00:01.50');
+		expect(context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+	});
+
+	it('draws the rounded preview frame rate under the resolution', () => {
+		const { context, dimensions } = drawSample({
+			frame: 4,
+			elapsedSeconds: 0.2,
+			clockCentiseconds: 20,
+			previousElapsedSeconds: 0,
+			previewFps: 1000 / 17
+		});
+		const corner = context.texts.filter((text) => text.align === 'right');
+
+		expect(corner.map((text) => text.text)).toEqual(['1920x1080', '59FPS']);
+		expect(corner[1]).toMatchObject({
+			x: 1920 - dimensions.clockX,
+			y: dimensions.clockY + dimensions.overlayFontSize
+		});
 	});
 
 	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {

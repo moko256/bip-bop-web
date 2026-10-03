@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { videoPictureAtFrame } from './media-time';
 import { BipBopRenderer, createBipBopDimensions } from './renderer';
 
 function rgb(canvas: HTMLCanvasElement, x: number, y: number): string {
@@ -13,7 +14,7 @@ describe('BipBopRenderer pixels', () => {
 		canvas.width = 201;
 		canvas.height = 151;
 		const dimensions = createBipBopDimensions(canvas.width, canvas.height);
-		BipBopRenderer(canvas, dimensions, 15);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(15, 60));
 
 		expect(dimensions).toMatchObject({ centerX: 101, centerY: 76, radius: 30 });
 		// Frame 15 splits the disk at 91°. 45° is in the gray arc, 270° is in the white arc.

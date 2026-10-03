@@ -3,14 +3,16 @@
 	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { canvasPlayback } from './canvas-playback';
+	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
 	import { loadBipBopFont } from './font';
-	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
 	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './timeline';
+	const playbackClock = browserPlaybackClock();
+	const picture = createCanvasPicture();
 	const session = new PlaybackSession({
 		fps: BIP_BOP_FPS,
-		connect: canvasPlayback(browserPlaybackClock())
+		connect: canvasPlayback(playbackClock, liveCanvasAudio(playbackClock), picture)
 	});
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
@@ -47,7 +49,7 @@
 				dimensions = createBipBopDimensions(size.width, size.height);
 				host.replaceChildren(canvas);
 			}
-			BipBopRenderer(canvas, dimensions, current);
+			BipBopRenderer(canvas, dimensions, previewSample(current));
 		};
 
 		void loadBipBopFont().finally(() => {
@@ -73,6 +75,16 @@
 			observer.disconnect();
 		};
 	};
+
+	function previewSample(frame: number): BipBopSample {
+		return {
+			frame,
+			elapsedSeconds: picture.elapsedSeconds,
+			clockCentiseconds: picture.clockCentiseconds,
+			previousElapsedSeconds: picture.previousElapsedSeconds,
+			...(picture.previewFps === null ? {} : { previewFps: picture.previewFps })
+		};
+	}
 
 	const release: Attachment<HTMLDivElement> = () => {
 		return () => session.dispose();

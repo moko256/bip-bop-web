@@ -1,8 +1,31 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
 import type { PlaybackClock } from '$lib/playback/clock';
 import { bipBopPreviewPictureMs } from './audio';
-import { frameAtElapsedMs, secondsAtFrame } from './timeline';
+import { clockCentisecondsAtMs } from './media-time';
 import { scheduleLiveTones } from './tone-schedule';
+
+/**
+ * Web preview picture clock.
+ * `elapsedSeconds` is time since playback started. The frame counter lives on
+ * the session and is not derived from this clock. `previewFps` is the rounded
+ * rate since the previous animation frame, or null until two frames exist.
+ */
+export type CanvasPicture = {
+	elapsedSeconds: number;
+	/** Previous sample. Negative before the first movement. */
+	previousElapsedSeconds: number;
+	clockCentiseconds: number;
+	previewFps: number | null;
+};
+
+export function createCanvasPicture(): CanvasPicture {
+	return {
+		elapsedSeconds: 0,
+		previousElapsedSeconds: -1,
+		clockCentiseconds: 0,
+		previewFps: null
+	};
+}
 
 /** Live Bip/Bop bursts while the canvas clock is running. */
 export type CanvasAudio = {
@@ -161,23 +184,59 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 	};
 }
 
-/** Canvas clock adapter. Tones follow the wall clock. The picture waits out the opening burst. */
+/**
+ * Canvas clock adapter. Tones follow the wall clock. The picture waits out the opening burst.
+ * Each animation frame adds one to the frame counter. Elapsed time is time since
+ * playback started, not `frame / fps`.
+ */
 export function canvasPlayback(
 	clock: PlaybackClock,
-	audio: CanvasAudio = liveCanvasAudio(clock)
+	audio: CanvasAudio = liveCanvasAudio(clock),
+	picture: CanvasPicture = createCanvasPicture()
 ): (host: PlaybackHost) => PlaybackAdapter {
 	return (host) => {
 		let running = false;
 		let rafId = 0;
 		let startedAt = 0;
 		let startElapsedMs = 0;
+		let pictureElapsedMs = 0;
+		let frameCount = 0;
+		let previousFrameAt: number | null = null;
 		let disposed = false;
 
 		function elapsedNow(): number {
 			return clock.now() - startedAt;
 		}
 
+		function publish(elapsedMs: number, previewFps: number | null): void {
+			const elapsedSeconds = elapsedMs > 0 && Number.isFinite(elapsedMs) ? elapsedMs / 1000 : 0;
+			if (picture.elapsedSeconds !== elapsedSeconds) {
+				picture.previousElapsedSeconds = picture.elapsedSeconds;
+			}
+			picture.elapsedSeconds = elapsedSeconds;
+			picture.clockCentiseconds = clockCentisecondsAtMs(elapsedMs);
+			if (previewFps !== null) picture.previewFps = previewFps;
+		}
+
+		/** Rounded FPS from the gap since the previous animation frame. */
+		function measuredFps(now: number): number | null {
+			const previous = previousFrameAt;
+			previousFrameAt = now;
+			if (previous === null) return null;
+			const delta = now - previous;
+			if (!Number.isFinite(delta) || delta <= 0) return null;
+			return Math.round(1000 / delta);
+		}
+
 		function stopClock() {
+			if (running) {
+				pictureElapsedMs = bipBopPreviewPictureMs(
+					elapsedNow(),
+					audio.pictureShiftMs(),
+					startElapsedMs
+				);
+			}
+			previousFrameAt = null;
 			clock.cancelFrame(rafId);
 			rafId = 0;
 			running = false;
@@ -186,26 +245,29 @@ export function canvasPlayback(
 
 		function tick() {
 			if (disposed || !running) return;
+			const previewFps = measuredFps(clock.now());
+			frameCount += 1;
 			const pictureMs = bipBopPreviewPictureMs(
 				elapsedNow(),
 				audio.pictureShiftMs(),
 				startElapsedMs
 			);
-			const next = frameAtElapsedMs(pictureMs);
-			host.advance(next);
+			pictureElapsedMs = pictureMs;
+			publish(pictureMs, previewFps);
+			host.advance(frameCount);
 			if (disposed || !running) return;
 			rafId = clock.requestFrame(tick);
 		}
 
 		function arm(frame: number) {
 			stopClock();
-			const elapsedMs = secondsAtFrame(frame) * 1000;
-			startElapsedMs = elapsedMs;
-			startedAt = clock.now() - elapsedMs;
+			frameCount = frame;
+			startElapsedMs = pictureElapsedMs;
+			startedAt = clock.now() - pictureElapsedMs;
 			running = true;
-			audio.start(elapsedMs, elapsedNow, () => {
+			audio.start(pictureElapsedMs, elapsedNow, () => {
 				if (disposed || !running) return;
-				startedAt = clock.now() - elapsedMs;
+				startedAt = clock.now() - pictureElapsedMs;
 				clock.cancelFrame(rafId);
 				rafId = clock.requestFrame(tick);
 			});
@@ -221,7 +283,7 @@ export function canvasPlayback(
 			},
 			place(frame) {
 				if (disposed || !running) return;
-				arm(frame);
+				frameCount = frame;
 			},
 			atEnd() {
 				return false;

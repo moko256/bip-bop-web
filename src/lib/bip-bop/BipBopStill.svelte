@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
 	import { loadBipBopFont } from './font';
+	import { videoPictureAtFrame } from './media-time';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopVideoCorner } from './renderer';
+	import { BIP_BOP_FPS } from './timeline';
 
 	let {
 		width,
@@ -35,7 +37,12 @@
 			if (canceled) return;
 			canvas.width = bitmapWidth;
 			canvas.height = bitmapHeight;
-			BipBopRenderer(canvas, createBipBopDimensions(bitmapWidth, bitmapHeight), 0, corner);
+			BipBopRenderer(
+				canvas,
+				createBipBopDimensions(bitmapWidth, bitmapHeight),
+				videoPictureAtFrame(0, corner?.fps ?? BIP_BOP_FPS),
+				corner
+			);
 		});
 
 		return () => {
