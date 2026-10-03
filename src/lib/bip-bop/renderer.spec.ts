@@ -105,9 +105,10 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.colorBarY).toBe(978);
 	});
 
-	it('uses the short side and rounds half pixels, including an odd diameter', () => {
+	it('uses the short side and rounds center, radius, and an odd diameter to whole pixels', () => {
 		const portrait = createBipBopDimensions(720, 1280);
 		const uneven = createBipBopDimensions(1000, 2000);
+		const odd = createBipBopDimensions(1003, 2001);
 
 		expect(portrait.radius).toBe(144);
 		expect(portrait.overlayFontSize).toBe(23);
@@ -122,10 +123,48 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.colorBarY).toBe(1212);
 		expect(uneven.radius).toBe(200);
 		expect(uneven.overlayFontSize).toBe(32);
-		expect(createBipBopDimensions(1003, 2000).radius).toBe(200.5);
 		expect(uneven.colorBarSize).toBe(63);
 		expect(uneven.colorBarX).toBe(31);
 		expect(uneven.colorBarY).toBe(1906);
+		expect(odd).toMatchObject({
+			width: 1003,
+			height: 2001,
+			centerX: 502,
+			centerY: 1001,
+			radius: 201,
+			frameFontSize: 63,
+			frameCountY: 1017,
+			labelFontSize: 84,
+			labelY: 985,
+			clockFontSize: 63,
+			clockX: 31,
+			clockY: 31,
+			overlayFontSize: 32,
+			colorBarSize: 63,
+			colorBarX: 31,
+			colorBarY: 1907
+		});
+	});
+
+	it('rounds a fractional bitmap before measuring padding and text', () => {
+		expect(createBipBopDimensions(100.5, 80.4)).toMatchObject({
+			width: 101,
+			height: 80,
+			centerX: 51,
+			centerY: 40,
+			radius: 16,
+			frameFontSize: 5,
+			frameCountY: 41,
+			labelFontSize: 7,
+			labelY: 39,
+			clockFontSize: 5,
+			clockX: 3,
+			clockY: 3,
+			overlayFontSize: 3,
+			colorBarSize: 5,
+			colorBarX: 3,
+			colorBarY: 72
+		});
 	});
 });
 
@@ -157,23 +196,30 @@ describe('BipBopRenderer', () => {
 		expect(calls).toBe(2);
 	});
 
-	it('paints a black field, a gray circle, and a white sector from 1° to 360° on frame 0', () => {
+	it('paints a black field and two arcs, gray from 0° to 1° and white from 1° to 360°, on frame 0', () => {
 		const { context, dimensions } = draw(0);
-		const sector = context.arcs[1];
+		const [backing, sector] = context.arcs;
 
 		expect(context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
-		expect(context.arcs[0]).toMatchObject({
+		expect(context.arcs).toHaveLength(2);
+		expect(backing).toMatchObject({
 			x: dimensions.centerX,
 			y: dimensions.centerY,
 			radius: dimensions.radius
 		});
+		expect(backing?.start).toBeCloseTo(radiansFromTop(0));
+		expect(backing?.end).toBeCloseTo(radiansFromTop(1));
 		expect(sector?.start).toBeCloseTo(radiansFromTop(1));
 		expect(sector?.end).toBeCloseTo(radiansFromTop(360));
 		expect(sector?.radius).toBe(dimensions.radius);
 	});
 
 	it('starts the sector at 1° and sweeps the leading edge 6° clockwise each frame', () => {
-		const sector = (frame: number) => draw(frame).context.arcs[1];
+		const sector = (frame: number) => {
+			const arcs = draw(frame).context.arcs;
+			expect(arcs).toHaveLength(2);
+			return arcs[1];
+		};
 
 		expect(sector(0)?.start).toBeCloseTo(radiansFromTop(1));
 		expect(sector(0)?.end).toBeCloseTo(radiansFromTop(360));
@@ -385,6 +431,50 @@ describe('BipBopRenderer', () => {
 				font: '34px "JetBrains Mono", monospace'
 			}
 		]);
+	});
+
+	it('rounds arc, padding, text, and swatch geometry to whole pixels', () => {
+		const context = new MockContext();
+		const canvas = {
+			getContext: () => context
+		} as unknown as HTMLCanvasElement;
+
+		BipBopRenderer(
+			canvas,
+			{
+				width: 100.5,
+				height: 80.4,
+				centerX: 50.5,
+				centerY: 40.5,
+				radius: 20.5,
+				frameFontSize: 10.4,
+				frameCountY: 45.6,
+				labelFontSize: 12.5,
+				labelY: 30.2,
+				clockFontSize: 10.4,
+				clockX: 3.5,
+				clockY: 3.4,
+				overlayFontSize: 5.5,
+				colorBarSize: 10.6,
+				colorBarX: 3.5,
+				colorBarY: 66.4
+			},
+			0
+		);
+
+		expect(context.arcs.map(({ x, y, radius }) => ({ x, y, radius }))).toEqual([
+			{ x: 51, y: 41, radius: 21 },
+			{ x: 51, y: 41, radius: 21 }
+		]);
+		expect(context.texts.map(({ text, x, y, font }) => ({ text, x, y, font }))).toEqual([
+			{ text: '000000', x: 51, y: 46, font: '10px "JetBrains Mono", monospace' },
+			{ text: 'Bip!', x: 51, y: 30, font: '13px "JetBrains Mono", monospace' },
+			{ text: '00:00:00.00', x: 4, y: 3, font: '10px "JetBrains Mono", monospace' },
+			{ text: '101x80', x: 97, y: 3, font: '6px "JetBrains Mono", monospace' }
+		]);
+		expect(context.rects[0]).toMatchObject({ x: 0, y: 0, w: 101, h: 80 });
+		expect(context.rects[1]).toMatchObject({ x: 4, y: 66, w: 11, h: 11 });
+		expect(context.rects[2]).toMatchObject({ x: 15, y: 66, w: 11, h: 11 });
 	});
 
 	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {
