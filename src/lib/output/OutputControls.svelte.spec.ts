@@ -6,13 +6,26 @@ import OutputControls from './OutputControls.svelte';
 import { preferredAudioCodec } from './generate-video';
 import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
-const { generatePlayback } = vi.hoisted(() => ({
-	generatePlayback: vi.fn()
+const { generatePlayback, loadVideoOutput, loadVideoOutputActual } = vi.hoisted(() => ({
+	generatePlayback: vi.fn(),
+	loadVideoOutput: vi.fn(),
+	loadVideoOutputActual: {
+		current: undefined as
+			| undefined
+			| (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
+	}
 }));
 
 vi.mock('./generate-video', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./generate-video')>();
 	return { ...actual, generatePlayback };
+});
+
+vi.mock('./load-video-output', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('./load-video-output')>();
+	loadVideoOutputActual.current = actual.loadVideoOutput;
+	loadVideoOutput.mockImplementation(actual.loadVideoOutput);
+	return { loadVideoOutput };
 });
 
 function videoUrl(): string {
@@ -43,6 +56,10 @@ describe('OutputControls', () => {
 
 	beforeEach(async () => {
 		generatePlayback.mockReset();
+		loadVideoOutput.mockReset();
+		const loadEncoder = loadVideoOutputActual.current;
+		if (!loadEncoder) throw new Error('Expected video output loader');
+		loadVideoOutput.mockImplementation(loadEncoder);
 		const audioCodec = await preferredAudioCodec('mp4');
 		if (!audioCodec) throw new Error(m.error_audio_codec_unavailable());
 		defaultMp4AudioCodec = audioCodec;
@@ -132,6 +149,48 @@ describe('OutputControls', () => {
 			.toHaveValue(supportedVideoCodecs('webm')[0]);
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
+	});
+
+	it('centers progress in the video area while the encoder loads', async () => {
+		const pending = deferred<Awaited<ReturnType<typeof loadVideoOutput>>>();
+		loadVideoOutput.mockReturnValueOnce(pending.promise);
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+
+		const progress = page.getByRole('progressbar', { name: m.loading_video_output_aria() });
+		await expect.element(progress).toBeVisible();
+		const bar = progress.element() as HTMLProgressElement;
+		const parent = bar.parentElement;
+		if (!(parent instanceof HTMLElement)) throw new Error('Expected progress parent');
+		expect(bar.hasAttribute('value')).toBe(false);
+		const parentBox = parent.getBoundingClientRect();
+		const barBox = bar.getBoundingClientRect();
+		expect(parentBox.width).toBeGreaterThan(0);
+		expect(parentBox.height).toBeGreaterThan(barBox.height);
+		expect(Math.abs(parentBox.width / parentBox.height - 16 / 9)).toBeLessThan(0.02);
+		expect(Math.abs(barBox.width / parentBox.width - 0.4)).toBeLessThan(0.02);
+		expect(
+			Math.abs(barBox.left + barBox.width / 2 - (parentBox.left + parentBox.width / 2))
+		).toBeLessThan(1);
+		expect(
+			Math.abs(barBox.top + barBox.height / 2 - (parentBox.top + parentBox.height / 2))
+		).toBeLessThan(1);
+		await expect
+			.element(page.getByRole('button', { name: 'mp4' }))
+			.toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('img', { name: m.video_placeholder_aria() }))
+			.not.toBeInTheDocument();
+
+		const loadEncoder = loadVideoOutputActual.current;
+		if (!loadEncoder) throw new Error('Expected video output loader');
+		pending.resolve(await loadEncoder());
+
+		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
+		await expect
+			.element(page.getByRole('progressbar', { name: m.loading_video_output_aria() }))
+			.not.toBeInTheDocument();
 	});
 
 	it('keeps a video codec that both containers support', async () => {

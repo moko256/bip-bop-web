@@ -1,10 +1,18 @@
 <script lang="ts">
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
 	import * as m from '$lib/paraglide/messages';
+	import { loadVideoOutput } from './load-video-output';
 	import { isVideoOutputType, outputTypeLabel, outputTypes, type OutputType } from './output';
 	import PageOutput from './PageOutput.svelte';
+	import VideoOutputPending from './VideoOutputPending.svelte';
 
 	let outputType = $state<OutputType>('page');
+	let videoOutput: ReturnType<typeof loadVideoOutput> | undefined;
+
+	function loadEncoder() {
+		videoOutput ??= loadVideoOutput();
+		return videoOutput;
+	}
 </script>
 
 {#snippet outputTypeSelector()}
@@ -25,7 +33,9 @@
 {/snippet}
 
 {#if isVideoOutputType(outputType)}
-	{#await import('./VideoOutput.svelte') then { default: VideoOutput }}
+	{#await loadEncoder()}
+		<VideoOutputPending {outputTypeSelector} />
+	{:then { default: VideoOutput }}
 		<VideoOutput {outputType} {outputTypeSelector} />
 	{/await}
 {:else if outputType === 'fullscreen-url'}

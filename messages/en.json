@@ -15,6 +15,7 @@
 	"url_label": "URL",
 	"video_placeholder_aria": "Video placeholder",
 	"generating_aria": "Generating",
+	"loading_video_output_aria": "Loading video output",
 	"generated_video_aria": "Generated video",
 	"playback_position_aria": "Playback position",
 	"frame_aria": "Frame",
