@@ -48,15 +48,20 @@ export const BIP_BOP_FONT_TEXT =
 
 /**
  * Layout shared by the web preview and the video exporter.
- * Every drawn length is `round(shortSide * fraction)` in whole pixels, where
- * `shortSide` is the lesser of the canvas width and height.
+ * Every value is a whole pixel. Lengths along the short side are
+ * `round(shortSide * fraction)`, where `shortSide` is the lesser of the
+ * rounded canvas width and height. Center, radius, padding, text size,
+ * coordinates, width, and height are rounded so canvas and video drawing
+ * stays on pixel boundaries.
  */
 export type BipBopDimensions = {
 	width: number;
 	height: number;
+	/** `round(width / 2)` after width is rounded. */
 	centerX: number;
+	/** `round(height / 2)` after height is rounded. */
 	centerY: number;
-	/** Backing circle and sector. Diameter is `round(shortSide * 2/5)`. */
+	/** Both arcs. `round(round(shortSide * 2/5) / 2)`. */
 	radius: number;
 	/** Frame counter. Height is `round(shortSide * 1/16)`. */
 	frameFontSize: number;
@@ -86,19 +91,22 @@ export type BipBopDimensions = {
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
-	const shortSide = Math.min(width, height);
+	const bitmapWidth = wholePixels(width);
+	const bitmapHeight = wholePixels(height);
+	const shortSide = Math.min(bitmapWidth, bitmapHeight);
 	const inset = pixelsAlongShortSide(shortSide, 1, 32);
 	const centerGap = pixelsAlongShortSide(shortSide, 1, 64);
 	const textHeight = pixelsAlongShortSide(shortSide, 1, 16);
 	const diameter = pixelsAlongShortSide(shortSide, 2, 5);
-	const centerY = height / 2;
+	const centerX = wholePixels(bitmapWidth / 2);
+	const centerY = wholePixels(bitmapHeight / 2);
 
 	return {
-		width,
-		height,
-		centerX: width / 2,
+		width: bitmapWidth,
+		height: bitmapHeight,
+		centerX,
 		centerY,
-		radius: diameter / 2,
+		radius: wholePixels(diameter / 2),
 		frameFontSize: textHeight,
 		frameCountY: centerY + centerGap,
 		labelFontSize: pixelsAlongShortSide(shortSide, 1, 12),
@@ -106,16 +114,21 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		clockFontSize: textHeight,
 		clockX: inset,
 		clockY: inset,
-		overlayFontSize: Math.round(textHeight / 2),
+		overlayFontSize: wholePixels(textHeight / 2),
 		colorBarSize: textHeight,
 		colorBarX: inset,
-		colorBarY: height - inset - textHeight
+		colorBarY: bitmapHeight - inset - textHeight
 	};
 }
 
 /** `Math.round(shortSide * numerator / denominator)`, in whole pixels. */
 function pixelsAlongShortSide(shortSide: number, numerator: number, denominator: number): number {
-	return Math.round((shortSide * numerator) / denominator);
+	return wholePixels((shortSide * numerator) / denominator);
+}
+
+/** Nearest whole pixel, so canvas and video drawing does not sit between pixels. */
+function wholePixels(value: number): number {
+	return Math.round(value);
 }
 
 type BipBopCanvas = HTMLCanvasElement | OffscreenCanvas;
@@ -152,12 +165,13 @@ export type BipBopVideoCorner = {
  * Draws one frame. Stateless: the caller owns the frame counter and the canvas size.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * Frame 0 of each 60-frame turn is the sector 1°–360°; each frame moves the start
- * by 6°, so the leading edge completes one clockwise turn per second. The backing
- * circle and sector fills do not animate inside a second. They switch only when the
- * frame index is divisible by 60: frames 0–59 are a white sector on a gray circle,
- * frames 60–119 are a gray sector on a white circle, and each later second swaps
- * those two fills.
+ * The disk is two filled arcs that meet at the center. Frame 0 of each 60-frame
+ * turn splits them at 1°: one arc runs 0°–1° and the other 1°–360°. Each frame
+ * moves the split 6° clockwise, so the leading edge completes one turn per second.
+ * The two fills do not animate inside a second. They switch only when the frame
+ * index is divisible by 60: frames 0–59 paint the 0°–split arc gray and the
+ * split–360° arc white, frames 60–119 swap those fills, and each later second
+ * swaps again.
  * Field and clock colors still ping-pong over 120 frames (2 seconds), swapping black
  * and white. On each turn boundary the
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
@@ -172,7 +186,10 @@ export type BipBopVideoCorner = {
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
- * The circle diameter is `round(shortSide * 2/5)`.
+ * The arc radius is `round(round(shortSide * 2/5) / 2)`, and the center is
+ * `round(width / 2)`, `round(height / 2)`, after width and height are rounded.
+ * Padding, text size, coordinates, widths, and heights passed to the canvas are
+ * whole pixels.
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
  * `video.videoCodec`, and `video.audioCodec` on the following lines. Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
@@ -187,27 +204,26 @@ export function BipBopRenderer(
 	video?: BipBopVideoCorner
 ): void {
 	if (dimensions.width <= 0 || dimensions.height <= 0) return;
-	const ctx = prepareContext(canvas, dimensions.width, dimensions.height);
+	const width = wholePixels(dimensions.width);
+	const height = wholePixels(dimensions.height);
+	if (width <= 0 || height <= 0) return;
+	const ctx = prepareContext(canvas, width, height);
 	if (!ctx) return;
 
-	const {
-		width,
-		height,
-		centerX,
-		centerY,
-		radius,
-		frameFontSize,
-		frameCountY,
-		labelFontSize,
-		labelY,
-		clockFontSize,
-		clockX,
-		clockY,
-		overlayFontSize,
-		colorBarSize,
-		colorBarX,
-		colorBarY
-	} = dimensions;
+	const centerX = wholePixels(dimensions.centerX);
+	const centerY = wholePixels(dimensions.centerY);
+	const radius = wholePixels(dimensions.radius);
+	const frameFontSize = wholePixels(dimensions.frameFontSize);
+	const frameCountY = wholePixels(dimensions.frameCountY);
+	const labelFontSize = wholePixels(dimensions.labelFontSize);
+	const labelY = wholePixels(dimensions.labelY);
+	const clockFontSize = wholePixels(dimensions.clockFontSize);
+	const clockX = wholePixels(dimensions.clockX);
+	const clockY = wholePixels(dimensions.clockY);
+	const overlayFontSize = wholePixels(dimensions.overlayFontSize);
+	const colorBarSize = wholePixels(dimensions.colorBarSize);
+	const colorBarX = wholePixels(dimensions.colorBarX);
+	const colorBarY = wholePixels(dimensions.colorBarY);
 	const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
 	const turn = Math.floor(frame / CYCLE_FRAMES);
@@ -220,17 +236,10 @@ export function BipBopRenderer(
 	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
 
-	ctx.beginPath();
-	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES);
-	ctx.fill();
-
-	ctx.beginPath();
-	ctx.moveTo(centerX, centerY);
-	ctx.arc(centerX, centerY, radius, radiansFromTop(startDegrees), radiansFromTop(360));
-	ctx.closePath();
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES);
-	ctx.fill();
+	const backing = mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES);
+	const sector = mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES);
+	fillWedge(ctx, centerX, centerY, radius, 0, startDegrees, backing);
+	fillWedge(ctx, centerX, centerY, radius, startDegrees, 360, sector);
 
 	ctx.fillStyle = BLACK;
 	ctx.font = monospaceFont(frameFontSize);
@@ -257,13 +266,36 @@ export function BipBopRenderer(
 		? [`${width}x${height}`, video.mimeType, video.videoCodec, video.audioCodec]
 		: [`${width}x${height}`];
 	for (const [index, line] of lines.entries()) {
-		ctx.fillText(line, width - clockX, clockY + index * overlayFontSize);
+		ctx.fillText(line, wholePixels(width - clockX), wholePixels(clockY + index * overlayFontSize));
 	}
 
 	for (let index = 0; index < COLOR_BAR_75.length; index += 1) {
 		ctx.fillStyle = COLOR_BAR_75[index];
-		ctx.fillRect(colorBarX + index * colorBarSize, colorBarY, colorBarSize, colorBarSize);
+		ctx.fillRect(
+			wholePixels(colorBarX + index * colorBarSize),
+			colorBarY,
+			colorBarSize,
+			colorBarSize
+		);
 	}
+}
+
+/** One pie slice of the disk. The two slices share the center and do not overlap. */
+function fillWedge(
+	ctx: BipBopContext,
+	x: number,
+	y: number,
+	radius: number,
+	startDegrees: number,
+	endDegrees: number,
+	fillStyle: string
+): void {
+	ctx.beginPath();
+	ctx.moveTo(x, y);
+	ctx.arc(x, y, radius, radiansFromTop(startDegrees), radiansFromTop(endDegrees));
+	ctx.closePath();
+	ctx.fillStyle = fillStyle;
+	ctx.fill();
 }
 
 /** Frame index shown in the circle, at least 6 digits. */
