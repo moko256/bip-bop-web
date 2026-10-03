@@ -37,5 +37,6 @@
 		min-width: 0;
 		min-height: 0;
 		object-fit: contain;
+		image-rendering: pixelated;
 	}
 </style>
