@@ -247,6 +247,7 @@
 		height: 100%;
 		min-width: 0;
 		min-height: 0;
+		image-rendering: pixelated;
 	}
 
 	.seek-reserve {

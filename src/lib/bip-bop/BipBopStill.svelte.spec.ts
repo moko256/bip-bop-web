@@ -38,7 +38,7 @@ describe('BipBopStill', () => {
 		await expect.poll(() => canvas.clientWidth).toBe(320);
 		expect(canvas.clientHeight).toBe(180);
 		expect(getComputedStyle(canvas).objectFit).toBe('contain');
-		expect(getComputedStyle(canvas).imageRendering).not.toBe('pixelated');
+		expect(getComputedStyle(canvas).imageRendering).toBe('pixelated');
 
 		// 75% white swatch and the frame-0 sector on a 1920×1080 bitmap.
 		await expect.poll(() => rgb(canvas, 40, 990)).toBe('191,191,191');
