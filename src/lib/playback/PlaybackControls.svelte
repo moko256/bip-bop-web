@@ -5,6 +5,7 @@
 	import PlaybackSeekBar from './PlaybackSeekBar.svelte';
 	import PlaybackShell from './PlaybackShell.svelte';
 	import PlaybackToggle from './PlaybackToggle.svelte';
+	import { seekReserveHeight } from './seek-bar';
 
 	let {
 		playing,
@@ -32,4 +33,10 @@
 	<PlaybackFrameField {frame} {maxFrame} {playing} {onframechange} />
 {/snippet}
 
-<PlaybackShell {playing} {onplaybackchange} {transport} {content} />
+<PlaybackShell
+	{playing}
+	{onplaybackchange}
+	{transport}
+	{content}
+	transportMinHeight={seekReserveHeight}
+/>

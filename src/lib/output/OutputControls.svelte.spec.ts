@@ -285,7 +285,9 @@ describe('OutputControls', () => {
 		await expect.element(page.getByRole('button', { name: m.download() })).toBeEnabled();
 		expect(page.getByRole('button', { name: m.download() }).element().tagName).toBe('BUTTON');
 		const seekBar = page.getByRole('slider', { name: m.playback_position_aria() }).element();
-		expect(seekBar.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
+		const transport = seekBar.parentElement;
+		if (!(transport instanceof HTMLElement)) throw new Error('Expected transport element');
+		expect(transport.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
 		const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();

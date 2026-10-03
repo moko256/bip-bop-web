@@ -6,7 +6,7 @@
 	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-	import { seekBarHeight } from '$lib/playback/seek-bar';
+	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
@@ -205,7 +205,7 @@
 				/>
 			{/if}
 		</div>
-		<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>
+		<div class="seek-reserve" style:height={seekReserveHeight} aria-hidden="true"></div>
 	</div>
 {/snippet}
 
@@ -354,6 +354,13 @@
 		width: 100%;
 		min-width: 0;
 		background: #000;
+	}
+
+	.viewport:has(> .loading) {
+		outline: 1px solid var(--pico-muted-border-color, #ccc);
+	}
+
+	.media.viewport {
 		outline: 1px solid var(--pico-muted-border-color, #ccc);
 	}
 

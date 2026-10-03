@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { seekBarHeight } from '$lib/playback/seek-bar';
+	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import * as m from '$lib/paraglide/messages';
 	import OutputLayout from './OutputLayout.svelte';
 	import { defaultResolution, parseResolution } from './output';
@@ -17,7 +17,7 @@
 			<div class="viewport" style:aspect-ratio={videoAspectRatio}>
 				<progress aria-label={m.loading_video_output_aria()}></progress>
 			</div>
-			<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>
+			<div class="seek-reserve" style:height={seekReserveHeight} aria-hidden="true"></div>
 		</div>
 	{/snippet}
 	{#snippet settings()}
