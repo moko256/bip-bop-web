@@ -79,9 +79,11 @@
 	function previewSample(frame: number): BipBopSample {
 		return {
 			frame,
-			elapsedSeconds: picture.elapsedSeconds,
 			clockCentiseconds: picture.clockCentiseconds,
-			previousElapsedSeconds: picture.previousElapsedSeconds,
+			coefficient: picture.coefficient,
+			coefficientSpan: 1,
+			beat: picture.beat,
+			showBeat: picture.showBeat,
 			...(picture.previewFps === null ? {} : { previewFps: picture.previewFps })
 		};
 	}

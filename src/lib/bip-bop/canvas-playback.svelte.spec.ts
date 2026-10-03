@@ -236,18 +236,26 @@ describe('canvas playback', () => {
 		expect(session.frame).toBe(1);
 		expect(session.playing).toBe(true);
 		expect(picture.clockCentiseconds).toBe(0);
+		expect(picture.coefficient).toBe(0);
+		expect(picture.beat).toBe('bip');
+		expect(picture.showBeat).toBe(true);
 		expect(picture.previewFps).toBeNull();
 
 		time.advance(500);
 		expect(session.frame).toBe(2);
 		expect(picture.elapsedSeconds).toBe(0.5);
 		expect(picture.clockCentiseconds).toBe(50);
+		expect(picture.coefficient).toBeCloseTo(0.5);
+		expect(picture.showBeat).toBe(false);
 		expect(picture.previewFps).toBe(2);
 
 		time.advance(500);
 		expect(session.frame).toBe(3);
 		expect(session.playing).toBe(false);
 		expect(picture.clockCentiseconds).toBe(100);
+		expect(picture.coefficient).toBe(0);
+		expect(picture.beat).toBe('bop');
+		expect(picture.showBeat).toBe(true);
 		expect(audio.events.at(-1)).toBe('stop');
 	});
 

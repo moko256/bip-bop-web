@@ -3,7 +3,11 @@ import {
 	clockCentisecondsAtFrame,
 	clockCentisecondsAtMs,
 	elapsedSecondsAtFrame,
+	previewBeat,
+	previewCoefficient,
+	previewShowBeat,
 	toneSecondAtFrame,
+	videoCoefficient,
 	videoPictureAtFrame
 } from './media-time';
 
@@ -50,15 +54,58 @@ describe('elapsed time at a frame', () => {
 		expect(clockCentisecondsAtMs(-10)).toBe(0);
 	});
 
-	it('keeps a 60 fps video on the frame grid and other rates on elapsed time', () => {
+	it('takes the video coefficient from the frame count modulo the frame rate', () => {
+		expect(videoCoefficient(0, 60)).toBe(0);
+		expect(videoCoefficient(30, 60)).toBe(30);
+		expect(videoCoefficient(60, 60)).toBe(0);
+		expect(videoCoefficient(12, 24)).toBe(12);
+		expect(videoCoefficient(24, 24)).toBe(0);
+		expect(videoCoefficient(-5, 60)).toBe(0);
+
 		expect(videoPictureAtFrame(60, 60)).toMatchObject({
 			frame: 60,
-			elapsedSeconds: 1,
 			clockCentiseconds: 100,
-			previousElapsedSeconds: 59 / 60,
-			frameGrid: true
+			coefficient: 0,
+			coefficientSpan: 60,
+			beat: 'bop',
+			showBeat: true
 		});
-		expect(videoPictureAtFrame(24, 24).frameGrid).toBe(false);
-		expect(videoPictureAtFrame(0, 24).previousElapsedSeconds).toBeUndefined();
+		expect(videoPictureAtFrame(30, 60)).toMatchObject({
+			coefficient: 30,
+			beat: 'bip',
+			showBeat: false
+		});
+		expect(videoPictureAtFrame(0, 24)).toMatchObject({
+			coefficient: 0,
+			beat: 'bip',
+			showBeat: true
+		});
+		expect(videoPictureAtFrame(24, 24)).toMatchObject({
+			coefficient: 0,
+			coefficientSpan: 24,
+			beat: 'bop',
+			showBeat: true
+		});
+	});
+});
+
+describe('preview coefficient', () => {
+	it('uses the fractional second and draws the label when the coefficient wraps', () => {
+		expect(previewCoefficient(0)).toBe(0);
+		expect(previewCoefficient(0.25)).toBeCloseTo(0.25);
+		expect(previewCoefficient(1)).toBe(0);
+		expect(previewCoefficient(1.5)).toBeCloseTo(0.5);
+		expect(previewCoefficient(-1)).toBe(0);
+
+		expect(previewBeat(0)).toBe('bip');
+		expect(previewBeat(0.9)).toBe('bip');
+		expect(previewBeat(1)).toBe('bop');
+		expect(previewBeat(2)).toBe('bip');
+
+		expect(previewShowBeat(0, null)).toBe(true);
+		expect(previewShowBeat(0.2, null)).toBe(false);
+		expect(previewShowBeat(0.4, 0.2)).toBe(false);
+		expect(previewShowBeat(0.01, 0.98)).toBe(true);
+		expect(previewShowBeat(0, 0.5)).toBe(true);
 	});
 });

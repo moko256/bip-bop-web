@@ -508,27 +508,65 @@ describe('BipBopRenderer', () => {
 		expect(context.rects[2]).toMatchObject({ x: 15, y: 66, w: 11, h: 11 });
 	});
 
-	it('draws the supplied clock and leaves the frame counter independent of it', () => {
-		const { context } = drawSample({
+	it('draws the supplied clock and leaves the frame counter out of the motion', () => {
+		const half = drawSample({
 			frame: 12,
-			elapsedSeconds: 1.5,
 			clockCentiseconds: 150,
-			previousElapsedSeconds: 1.4
+			coefficient: 0.5,
+			coefficientSpan: 1,
+			beat: 'bop',
+			showBeat: false
 		});
-		const clock = context.texts.find((text) => text.align === 'left');
+		const sameMotion = drawSample({
+			frame: 999999,
+			clockCentiseconds: 150,
+			coefficient: 0.5,
+			coefficientSpan: 1,
+			beat: 'bop',
+			showBeat: false
+		});
+		const clock = half.context.texts.find((text) => text.align === 'left');
 
-		expect(context.texts.map((text) => text.text)).toContain('000012');
-		expect(context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(half.context.texts.map((text) => text.text)).toContain('000012');
+		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
 		expect(clock?.text).toBe('00:00:01.50');
-		expect(context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+		expect(half.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+		expect(sameMotion.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+		expect(sameMotion.context.fills.slice(0, 3)).toEqual(half.context.fills.slice(0, 3));
+		expect(sameMotion.context.texts.map((text) => text.text)).toContain('999999');
+	});
+
+	it('draws Bip or Bop only when the caller asks, on the supplied beat', () => {
+		const hidden = drawSample({
+			frame: 0,
+			clockCentiseconds: 0,
+			coefficient: 0,
+			coefficientSpan: 1,
+			beat: 'bip',
+			showBeat: false
+		});
+		const bop = drawSample({
+			frame: 4,
+			clockCentiseconds: 100,
+			coefficient: 0,
+			coefficientSpan: 1,
+			beat: 'bop',
+			showBeat: true
+		});
+
+		expect(hidden.context.texts.map((text) => text.text)).not.toContain('Bip!');
+		expect(bop.context.texts.map((text) => text.text)).toContain('Bop!');
+		expect(bop.context.texts.map((text) => text.text)).not.toContain('Bip!');
 	});
 
 	it('draws the rounded preview frame rate under the resolution', () => {
 		const { context, dimensions } = drawSample({
 			frame: 4,
-			elapsedSeconds: 0.2,
 			clockCentiseconds: 20,
-			previousElapsedSeconds: 0,
+			coefficient: 0.2,
+			coefficientSpan: 1,
+			beat: 'bip',
+			showBeat: false,
 			previewFps: 1000 / 17
 		});
 		const corner = context.texts.filter((text) => text.align === 'right');

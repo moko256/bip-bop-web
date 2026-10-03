@@ -4,9 +4,6 @@ import { BIP_BOP_FPS } from './timeline';
 
 /** One drawing cycle is one Timeline second. */
 const CYCLE_FRAMES = BIP_BOP_FPS;
-/** Two-second color loop. Endpoints are one second apart. */
-const COLOR_PERIOD_FRAMES = CYCLE_FRAMES * 2;
-
 const BLACK = '#000000';
 
 type Rgb = readonly [number, number, number];
@@ -166,25 +163,19 @@ export type BipBopVideoCorner = {
 };
 
 /**
- * Draws one frame. Stateless: the caller owns the frame counter, the elapsed
- * time, and the canvas size. This function does not convert a frame count into
- * a time.
+ * Draws one frame. Stateless: the caller owns the frame counter, the clock,
+ * and the motion. The frame count is only the digits in the center.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * The disk is two filled arcs that meet at the center. At the start of each
- * second the split is 1°: one arc runs 0°–1° and the other 1°–360°. The split
- * then moves clockwise and completes one turn per second.
- * On a 60 fps video (`sample.frameGrid`) that motion stays on whole frames:
- * each frame moves the split 6°, and the two fills switch only when the frame
- * index is divisible by 60. Frames 0–59 paint the 0°–split arc gray and the
- * split–360° arc white, frames 60–119 swap those fills, and each later second
- * swaps again. Field and clock colors ping-pong over 120 frames.
- * Any other video rate, and the web preview, follow `sample.elapsedSeconds`
- * instead of the frame counter. A video passes `frame / fps`. The web preview
- * passes time since playback started, so its frame counter and clock are
- * unrelated. Field and clock colors ping-pong over two seconds, swapping black
- * and white. On each second boundary the label above center is `Bip!` (black)
- * or `Bop!` (white), alternating every second.
+ * The disk is two filled arcs that meet at the center. At coefficient 0 the
+ * split is 1°: one arc runs 0°–1° and the other 1°–360°. The split then moves
+ * clockwise and completes one turn as the coefficient completes one
+ * {@link FramePicture.coefficientSpan}.
+ * A Bip second paints the 0°–split arc gray and the split–360° arc white.
+ * A Bop second swaps those fills. Field and clock colors ping-pong across the
+ * two seconds, black toward white through the Bip second and back through the
+ * Bop second. `sample.showBeat` draws `Bip!` or `Bop!` above center for
+ * `sample.beat`.
  * The corner clock is `sample.clockCentiseconds`, truncated by the caller
  * (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
@@ -248,8 +239,7 @@ export function BipBopRenderer(
 	const colorBarY = wholePixels(dimensions.colorBarY);
 	const frame = sample.frame;
 	const marks = pictureMarks(sample);
-	const circleSwapped = nonNegativeMod(marks.turn, 2) === 1;
-	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
+	const circleMix = marks.bip ? 0 : CYCLE_FRAMES;
 
 	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, marks.towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
@@ -341,7 +331,6 @@ function formatFrameCount(frame: number): string {
 }
 
 type PictureMarks = {
-	turn: number;
 	startDegrees: number;
 	towardMidpoint: number;
 	showLabel: boolean;
@@ -350,45 +339,25 @@ type PictureMarks = {
 };
 
 /**
- * Timing for one drawn sample.
- * `frameGrid` keeps the 60 fps video on whole frames.
- * Otherwise the circle, the fills, and Bip/Bop follow `elapsedSeconds`.
- * The clock is the centiseconds the caller already truncated.
+ * Motion for one drawn sample.
+ * The coefficient runs from 0 through {@link BipBopSample.coefficientSpan}
+ * once per second. The caller chooses the beat and whether this sample draws it.
  */
 function pictureMarks(sample: BipBopSample): PictureMarks {
-	const clockCentiseconds = nonNegativeCentiseconds(sample.clockCentiseconds);
-	if (sample.frameGrid) {
-		const frame = sample.frame;
-		const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
-		const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
-		const turn = Math.floor(frame / CYCLE_FRAMES);
-		return {
-			turn,
-			startDegrees: 1 + cycleFrame * (360 / CYCLE_FRAMES),
-			towardMidpoint: periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame,
-			showLabel: cycleFrame === 0,
-			bip: periodFrame === 0,
-			clockCentiseconds
-		};
-	}
-
-	const time =
-		Number.isFinite(sample.elapsedSeconds) && sample.elapsedSeconds > 0 ? sample.elapsedSeconds : 0;
-	const turn = Math.floor(time);
-	const fractional = time - turn;
-	const periodPos = time - Math.floor(time / 2) * 2;
-	const previous = sample.previousElapsedSeconds;
-	const previousTurn =
-		previous === undefined || !Number.isFinite(previous) || previous < 0
-			? -1
-			: Math.floor(previous);
+	const span =
+		Number.isFinite(sample.coefficientSpan) && sample.coefficientSpan > 0
+			? sample.coefficientSpan
+			: 1;
+	const coefficient =
+		Number.isFinite(sample.coefficient) && sample.coefficient > 0 ? sample.coefficient : 0;
+	const alongSecond = (coefficient * CYCLE_FRAMES) / span;
+	const bip = sample.beat !== 'bop';
 	return {
-		turn,
-		startDegrees: 1 + fractional * 360,
-		towardMidpoint: periodPos <= 1 ? periodPos * CYCLE_FRAMES : (2 - periodPos) * CYCLE_FRAMES,
-		showLabel: turn !== previousTurn,
-		bip: turn % 2 === 0,
-		clockCentiseconds
+		startDegrees: 1 + (coefficient * 360) / span,
+		towardMidpoint: bip ? alongSecond : CYCLE_FRAMES - alongSecond,
+		showLabel: sample.showBeat === true,
+		bip,
+		clockCentiseconds: nonNegativeCentiseconds(sample.clockCentiseconds)
 	};
 }
 
@@ -423,10 +392,6 @@ function monospaceFont(size: number): string {
 
 function pad2(value: number): string {
 	return String(value).padStart(2, '0');
-}
-
-function nonNegativeMod(value: number, modulus: number): number {
-	return ((value % modulus) + modulus) % modulus;
 }
 
 /** Linear mix from `from` at numerator 0 to `to` at numerator === denominator. */

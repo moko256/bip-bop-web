@@ -1,7 +1,13 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
 import type { PlaybackClock } from '$lib/playback/clock';
 import { bipBopPreviewPictureMs } from './audio';
-import { clockCentisecondsAtMs } from './media-time';
+import {
+	clockCentisecondsAtMs,
+	previewBeat,
+	previewCoefficient,
+	previewShowBeat,
+	type PictureBeat
+} from './media-time';
 import { scheduleLiveTones } from './tone-schedule';
 
 /**
@@ -12,17 +18,24 @@ import { scheduleLiveTones } from './tone-schedule';
  */
 export type CanvasPicture = {
 	elapsedSeconds: number;
-	/** Previous sample. Negative before the first movement. */
-	previousElapsedSeconds: number;
 	clockCentiseconds: number;
+	/** `elapsedSeconds % 1`. */
+	coefficient: number;
+	/** Previous coefficient. Null until the first published sample. */
+	previousCoefficient: number | null;
+	beat: PictureBeat;
+	showBeat: boolean;
 	previewFps: number | null;
 };
 
 export function createCanvasPicture(): CanvasPicture {
 	return {
 		elapsedSeconds: 0,
-		previousElapsedSeconds: -1,
 		clockCentiseconds: 0,
+		coefficient: 0,
+		previousCoefficient: null,
+		beat: 'bip',
+		showBeat: true,
 		previewFps: null
 	};
 }
@@ -210,9 +223,11 @@ export function canvasPlayback(
 
 		function publish(elapsedMs: number, previewFps: number | null): void {
 			const elapsedSeconds = elapsedMs > 0 && Number.isFinite(elapsedMs) ? elapsedMs / 1000 : 0;
-			if (picture.elapsedSeconds !== elapsedSeconds) {
-				picture.previousElapsedSeconds = picture.elapsedSeconds;
-			}
+			const coefficient = previewCoefficient(elapsedSeconds);
+			picture.showBeat = previewShowBeat(coefficient, picture.previousCoefficient);
+			picture.previousCoefficient = coefficient;
+			picture.coefficient = coefficient;
+			picture.beat = previewBeat(elapsedSeconds);
 			picture.elapsedSeconds = elapsedSeconds;
 			picture.clockCentiseconds = clockCentisecondsAtMs(elapsedMs);
 			if (previewFps !== null) picture.previewFps = previewFps;

@@ -1,17 +1,28 @@
 import { BIP_BOP_FPS } from './timeline';
 
-/** Timing the renderer draws. The renderer does not convert a frame count into this. */
+/** Even seconds are Bip. Odd seconds are Bop. */
+export type PictureBeat = 'bip' | 'bop';
+
+/**
+ * Timing the renderer draws. The frame count is only the digits in the center.
+ * The circle, the field, and the Bip/Bop label follow `coefficient` and `beat`.
+ */
 export type FramePicture = {
 	frame: number;
-	elapsedSeconds: number;
 	clockCentiseconds: number;
-	/** Elapsed seconds of the previous sample. Omit before the first sample. */
-	previousElapsedSeconds?: number;
 	/**
-	 * Use whole frames of the 60 fps grid for the circle, the field, and Bip/Bop.
-	 * A 60 fps video sets this. The web preview does not.
+	 * Position in the current second.
+	 * A video passes `frame % fps`. The web preview passes `elapsedSeconds % 1`.
 	 */
-	frameGrid?: boolean;
+	coefficient: number;
+	/**
+	 * Amount of {@link FramePicture.coefficient} that fills one second.
+	 * A video passes `fps`. The web preview passes `1`.
+	 */
+	coefficientSpan: number;
+	beat: PictureBeat;
+	/** Draw the Bip! or Bop! label on this sample. */
+	showBeat: boolean;
 };
 
 /**
@@ -50,18 +61,55 @@ export function clockCentisecondsAtMs(elapsedMs: number): number {
 	return Math.floor(elapsedMs / 10);
 }
 
+/** `frame % fps`, or 0 when the frame or the rate cannot place a sample. */
+export function videoCoefficient(frame: number, fps: number): number {
+	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
+	return frame % fps;
+}
+
+/** Even whole seconds are Bip. Odd whole seconds are Bop. */
+export function beatAtSecond(second: number): PictureBeat {
+	const whole = Number.isFinite(second) ? Math.floor(second) : 0;
+	return ((whole % 2) + 2) % 2 === 0 ? 'bip' : 'bop';
+}
+
 /**
  * Picture timing for one video frame.
- * Elapsed time is {@link elapsedSecondsAtFrame}. The 60 fps grid keeps
- * whole-frame colors; every other rate follows that elapsed time.
+ * The coefficient is {@link videoCoefficient}. The label is drawn when that
+ * coefficient is 0. Elapsed time on the clock stays `frame / fps`.
  */
 export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	const index = Number.isFinite(frame) ? frame : 0;
+	const rate = Number.isFinite(fps) && fps > 0 ? fps : BIP_BOP_FPS;
+	const coefficient = videoCoefficient(index, rate);
+	const second = index > 0 ? Math.floor(index / rate) : 0;
 	return {
 		frame: index,
-		elapsedSeconds: elapsedSecondsAtFrame(index, fps),
-		clockCentiseconds: clockCentisecondsAtFrame(index, fps),
-		previousElapsedSeconds: index > 0 ? elapsedSecondsAtFrame(index - 1, fps) : undefined,
-		frameGrid: fps === BIP_BOP_FPS
+		clockCentiseconds: clockCentisecondsAtFrame(index, rate),
+		coefficient,
+		coefficientSpan: rate,
+		beat: beatAtSecond(second),
+		showBeat: coefficient === 0
 	};
+}
+
+/** Fractional second of a live clock. `elapsedSeconds % 1`. */
+export function previewCoefficient(elapsedSeconds: number): number {
+	if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 0;
+	return elapsedSeconds % 1;
+}
+
+/** Bip on even elapsed seconds, Bop on odd ones. */
+export function previewBeat(elapsedSeconds: number): PictureBeat {
+	if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 'bip';
+	return beatAtSecond(Math.floor(elapsedSeconds));
+}
+
+/**
+ * The label is drawn when the coefficient wraps back toward 0.
+ * The opening sample has no previous coefficient, and draws when it sits at 0.
+ */
+export function previewShowBeat(coefficient: number, previousCoefficient: number | null): boolean {
+	if (previousCoefficient === null) return coefficient === 0;
+	return coefficient < previousCoefficient;
 }

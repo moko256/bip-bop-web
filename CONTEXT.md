@@ -20,6 +20,10 @@ _Avoid_: duration, runtime, play time
 Time since web preview playback started. The frame counter counts animation frames and does not set this clock.
 _Avoid_: frame time, media time
 
+**Coefficient**:
+How far the picture is through the current second. A video takes it from the frame count modulo the frame rate. The web preview takes it from the preview clock modulo one second.
+_Avoid_: phase, progress, cycle frame
+
 **Playback**:
 The time position the user plays, pauses, and seeks in the page preview and the exported video.
 _Avoid_: player, transport
