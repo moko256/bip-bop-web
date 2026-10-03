@@ -1,3 +1,4 @@
+import { BIP_BOP_AUDIO_SAMPLE_RATE, bipBopFrequencyHz } from './audio';
 import { BIP_BOP_FPS } from './timeline';
 
 /** One drawing cycle is one Timeline second. */
@@ -88,6 +89,13 @@ export type BipBopDimensions = {
 	colorBarX: number;
 	/** Top of the color bar. The bottom inset is `round(shortSide * 1/32)`. */
 	colorBarY: number;
+	/**
+	 * Top of the 1px Bip/Bop axis. `height - round(shortSide * 1/16)`.
+	 * The stroke is centered half a pixel lower so it fills this one row.
+	 */
+	toneAxisY: number;
+	/** Half the height of the Bip/Bop trace. `round(shortSide * 1/32)`. */
+	toneAmplitude: number;
 };
 
 export function createBipBopDimensions(width: number, height: number): BipBopDimensions {
@@ -117,7 +125,9 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		overlayFontSize: wholePixels(textHeight / 2),
 		colorBarSize: textHeight,
 		colorBarX: inset,
-		colorBarY: bitmapHeight - inset - textHeight
+		colorBarY: bitmapHeight - inset - textHeight,
+		toneAxisY: bitmapHeight - textHeight,
+		toneAmplitude: inset
 	};
 }
 
@@ -186,10 +196,22 @@ export type BipBopVideoCorner = {
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
+ * When the frame index is divisible by 60, Bip or Bop is sounding and a trace is
+ * drawn over the picture. A horizontal axis sits `round(shortSide * 1/16)` above
+ * the bottom and runs the bitmap width. The axis and the curve are both a 1px
+ * stroke, at every resolution. The curve is centered on that axis, within
+ * `round(shortSide * 1/32)` above and below it: up is louder, down is the
+ * negative side. It is `-cos`, so it starts at the left edge on the lower edge.
+ * Across the width there are `800 / (48000 / frequency)` cycles, one picture
+ * frame of 48 kHz audio (`48000 / 60` samples). Bip at 1500 Hz is 25 cycles.
+ * Bop at 475 Hz is `475 / 60` cycles. Each quarter cycle is one cubic Bezier
+ * that matches `-cos` and its slope at both ends. The trace uses the clock
+ * color, so it stays visible on the field.
  * The arc radius is `round(round(shortSide * 2/5) / 2)`, and the center is
  * `round(width / 2)`, `round(height / 2)`, after width and height are rounded.
  * Padding, text size, coordinates, widths, and heights passed to the canvas are
- * whole pixels.
+ * whole pixels. The tone stroke is the exception: it is 1 bitmap pixel thick,
+ * centered on a half-pixel, and its Beziers follow `-cos`.
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
  * `video.videoCodec`, and `video.audioCodec` on the following lines. Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
@@ -224,6 +246,8 @@ export function BipBopRenderer(
 	const colorBarSize = wholePixels(dimensions.colorBarSize);
 	const colorBarX = wholePixels(dimensions.colorBarX);
 	const colorBarY = wholePixels(dimensions.colorBarY);
+	const toneAxisY = wholePixels(dimensions.toneAxisY);
+	const toneAmplitude = wholePixels(dimensions.toneAmplitude);
 	const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
 	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
 	const turn = Math.floor(frame / CYCLE_FRAMES);
@@ -278,6 +302,73 @@ export function BipBopRenderer(
 			colorBarSize
 		);
 	}
+
+	if (cycleFrame === 0) {
+		drawToneTrace(
+			ctx,
+			width,
+			toneAxisY + 0.5,
+			toneAmplitude,
+			bipBopFrequencyHz(frame / CYCLE_FRAMES),
+			mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, CYCLE_FRAMES)
+		);
+	}
+}
+
+/**
+ * Axis and `-cos` for one sounding frame.
+ * `axisCenter` is the middle of the 1px axis. `amplitude` is the lower edge
+ * at phase 0, because `-cos(0)` is -1 and canvas y grows downward.
+ * The width is one picture frame: `sampleRate / fps` samples, drawn as
+ * `samples / (sampleRate / frequency)` cycles.
+ */
+function drawToneTrace(
+	ctx: BipBopContext,
+	width: number,
+	axisCenter: number,
+	amplitude: number,
+	frequencyHz: number,
+	color: string
+): void {
+	const samplesPerFrame = BIP_BOP_AUDIO_SAMPLE_RATE / BIP_BOP_FPS;
+	const cycles = samplesPerFrame / (BIP_BOP_AUDIO_SAMPLE_RATE / frequencyHz);
+	if (!Number.isFinite(cycles) || cycles <= 0) return;
+
+	const endPhase = cycles * Math.PI * 2;
+	const quarter = Math.PI / 2;
+	const segments = Math.ceil(endPhase / quarter - 1e-9);
+	const yAt = (phase: number) => axisCenter + Math.cos(phase) * amplitude;
+	const xAt = (phase: number) => (phase / endPhase) * width;
+	const slope = (phase: number) => -amplitude * Math.sin(phase);
+	const dx = width / endPhase;
+
+	ctx.lineWidth = 1;
+	ctx.lineCap = 'butt';
+	ctx.lineJoin = 'round';
+	ctx.strokeStyle = color;
+	ctx.beginPath();
+	ctx.moveTo(0, axisCenter);
+	ctx.lineTo(width, axisCenter);
+	ctx.stroke();
+
+	ctx.beginPath();
+	ctx.moveTo(0, yAt(0));
+	for (let index = 0; index < segments; index += 1) {
+		const start = index * quarter;
+		const end = Math.min(start + quarter, endPhase);
+		const dt = end - start;
+		const endX = xAt(end);
+		const endY = yAt(end);
+		ctx.bezierCurveTo(
+			xAt(start) + (dt / 3) * dx,
+			yAt(start) + (dt / 3) * slope(start),
+			endX - (dt / 3) * dx,
+			endY - (dt / 3) * slope(end),
+			endX,
+			endY
+		);
+	}
+	ctx.stroke();
 }
 
 /** One pie slice of the disk. The two slices share the center and do not overlap. */
