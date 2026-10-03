@@ -50,6 +50,7 @@
 	"dependencies": {
 		"@picocss/pico": "^2.1.1",
 		"kiso.css": "^1.2.4",
-		"mediabunny": "^1.60.0"
+		"mediabunny": "^1.60.0",
+		"two.js": "0.8.24"
 	}
 }

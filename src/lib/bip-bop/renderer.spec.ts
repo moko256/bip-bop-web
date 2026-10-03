@@ -1,27 +1,26 @@
 import { describe, expect, it } from 'vitest';
+import type { Picture } from './picture';
 import {
+	BIP_BOP_FONT_FAMILY,
 	BIP_BOP_FONT_TEXT,
-	BipBopRenderer,
 	createBipBopDimensions,
+	paintBipBop,
 	type BipBopVideoCorner
 } from './renderer';
 
-type ArcCall = {
-	x: number;
-	y: number;
-	radius: number;
-	start: number;
-	end: number;
-};
+const FONT_FAMILY = `"${BIP_BOP_FONT_FAMILY}", monospace`;
 
-class MockContext {
-	fillStyle = '';
-	font = '';
-	textAlign = '';
-	textBaseline = '';
-	imageSmoothingEnabled = true;
-	arcs: ArcCall[] = [];
-	fills: string[] = [];
+class RecordingPicture implements Picture {
+	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
+	circles: { x: number; y: number; radius: number; fill: string }[] = [];
+	sectors: {
+		x: number;
+		y: number;
+		radius: number;
+		start: number;
+		end: number;
+		fill: string;
+	}[] = [];
 	texts: {
 		text: string;
 		baseline: string;
@@ -29,60 +28,52 @@ class MockContext {
 		fill: string;
 		x: number;
 		y: number;
-		font: string;
+		size: number;
+		family: string;
 	}[] = [];
 
-	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
-	fonts: string[] = [];
-
-	setTransform(): void {}
-
-	fillRect(x: number, y: number, w: number, h: number): void {
-		this.fills.push(this.fillStyle);
-		this.rects.push({ x, y, w, h, fill: this.fillStyle });
+	fillRect(x: number, y: number, w: number, h: number, fill: string): void {
+		this.rects.push({ x, y, w, h, fill });
 	}
 
-	beginPath(): void {}
-
-	arc(x: number, y: number, radius: number, start: number, end: number): void {
-		this.arcs.push({ x, y, radius, start, end });
+	fillCircle(x: number, y: number, radius: number, fill: string): void {
+		this.circles.push({ x, y, radius, fill });
 	}
 
-	moveTo(): void {}
-
-	closePath(): void {}
-
-	fill(): void {
-		this.fills.push(this.fillStyle);
+	fillSector(x: number, y: number, radius: number, start: number, end: number, fill: string): void {
+		this.sectors.push({ x, y, radius, start, end, fill });
 	}
 
-	fillText(text: string, x: number, y: number): void {
-		this.fonts.push(this.font);
+	fillText(
+		text: string,
+		x: number,
+		y: number,
+		style: {
+			size: number;
+			family: string;
+			align: 'left' | 'center' | 'right';
+			baseline: 'top' | 'bottom';
+			fill: string;
+		}
+	): void {
 		this.texts.push({
 			text,
-			baseline: this.textBaseline,
-			align: this.textAlign,
-			fill: this.fillStyle,
+			baseline: style.baseline,
+			align: style.align,
+			fill: style.fill,
 			x,
 			y,
-			font: this.font
+			size: style.size,
+			family: style.family
 		});
 	}
 }
 
 function draw(frame: number, width = 1920, height = 1080, video?: BipBopVideoCorner) {
-	const context = new MockContext();
-	const canvas = {
-		getContext: () => context
-	} as unknown as HTMLCanvasElement;
+	const picture = new RecordingPicture();
 	const dimensions = createBipBopDimensions(width, height);
-	BipBopRenderer(canvas, dimensions, frame, video);
-	return { context, dimensions };
-}
-
-/** Degrees clockwise from 12 o'clock, matching the renderer. */
-function radiansFromTop(degrees: number): number {
-	return -Math.PI / 2 + (degrees * Math.PI) / 180;
+	paintBipBop(picture, dimensions, frame, video);
+	return { picture, dimensions };
 }
 
 describe('createBipBopDimensions', () => {
@@ -129,68 +120,43 @@ describe('createBipBopDimensions', () => {
 	});
 });
 
-describe('BipBopRenderer', () => {
-	it('turns anti-aliasing off for canvas and video frames', () => {
-		const { context } = draw(0);
-
-		expect(context.imageSmoothingEnabled).toBe(false);
-	});
-
-	it('keeps the 2d context when the canvas size stays the same', () => {
-		let calls = 0;
-		const context = new MockContext();
-		const canvas = {
-			getContext: () => {
-				calls += 1;
-				return context;
-			}
-		} as unknown as HTMLCanvasElement;
-		const dimensions = createBipBopDimensions(320, 180);
-
-		BipBopRenderer(canvas, dimensions, 0);
-		BipBopRenderer(canvas, dimensions, 1);
-
-		expect(calls).toBe(1);
-		expect(context.imageSmoothingEnabled).toBe(false);
-
-		BipBopRenderer(canvas, createBipBopDimensions(640, 360), 0);
-		expect(calls).toBe(2);
-	});
-
+describe('paintBipBop', () => {
 	it('paints a black field, a gray circle, and a white sector from 1° to 360° on frame 0', () => {
-		const { context, dimensions } = draw(0);
-		const sector = context.arcs[1];
+		const { picture, dimensions } = draw(0);
+		const sector = picture.sectors[0];
 
-		expect(context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
-		expect(context.arcs[0]).toMatchObject({
+		expect(picture.rects[0]?.fill).toBe('#000000');
+		expect(picture.circles[0]?.fill).toBe('#808080');
+		expect(sector?.fill).toBe('#ffffff');
+		expect(picture.circles[0]).toMatchObject({
 			x: dimensions.centerX,
 			y: dimensions.centerY,
 			radius: dimensions.radius
 		});
-		expect(sector?.start).toBeCloseTo(radiansFromTop(1));
-		expect(sector?.end).toBeCloseTo(radiansFromTop(360));
+		expect(sector?.start).toBe(1);
+		expect(sector?.end).toBe(360);
 		expect(sector?.radius).toBe(dimensions.radius);
 	});
 
 	it('starts the sector at 1° and sweeps the leading edge 6° clockwise each frame', () => {
-		const sector = (frame: number) => draw(frame).context.arcs[1];
+		const sector = (frame: number) => draw(frame).picture.sectors[0];
 
-		expect(sector(0)?.start).toBeCloseTo(radiansFromTop(1));
-		expect(sector(0)?.end).toBeCloseTo(radiansFromTop(360));
-		expect(sector(1)?.start).toBeCloseTo(radiansFromTop(7));
-		expect(sector(30)?.start).toBeCloseTo(radiansFromTop(181));
-		expect(sector(59)?.start).toBeCloseTo(radiansFromTop(355));
-		expect(sector(60)?.start).toBeCloseTo(radiansFromTop(1));
-		expect(sector(119)?.start).toBeCloseTo(radiansFromTop(355));
-		expect(sector(120)?.start).toBeCloseTo(radiansFromTop(1));
-		expect(sector(3599)?.start).toBeCloseTo(radiansFromTop(355));
-		expect(sector(3600)?.start).toBeCloseTo(radiansFromTop(1));
+		expect(sector(0)?.start).toBe(1);
+		expect(sector(0)?.end).toBe(360);
+		expect(sector(1)?.start).toBe(7);
+		expect(sector(30)?.start).toBe(181);
+		expect(sector(59)?.start).toBe(355);
+		expect(sector(60)?.start).toBe(1);
+		expect(sector(119)?.start).toBe(355);
+		expect(sector(120)?.start).toBe(1);
+		expect(sector(3599)?.start).toBe(355);
+		expect(sector(3600)?.start).toBe(1);
 	});
 
 	it('draws the counter below center and alternates Bip! and Bop! above center each second', () => {
 		const atZero = draw(0);
 		const centered = (frame: ReturnType<typeof draw>) =>
-			frame.context.texts.filter((text) => text.x === frame.dimensions.centerX);
+			frame.picture.texts.filter((text) => text.x === frame.dimensions.centerX);
 		const atZeroCentered = centered(atZero);
 		const atOne = centered(draw(1));
 		const atSixty = centered(draw(60));
@@ -204,7 +170,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '68px "JetBrains Mono", monospace'
+				size: 68,
+				family: FONT_FAMILY
 			},
 			{
 				text: 'Bip!',
@@ -213,7 +180,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '90px "JetBrains Mono", monospace'
+				size: 90,
+				family: FONT_FAMILY
 			}
 		]);
 		expect(atOne.map((text) => text.text)).toEqual(['000001']);
@@ -227,7 +195,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 960,
 				y: atZero.dimensions.frameCountY,
-				font: '68px "JetBrains Mono", monospace'
+				size: 68,
+				family: FONT_FAMILY
 			},
 			{
 				text: 'Bop!',
@@ -236,7 +205,8 @@ describe('BipBopRenderer', () => {
 				fill: '#ffffff',
 				x: 960,
 				y: atZero.dimensions.labelY,
-				font: '90px "JetBrains Mono", monospace'
+				size: 90,
+				family: FONT_FAMILY
 			}
 		]);
 		expect(atOneTwenty.map((text) => text.text)).toEqual(['000120', 'Bip!']);
@@ -244,30 +214,33 @@ describe('BipBopRenderer', () => {
 	});
 
 	it('ping-pongs field and clock colors, and switches circle and sector colors each second', () => {
-		const atHalf = draw(30);
-		const atSecond = draw(60);
-		const atNextHalf = draw(90);
-		const atReturn = draw(120);
+		const fills = (frame: number) => {
+			const picture = draw(frame).picture;
+			return [picture.rects[0]?.fill, picture.circles[0]?.fill, picture.sectors[0]?.fill];
+		};
+		const clockFill = (frame: number) =>
+			draw(frame).picture.texts.find((text) => text.align === 'left')?.fill;
 
-		expect(atHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#808080', '#ffffff']);
-		expect(draw(59).context.fills.slice(0, 3)).toEqual(['#fbfbfb', '#808080', '#ffffff']);
-		expect(atHalf.context.texts.find((text) => text.align === 'left')?.fill).toBe('#808080');
-		expect(atSecond.context.fills.slice(0, 3)).toEqual(['#ffffff', '#ffffff', '#808080']);
-		expect(atSecond.context.texts.find((text) => text.align === 'left')?.fill).toBe('#000000');
-		expect(atNextHalf.context.fills.slice(0, 3)).toEqual(['#808080', '#ffffff', '#808080']);
-		expect(draw(119).context.fills.slice(1, 3)).toEqual(['#ffffff', '#808080']);
-		expect(atReturn.context.fills.slice(0, 3)).toEqual(['#000000', '#808080', '#ffffff']);
-		expect(atReturn.context.texts.find((text) => text.align === 'left')?.fill).toBe('#ffffff');
+		expect(fills(30)).toEqual(['#808080', '#808080', '#ffffff']);
+		expect(fills(59)).toEqual(['#fbfbfb', '#808080', '#ffffff']);
+		expect(clockFill(30)).toBe('#808080');
+		expect(fills(60)).toEqual(['#ffffff', '#ffffff', '#808080']);
+		expect(clockFill(60)).toBe('#000000');
+		expect(fills(90)).toEqual(['#808080', '#ffffff', '#808080']);
+		expect(fills(119).slice(1)).toEqual(['#ffffff', '#808080']);
+		expect(fills(120)).toEqual(['#000000', '#808080', '#ffffff']);
+		expect(clockFill(120)).toBe('#ffffff');
 	});
 
 	it('draws the counter, the labels, the clock, and the corner in JetBrains Mono', () => {
-		const { context, dimensions } = draw(0);
-		const counter = `${dimensions.frameFontSize}px "JetBrains Mono", monospace`;
-		const label = `${dimensions.labelFontSize}px "JetBrains Mono", monospace`;
-		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
-		const corner = `${dimensions.overlayFontSize}px "JetBrains Mono", monospace`;
+		const { picture, dimensions } = draw(0);
 
-		expect(context.fonts).toEqual([counter, label, clock, corner]);
+		expect(picture.texts.map((text) => [text.size, text.family])).toEqual([
+			[dimensions.frameFontSize, FONT_FAMILY],
+			[dimensions.labelFontSize, FONT_FAMILY],
+			[dimensions.clockFontSize, FONT_FAMILY],
+			[dimensions.overlayFontSize, FONT_FAMILY]
+		]);
 	});
 
 	it('requests the font subset as one precomposed string', () => {
@@ -278,12 +251,12 @@ describe('BipBopRenderer', () => {
 
 	it('lists every character the renderer paints', () => {
 		const pageFrames = [0, 3, 60, 120, 987654, 60 * 3661 + 30].flatMap((frame) =>
-			draw(frame).context.texts.map((text) => text.text)
+			draw(frame).picture.texts.map((text) => text.text)
 		);
 		const videoFrames = [
 			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoCodec: 'avc', audioCodec: 'aac' }),
 			draw(0, 720, 480, { mimeType: 'video/webm', videoCodec: 'vp9', audioCodec: 'opus' })
-		].flatMap((frame) => frame.context.texts.map((text) => text.text));
+		].flatMap((frame) => frame.picture.texts.map((text) => text.text));
 		const drawn = [...pageFrames, ...videoFrames].join('');
 		const listed = new Set(BIP_BOP_FONT_TEXT);
 
@@ -291,8 +264,8 @@ describe('BipBopRenderer', () => {
 	});
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
-		const { context, dimensions } = draw(0);
-		const clock = context.texts.find((text) => text.align === 'left');
+		const { picture, dimensions } = draw(0);
+		const clock = picture.texts.find((text) => text.align === 'left');
 
 		expect(clock).toEqual({
 			text: '00:00:00.00',
@@ -301,12 +274,13 @@ describe('BipBopRenderer', () => {
 			fill: '#ffffff',
 			x: dimensions.clockX,
 			y: dimensions.clockY,
-			font: `${dimensions.clockFontSize}px "JetBrains Mono", monospace`
+			size: dimensions.clockFontSize,
+			family: FONT_FAMILY
 		});
-		expect(draw(1).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.01');
-		expect(draw(30).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
-		expect(draw(60).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
-		expect(draw(60 * 3661 + 30).context.texts.find((text) => text.align === 'left')?.text).toBe(
+		expect(draw(1).picture.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.01');
+		expect(draw(30).picture.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
+		expect(draw(60).picture.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
+		expect(draw(60 * 3661 + 30).picture.texts.find((text) => text.align === 'left')?.text).toBe(
 			'01:01:01.50'
 		);
 	});
@@ -315,7 +289,7 @@ describe('BipBopRenderer', () => {
 		const landscape = draw(0, 1920, 1080);
 		const portrait = draw(0, 720, 1280);
 
-		expect(landscape.context.texts.filter((text) => text.align === 'right')).toEqual([
+		expect(landscape.picture.texts.filter((text) => text.align === 'right')).toEqual([
 			{
 				text: '1920x1080',
 				baseline: 'top',
@@ -323,10 +297,11 @@ describe('BipBopRenderer', () => {
 				fill: '#ffffff',
 				x: 1920 - landscape.dimensions.clockX,
 				y: landscape.dimensions.clockY,
-				font: '34px "JetBrains Mono", monospace'
+				size: 34,
+				family: FONT_FAMILY
 			}
 		]);
-		expect(portrait.context.texts.filter((text) => text.align === 'right')).toEqual([
+		expect(portrait.picture.texts.filter((text) => text.align === 'right')).toEqual([
 			{
 				text: '720x1280',
 				baseline: 'top',
@@ -334,18 +309,19 @@ describe('BipBopRenderer', () => {
 				fill: '#ffffff',
 				x: 720 - portrait.dimensions.clockX,
 				y: portrait.dimensions.clockY,
-				font: '23px "JetBrains Mono", monospace'
+				size: 23,
+				family: FONT_FAMILY
 			}
 		]);
 	});
 
 	it('draws the mime type and codecs under the resolution', () => {
-		const { context, dimensions } = draw(60, 1920, 1080, {
+		const { picture, dimensions } = draw(60, 1920, 1080, {
 			mimeType: 'video/mp4',
 			videoCodec: 'avc',
 			audioCodec: 'aac'
 		});
-		const corner = context.texts.filter((text) => text.align === 'right');
+		const corner = picture.texts.filter((text) => text.align === 'right');
 
 		expect(corner).toEqual([
 			{
@@ -355,7 +331,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 1920 - dimensions.clockX,
 				y: dimensions.clockY,
-				font: '34px "JetBrains Mono", monospace'
+				size: 34,
+				family: FONT_FAMILY
 			},
 			{
 				text: 'video/mp4',
@@ -364,7 +341,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 1920 - dimensions.clockX,
 				y: dimensions.clockY + dimensions.overlayFontSize,
-				font: '34px "JetBrains Mono", monospace'
+				size: 34,
+				family: FONT_FAMILY
 			},
 			{
 				text: 'avc',
@@ -373,7 +351,8 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 1920 - dimensions.clockX,
 				y: dimensions.clockY + dimensions.overlayFontSize * 2,
-				font: '34px "JetBrains Mono", monospace'
+				size: 34,
+				family: FONT_FAMILY
 			},
 			{
 				text: 'aac',
@@ -382,14 +361,14 @@ describe('BipBopRenderer', () => {
 				fill: '#000000',
 				x: 1920 - dimensions.clockX,
 				y: dimensions.clockY + dimensions.overlayFontSize * 3,
-				font: '34px "JetBrains Mono", monospace'
+				size: 34,
+				family: FONT_FAMILY
 			}
 		]);
 	});
 
 	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {
-		const { context } = draw(0, 1920, 1080);
-		const squares = context.rects.slice(1);
+		const squares = draw(0, 1920, 1080).picture.rects.slice(1);
 
 		expect(squares).toEqual([
 			{ x: 34, y: 978, w: 68, h: 68, fill: '#bfbfbf' },
@@ -403,7 +382,7 @@ describe('BipBopRenderer', () => {
 	});
 
 	it('uses the width as the short side when the canvas is portrait', () => {
-		const squares = draw(0, 720, 1280).context.rects.slice(1);
+		const squares = draw(0, 720, 1280).picture.rects.slice(1);
 
 		expect(squares[0]).toEqual({ x: 23, y: 1212, w: 45, h: 45, fill: '#bfbfbf' });
 		expect(squares[6]).toEqual({ x: 293, y: 1212, w: 45, h: 45, fill: '#0000bf' });

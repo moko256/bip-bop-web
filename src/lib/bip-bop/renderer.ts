@@ -1,3 +1,5 @@
+import type { Picture, PictureText } from './picture';
+import { pictureFor, present, sizedTwo, type BipBopCanvas } from './two-picture';
 import { BIP_BOP_FPS } from './timeline';
 
 /** One drawing cycle is one Timeline second. */
@@ -118,30 +120,6 @@ function pixelsAlongShortSide(shortSide: number, numerator: number, denominator:
 	return Math.round((shortSide * numerator) / denominator);
 }
 
-type BipBopCanvas = HTMLCanvasElement | OffscreenCanvas;
-type BipBopContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-type PreparedContext = {
-	ctx: BipBopContext;
-	width: number;
-	height: number;
-};
-
-const preparedContexts = new WeakMap<BipBopCanvas, PreparedContext>();
-
-/** One 2d context per canvas. A size change configures it again. */
-function prepareContext(canvas: BipBopCanvas, width: number, height: number): BipBopContext | null {
-	const prepared = preparedContexts.get(canvas);
-	if (prepared && prepared.width === width && prepared.height === height) return prepared.ctx;
-
-	const ctx = canvas.getContext('2d', { alpha: false }) as BipBopContext | null;
-	if (!ctx) return null;
-	ctx.setTransform(1, 0, 0, 1, 0, 0);
-	ctx.imageSmoothingEnabled = false;
-	preparedContexts.set(canvas, { ctx, width, height });
-	return ctx;
-}
-
 export type BipBopVideoCorner = {
 	mimeType: string;
 	videoCodec: string;
@@ -178,7 +156,8 @@ export type BipBopVideoCorner = {
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
  * and from the right by the clock's left inset. A page omits `video` and draws
  * the resolution only.
- * Image smoothing is off for every canvas and video frame.
+ * The page and the video draw through a {@link Picture}. Two.js WebGL, with
+ * antialias off, paints that picture onto an OffscreenCanvas.
  */
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
@@ -187,8 +166,21 @@ export function BipBopRenderer(
 	video?: BipBopVideoCorner
 ): void {
 	if (dimensions.width <= 0 || dimensions.height <= 0) return;
-	const ctx = prepareContext(canvas, dimensions.width, dimensions.height);
-	if (!ctx) return;
+	const two = sizedTwo(canvas, dimensions.width, dimensions.height);
+	two.clear();
+	paintBipBop(pictureFor(two), dimensions, frame, video);
+	two.update();
+	present(canvas, two);
+}
+
+/** Paints one frame. The caller supplies the picture and the bitmap size. */
+export function paintBipBop(
+	picture: Picture,
+	dimensions: BipBopDimensions,
+	frame: number,
+	video?: BipBopVideoCorner
+): void {
+	if (dimensions.width <= 0 || dimensions.height <= 0) return;
 
 	const {
 		width,
@@ -217,52 +209,77 @@ export function BipBopRenderer(
 	const circleSwapped = nonNegativeMod(turn, 2) === 1;
 	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
 
-	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
-	ctx.fillRect(0, 0, width, height);
+	picture.fillRect(
+		0,
+		0,
+		width,
+		height,
+		mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES)
+	);
+	picture.fillCircle(
+		centerX,
+		centerY,
+		radius,
+		mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES)
+	);
+	picture.fillSector(
+		centerX,
+		centerY,
+		radius,
+		startDegrees,
+		360,
+		mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES)
+	);
 
-	ctx.beginPath();
-	ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-	ctx.fillStyle = mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES);
-	ctx.fill();
-
-	ctx.beginPath();
-	ctx.moveTo(centerX, centerY);
-	ctx.arc(centerX, centerY, radius, radiansFromTop(startDegrees), radiansFromTop(360));
-	ctx.closePath();
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES);
-	ctx.fill();
-
-	ctx.fillStyle = BLACK;
-	ctx.font = monospaceFont(frameFontSize);
-	ctx.textAlign = 'center';
-	ctx.textBaseline = 'top';
-	ctx.fillText(formatFrameCount(frame), centerX, frameCountY);
+	picture.fillText(
+		formatFrameCount(frame),
+		centerX,
+		frameCountY,
+		textStyle(frameFontSize, 'center', 'top', BLACK)
+	);
 
 	if (cycleFrame === 0) {
-		ctx.font = monospaceFont(labelFontSize);
-		ctx.textBaseline = 'bottom';
-		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
-		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, labelY);
+		picture.fillText(
+			periodFrame === 0 ? BIP_LABEL : BOP_LABEL,
+			centerX,
+			labelY,
+			textStyle(
+				labelFontSize,
+				'center',
+				'bottom',
+				mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES)
+			)
+		);
 	}
 
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, CYCLE_FRAMES);
-	ctx.font = monospaceFont(clockFontSize);
-	ctx.textAlign = 'left';
-	ctx.textBaseline = 'top';
-	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
+	const cornerFill = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, CYCLE_FRAMES);
+	picture.fillText(
+		formatElapsedClock(frame),
+		clockX,
+		clockY,
+		textStyle(clockFontSize, 'left', 'top', cornerFill)
+	);
 
-	ctx.font = monospaceFont(overlayFontSize);
-	ctx.textAlign = 'right';
 	const lines = video
 		? [`${width}x${height}`, video.mimeType, video.videoCodec, video.audioCodec]
 		: [`${width}x${height}`];
 	for (const [index, line] of lines.entries()) {
-		ctx.fillText(line, width - clockX, clockY + index * overlayFontSize);
+		picture.fillText(
+			line,
+			width - clockX,
+			clockY + index * overlayFontSize,
+			textStyle(overlayFontSize, 'right', 'top', cornerFill)
+		);
 	}
 
 	for (let index = 0; index < COLOR_BAR_75.length; index += 1) {
-		ctx.fillStyle = COLOR_BAR_75[index];
-		ctx.fillRect(colorBarX + index * colorBarSize, colorBarY, colorBarSize, colorBarSize);
+		picture.fillRect(
+			colorBarX + index * colorBarSize,
+			colorBarY,
+			colorBarSize,
+			colorBarSize,
+			COLOR_BAR_75[index]
+		);
 	}
 }
 
@@ -292,8 +309,15 @@ function formatElapsedClock(frame: number): string {
 	].join('');
 }
 
-function monospaceFont(size: number): string {
-	return `${size}px "${BIP_BOP_FONT_FAMILY}", monospace`;
+const FONT_FAMILY = `"${BIP_BOP_FONT_FAMILY}", monospace`;
+
+function textStyle(
+	size: number,
+	align: PictureText['align'],
+	baseline: PictureText['baseline'],
+	fill: string
+): PictureText {
+	return { size, family: FONT_FAMILY, align, baseline, fill };
 }
 
 function pad2(value: number): string {
@@ -311,9 +335,4 @@ function mixColor(from: Rgb, to: Rgb, numerator: number, denominator: number): s
 	return `#${[channel(from[0], to[0]), channel(from[1], to[1]), channel(from[2], to[2])]
 		.map((value) => value.toString(16).padStart(2, '0'))
 		.join('')}`;
-}
-
-/** Canvas angles start at 3 o'clock; this shifts 0° to 12 o'clock, clockwise. */
-function radiansFromTop(degrees: number): number {
-	return -Math.PI / 2 + (degrees * Math.PI) / 180;
 }
