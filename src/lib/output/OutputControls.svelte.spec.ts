@@ -177,17 +177,16 @@ describe('OutputControls', () => {
 		const seekReserve = placeholder.nextElementSibling;
 		if (!(seekReserve instanceof HTMLElement)) throw new Error('Expected seek reserve element');
 		const seekBarPadding = seekReserve.clientHeight;
-		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
+		expect(placeholder.querySelector('canvas')).toBeNull();
 		const cover = progress.parentElement?.querySelector('.veil');
 		if (!(cover instanceof HTMLElement)) throw new Error('Expected veil element');
 		expect(getComputedStyle(cover).backgroundColor).toBe('rgba(0, 0, 0, 0.3)');
-		const canvasBox = canvas.getBoundingClientRect();
 		const veilBox = cover.getBoundingClientRect();
-		expect(Math.abs(veilBox.top - canvasBox.top)).toBeLessThan(1);
-		expect(Math.abs(veilBox.left - canvasBox.left)).toBeLessThan(1);
-		expect(Math.abs(veilBox.width - canvasBox.width)).toBeLessThan(1);
-		expect(Math.abs(veilBox.height - canvasBox.height)).toBeLessThan(1);
 		const place = placeholder.getBoundingClientRect();
+		expect(Math.abs(veilBox.top - place.top)).toBeLessThan(1);
+		expect(Math.abs(veilBox.left - place.left)).toBeLessThan(1);
+		expect(Math.abs(veilBox.width - place.width)).toBeLessThan(1);
+		expect(Math.abs(veilBox.height - place.height)).toBeLessThan(1);
 		expect(Math.abs(veilBox.bottom - place.bottom)).toBeLessThan(1);
 		const bar = progress.getBoundingClientRect();
 		expect(bar.width).toBeGreaterThan(0);
@@ -269,13 +268,18 @@ describe('OutputControls', () => {
 			await expect
 				.element(page.getByRole('button', { name: m.playback_pause() }).first())
 				.toBeVisible();
+			const playingField = page
+				.getByRole('spinbutton', { name: m.frame_aria() })
+				.element() as HTMLInputElement;
+			expect(playingField.disabled).toBe(true);
+			expect(playingField.value).toBe('');
+
+			await page.getByRole('button', { name: m.playback_pause() }).first().click();
+			expect(pause).toHaveBeenCalled();
 
 			const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
 			await page.getByRole('spinbutton', { name: m.frame_aria() }).fill('90');
 			expect(video.currentTime).toBeCloseTo(90 / 60);
-
-			await page.getByRole('button', { name: m.playback_pause() }).first().click();
-			expect(pause).toHaveBeenCalled();
 		} finally {
 			play.mockRestore();
 			pause.mockRestore();

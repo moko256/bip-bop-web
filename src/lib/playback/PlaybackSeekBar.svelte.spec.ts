@@ -121,6 +121,35 @@ describe('PlaybackSeekBar', () => {
 		expect(frames).toEqual([50, 25, 80]);
 	});
 
+	it('holds the knob until the frame moves by at least one pixel', async () => {
+		const { view, slider, knob, bar } = await mount(0, 100_000);
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		const travel = bar.clientWidth;
+		const framesPerPixel = 100_000 / travel;
+		const below = Math.max(1, Math.floor(framesPerPixel - 1e-6));
+		const above = Math.ceil(framesPerPixel);
+
+		expect(below).toBeGreaterThan(0);
+		const before = centerX(knob);
+		await view.rerender({
+			frame: below,
+			maxFrame: 100_000,
+			onframechange: () => undefined
+		});
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		expect(slider.element().getAttribute('aria-valuenow')).toBe('0');
+		expect(Math.abs(centerX(knob) - before)).toBeLessThan(0.6);
+
+		await view.rerender({
+			frame: above,
+			maxFrame: 100_000,
+			onframechange: () => undefined
+		});
+		await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+		expect(slider.element().getAttribute('aria-valuenow')).toBe(String(above));
+		expect(centerX(knob) - before).toBeGreaterThanOrEqual(0.5);
+	});
+
 	it('steps the frame from the keyboard', async () => {
 		const { frames, slider } = await mount(10, 100);
 		slider

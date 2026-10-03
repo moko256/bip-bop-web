@@ -136,6 +136,27 @@ describe('BipBopRenderer', () => {
 		expect(context.imageSmoothingEnabled).toBe(false);
 	});
 
+	it('keeps the 2d context when the canvas size stays the same', () => {
+		let calls = 0;
+		const context = new MockContext();
+		const canvas = {
+			getContext: () => {
+				calls += 1;
+				return context;
+			}
+		} as unknown as HTMLCanvasElement;
+		const dimensions = createBipBopDimensions(320, 180);
+
+		BipBopRenderer(canvas, dimensions, 0);
+		BipBopRenderer(canvas, dimensions, 1);
+
+		expect(calls).toBe(1);
+		expect(context.imageSmoothingEnabled).toBe(false);
+
+		BipBopRenderer(canvas, createBipBopDimensions(640, 360), 0);
+		expect(calls).toBe(2);
+	});
+
 	it('paints a black field, a gray circle, and a white sector from 1° to 360° on frame 0', () => {
 		const { context, dimensions } = draw(0);
 		const sector = context.arcs[1];

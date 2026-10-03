@@ -114,9 +114,10 @@
 			role="img"
 			aria-label={m.video_placeholder_aria()}
 		>
-			<BipBopStill width={bitmap.width} height={bitmap.height} />
 			{#if overlay}
 				{@render overlay()}
+			{:else}
+				<BipBopStill width={bitmap.width} height={bitmap.height} />
 			{/if}
 		</div>
 		<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>

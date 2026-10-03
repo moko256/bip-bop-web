@@ -57,6 +57,11 @@ class PreviewAudioContext {
 		return Promise.resolve();
 	}
 
+	suspend(): Promise<void> {
+		this.state = 'suspended';
+		return Promise.resolve();
+	}
+
 	close(): Promise<void> {
 		this.state = 'closed';
 		return Promise.resolve();
@@ -153,11 +158,17 @@ describe('BipBopPreview', () => {
 		}
 	});
 
-	function frameValue(): number {
-		const input = page
-			.getByRole('spinbutton', { name: m.frame_aria() })
-			.element() as HTMLInputElement;
-		return input.valueAsNumber;
+	function frameField(): HTMLInputElement {
+		return page.getByRole('spinbutton', { name: m.frame_aria() }).element() as HTMLInputElement;
+	}
+
+	/** Background channel at the bottom-right. Frame 0 is 0 and rises through the second. */
+	function fieldLevel(): number {
+		const canvas = page.getByLabelText(m.bip_bop_preview_aria()).element() as HTMLCanvasElement;
+		const pixel = canvas
+			.getContext('2d', { alpha: false })
+			?.getImageData(canvas.width - 2, canvas.height - 2, 1, 1).data;
+		return pixel?.[0] ?? -1;
 	}
 
 	it('plays the opening burst one outputLatency ahead, then starts the picture', async () => {
@@ -184,13 +195,15 @@ describe('BipBopPreview', () => {
 			expect(opening.frequencyHz).toBe(1500);
 			expect(opening.start).toBeCloseTo(0.8);
 			expect(opening.stop - opening.start).toBeCloseTo(0.016);
-			expect(frameValue()).toBe(0);
+			expect(frameField().disabled).toBe(true);
+			expect(frameField().value).toBe('');
+			expect(fieldLevel()).toBe(0);
 
 			await new Promise((resolve) => setTimeout(resolve, 1100));
-			expect(frameValue()).toBe(0);
+			expect(fieldLevel()).toBe(0);
 			expect(Date.now() - started).toBeGreaterThan(800);
 
-			await expect.poll(() => frameValue(), { timeout: 3000 }).toBeGreaterThan(0);
+			await expect.poll(() => fieldLevel(), { timeout: 3000 }).toBeGreaterThan(0);
 			expect(Date.now() - started).toBeGreaterThanOrEqual(1600);
 		} finally {
 			window.AudioContext = realAudioContext;
@@ -210,6 +223,7 @@ describe('BipBopPreview', () => {
 			await input.fill('30');
 			await expect.element(input).toHaveValue(30);
 
+			const held = fieldLevel();
 			const started = Date.now();
 			await page.getByRole('button', { name: m.playback_play() }).first().click();
 
@@ -221,8 +235,10 @@ describe('BipBopPreview', () => {
 			expect(opening.frequencyHz).toBe(475);
 			expect(opening.start).toBeCloseTo(0.45);
 			expect(opening.stop - opening.start).toBeCloseTo(0.016);
+			expect(frameField().disabled).toBe(true);
+			expect(frameField().value).toBe('');
 
-			await expect.poll(() => frameValue()).toBeGreaterThan(30);
+			await expect.poll(() => fieldLevel()).not.toBe(held);
 			expect(Date.now() - started).toBeLessThan(200);
 		} finally {
 			window.AudioContext = realAudioContext;
