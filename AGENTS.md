@@ -4,34 +4,26 @@
 - **Package Manager**: pnpm
 - **Add-ons**: prettier, eslint, vitest, playwright, sveltekit-adapter, paraglide, ai-tools
 
----
+## Svelte MCP
 
-You are able to use the Svelte MCP server, where you have access to comprehensive Svelte 5 and SvelteKit documentation. Here's how to use the available tools effectively:
+### list-sections
 
-## Available Svelte MCP Tools:
+On any Svelte or SvelteKit question, call this first. It returns sections with titles, `use_cases`, and paths.
 
-### 1. list-sections
+### get-documentation
 
-Use this FIRST to discover all available documentation sections. Returns a structured list with titles, use_cases, and paths.
-When asked about Svelte or SvelteKit topics, ALWAYS use this tool at the start of the chat to find relevant sections.
+After `list-sections`, read each section's `use_cases` and fetch every section the task needs. One call accepts one or many sections.
 
-### 2. get-documentation
+### svelte-autofixer
 
-Retrieves full documentation content for specific sections. Accepts single or multiple sections.
-After calling the list-sections tool, you MUST analyze the returned documentation sections (especially the use_cases field) and then use the get-documentation tool to fetch ALL documentation sections that are relevant for the user's task.
+Before sending Svelte you wrote, run this and repeat until it reports no issues or suggestions.
 
-### 3. svelte-autofixer
+### playground-link
 
-Analyzes Svelte code and returns issues and suggestions.
-You MUST use this tool whenever writing Svelte code before sending it to the user. Keep calling it until no issues or suggestions are returned.
-
-### 4. playground-link
-
-Generates a Svelte Playground link with the provided code.
-After completing the code, ask the user if they want a playground link. Only call this tool after user confirmation and NEVER if code was written to files in their project.
+When the finished code stays outside the project, ask if they want a Playground link. Call this only after they say yes.
 
 ## Cloud Agent
 
 On startup, pull the latest `origin` once.
 
-When sharing or analyzing, if Playwright can operate the page and take the screenshots, do that by copying an existing test. For a full-page screenshot, copy `e2e/full-page-screenshot.e2e.ts` and save shared images under `/opt/cursor/artifacts/`.
+When sharing or analyzing a page Playwright can operate, copy an existing test and screenshot from it. For a full-page shot, copy `e2e/full-page-screenshot.e2e.ts` and save the images under `/opt/cursor/artifacts/`.
