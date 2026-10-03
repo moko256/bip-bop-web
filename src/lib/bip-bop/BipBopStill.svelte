@@ -55,5 +55,6 @@
 		min-height: 0;
 		object-fit: contain;
 		image-rendering: pixelated;
+		outline: 1px solid var(--pico-muted-border-color, #ccc);
 	}
 </style>

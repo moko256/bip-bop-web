@@ -7,18 +7,20 @@
 		playing,
 		onplaybackchange,
 		transport,
-		content
+		content,
+		transportMinHeight
 	}: {
 		playing: boolean;
 		onplaybackchange: (playing: boolean) => void;
 		transport: Snippet;
 		content: PlaybackContent;
+		transportMinHeight?: string;
 	} = $props();
 </script>
 
 <div class="player">
 	<PlaybackOverlay {playing} {onplaybackchange} {content} />
-	<div class="transport">
+	<div class="transport" style:min-height={transportMinHeight}>
 		{@render transport()}
 	</div>
 </div>
