@@ -1,12 +1,16 @@
 import type { AudioCodec, VideoCodec } from 'mediabunny';
 import { preferredAudioCodec } from './generate-video';
 import type { Resolution, VideoOutputType } from './output';
+import type { VideoQualityLevel } from './video-quality';
 
 export type VideoGenerationRequest = {
 	outputType: VideoOutputType;
 	videoCodec: VideoCodec;
 	audioCodec: AudioCodec;
 	resolution: Resolution;
+	frameCount: number;
+	fps: number;
+	videoQuality: VideoQualityLevel;
 };
 
 export type GeneratePlayback = (

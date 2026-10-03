@@ -24,7 +24,10 @@ describe('VideoGeneration', () => {
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: 'aac',
-			resolution: '1920x1080'
+			resolution: '1920x1080',
+			frameCount: 3600,
+			fps: 60,
+			videoQuality: 'high'
 		});
 
 		expect(generation.playback).toBe(pending.promise);
@@ -47,7 +50,10 @@ describe('VideoGeneration', () => {
 			outputType: 'webm' as const,
 			videoCodec: 'vp9' as const,
 			audioCodec: 'opus' as const,
-			resolution: '640x480' as const
+			resolution: '640x480' as const,
+			frameCount: 3600,
+			fps: 60,
+			videoQuality: 'high' as const
 		};
 
 		generation.start(request);
@@ -70,7 +76,10 @@ describe('VideoGeneration', () => {
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: 'aac',
-			resolution: '1920x1080'
+			resolution: '1920x1080',
+			frameCount: 3600,
+			fps: 60,
+			videoQuality: 'high'
 		});
 
 		generation.dispose();
