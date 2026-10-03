@@ -1,3 +1,4 @@
+import { formatFpsOverlay } from './fps-text';
 import { BIP_BOP_FPS } from './timeline';
 
 /** One drawing cycle is one Timeline second. */
@@ -40,8 +41,8 @@ export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
 /**
  * Subset {@link BIP_BOP_FONT_FAMILY} is built from. One string, sent unchanged by
  * `scripts/download-jetbrains-mono.mjs`: RFC 6838 restricted-name symbols
- * (`!#$&-^_.+`), the MIME type slash, the clock colon, ASCII digits, then
- * ASCII letters.
+ * (`!#$&-^_.+`), the MIME type slash, the clock colon, ASCII digits,
+ * and ASCII letters.
  */
 export const BIP_BOP_FONT_TEXT =
 	'!#$&-^_.+/:0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -159,6 +160,8 @@ export type BipBopVideoCorner = {
 	mimeType: string;
 	videoCodec: string;
 	audioCodec: string;
+	videoQuality: string;
+	fps: number;
 };
 
 /**
@@ -175,7 +178,11 @@ export type BipBopVideoCorner = {
  * Field and clock colors still ping-pong over 120 frames (2 seconds), swapping black
  * and white. On each turn boundary the
  * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
- * The corner clock is elapsed time at 60 fps, truncated to centiseconds (`HH:MM:SS.CC`).
+ * The corner clock is elapsed media time, truncated to centiseconds (`HH:MM:SS.CC`).
+ * A page and a 60 fps video count that time as `frame / 60`. Any other video
+ * frame rate counts it as `frame / fps`, and moves the split, the fills, and
+ * Bip/Bop on that same media time. Bip/Bop is drawn on the first frame of each
+ * media second.
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
  * `round(shortSide * 1/64)` below center, and its height is `round(shortSide * 1/16)`.
  * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
@@ -191,7 +198,8 @@ export type BipBopVideoCorner = {
  * Padding, text size, coordinates, widths, and heights passed to the canvas are
  * whole pixels.
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
- * `video.videoCodec`, and `video.audioCodec` on the following lines. Each line is
+ * `video.videoCodec`, `video.audioCodec`, `video.videoQuality`, and the frame rate
+ * as `{fps}FPS` on the following lines. Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
  * and from the right by the clock's left inset. A page omits `video` and draws
  * the resolution only.
@@ -224,22 +232,17 @@ export function BipBopRenderer(
 	const colorBarSize = wholePixels(dimensions.colorBarSize);
 	const colorBarX = wholePixels(dimensions.colorBarX);
 	const colorBarY = wholePixels(dimensions.colorBarY);
-	const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
-	const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
-	const turn = Math.floor(frame / CYCLE_FRAMES);
-	const startDegrees = 1 + cycleFrame * (360 / CYCLE_FRAMES);
-	const towardMidpoint =
-		periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame;
-	const circleSwapped = nonNegativeMod(turn, 2) === 1;
+	const marks = pictureMarks(frame, video?.fps ?? BIP_BOP_FPS);
+	const circleSwapped = nonNegativeMod(marks.turn, 2) === 1;
 	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
 
-	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, marks.towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
 
 	const backing = mixColor(RGB_GRAY, RGB_WHITE, circleMix, CYCLE_FRAMES);
 	const sector = mixColor(RGB_WHITE, RGB_GRAY, circleMix, CYCLE_FRAMES);
-	fillWedge(ctx, centerX, centerY, radius, 0, startDegrees, backing);
-	fillWedge(ctx, centerX, centerY, radius, startDegrees, 360, sector);
+	fillWedge(ctx, centerX, centerY, radius, 0, marks.startDegrees, backing);
+	fillWedge(ctx, centerX, centerY, radius, marks.startDegrees, 360, sector);
 
 	ctx.fillStyle = BLACK;
 	ctx.font = monospaceFont(frameFontSize);
@@ -247,23 +250,30 @@ export function BipBopRenderer(
 	ctx.textBaseline = 'top';
 	ctx.fillText(formatFrameCount(frame), centerX, frameCountY);
 
-	if (cycleFrame === 0) {
+	if (marks.showLabel) {
 		ctx.font = monospaceFont(labelFontSize);
 		ctx.textBaseline = 'bottom';
-		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, towardMidpoint, CYCLE_FRAMES);
-		ctx.fillText(periodFrame === 0 ? BIP_LABEL : BOP_LABEL, centerX, labelY);
+		ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, marks.towardMidpoint, CYCLE_FRAMES);
+		ctx.fillText(marks.bip ? BIP_LABEL : BOP_LABEL, centerX, labelY);
 	}
 
-	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, towardMidpoint, CYCLE_FRAMES);
+	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, marks.towardMidpoint, CYCLE_FRAMES);
 	ctx.font = monospaceFont(clockFontSize);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
-	ctx.fillText(formatElapsedClock(frame), clockX, clockY);
+	ctx.fillText(formatCentiseconds(marks.clockCentiseconds), clockX, clockY);
 
 	ctx.font = monospaceFont(overlayFontSize);
 	ctx.textAlign = 'right';
 	const lines = video
-		? [`${width}x${height}`, video.mimeType, video.videoCodec, video.audioCodec]
+		? [
+				`${width}x${height}`,
+				video.mimeType,
+				video.videoCodec,
+				video.audioCodec,
+				video.videoQuality,
+				formatFpsOverlay(video.fps)
+			]
 		: [`${width}x${height}`];
 	for (const [index, line] of lines.entries()) {
 		ctx.fillText(line, wholePixels(width - clockX), wholePixels(clockY + index * overlayFontSize));
@@ -303,9 +313,52 @@ function formatFrameCount(frame: number): string {
 	return String(Math.trunc(frame)).padStart(6, '0');
 }
 
-/** `HH:MM:SS.CC` from a 60 fps frame index. Centiseconds are truncated, not rounded. */
-function formatElapsedClock(frame: number): string {
-	const centisecondsTotal = Math.floor((Math.trunc(frame) * 100) / CYCLE_FRAMES);
+type PictureMarks = {
+	turn: number;
+	startDegrees: number;
+	towardMidpoint: number;
+	showLabel: boolean;
+	bip: boolean;
+	clockCentiseconds: number;
+};
+
+/**
+ * Timing for one drawn frame.
+ * At 60 fps the counts stay on whole frames, matching the page preview.
+ * Any other rate uses media time `frame / fps`.
+ */
+function pictureMarks(frame: number, fps: number): PictureMarks {
+	if (fps === BIP_BOP_FPS) {
+		const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
+		const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
+		const turn = Math.floor(frame / CYCLE_FRAMES);
+		return {
+			turn,
+			startDegrees: 1 + cycleFrame * (360 / CYCLE_FRAMES),
+			towardMidpoint: periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame,
+			showLabel: cycleFrame === 0,
+			bip: periodFrame === 0,
+			clockCentiseconds: Math.floor((Math.trunc(frame) * 100) / CYCLE_FRAMES)
+		};
+	}
+
+	const time = frame / fps;
+	const turn = Math.floor(time);
+	const fractional = time - turn;
+	const periodPos = time - Math.floor(time / 2) * 2;
+	const previousTurn = frame === 0 ? -1 : Math.floor((frame - 1) / fps);
+	return {
+		turn,
+		startDegrees: 1 + fractional * 360,
+		towardMidpoint: periodPos <= 1 ? periodPos * CYCLE_FRAMES : (2 - periodPos) * CYCLE_FRAMES,
+		showLabel: turn !== previousTurn,
+		bip: turn % 2 === 0,
+		clockCentiseconds: Math.max(0, Math.floor(time * 100))
+	};
+}
+
+/** `HH:MM:SS.CC`. Centiseconds are truncated, not rounded. */
+function formatCentiseconds(centisecondsTotal: number): string {
 	const centiseconds = centisecondsTotal % 100;
 	const secondsTotal = Math.floor(centisecondsTotal / 100);
 	const seconds = secondsTotal % 60;

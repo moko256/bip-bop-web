@@ -327,8 +327,20 @@ describe('BipBopRenderer', () => {
 			draw(frame).context.texts.map((text) => text.text)
 		);
 		const videoFrames = [
-			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoCodec: 'avc', audioCodec: 'aac' }),
-			draw(0, 720, 480, { mimeType: 'video/webm', videoCodec: 'vp9', audioCodec: 'opus' })
+			draw(0, 1920, 1080, {
+				mimeType: 'video/mp4',
+				videoCodec: 'avc',
+				audioCodec: 'aac',
+				videoQuality: 'high',
+				fps: 60
+			}),
+			draw(0, 720, 480, {
+				mimeType: 'video/webm',
+				videoCodec: 'vp9',
+				audioCodec: 'opus',
+				videoQuality: 'very-high',
+				fps: 23.976
+			})
 		].flatMap((frame) => frame.context.texts.map((text) => text.text));
 		const drawn = [...pageFrames, ...videoFrames].join('');
 		const listed = new Set(BIP_BOP_FONT_TEXT);
@@ -385,52 +397,59 @@ describe('BipBopRenderer', () => {
 		]);
 	});
 
-	it('draws the mime type and codecs under the resolution', () => {
+	it('draws the mime type, codecs, quality, and frame rate under the resolution', () => {
 		const { context, dimensions } = draw(60, 1920, 1080, {
 			mimeType: 'video/mp4',
 			videoCodec: 'avc',
-			audioCodec: 'aac'
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 60
 		});
 		const corner = context.texts.filter((text) => text.align === 'right');
+		const line = (text: string, index: number) => ({
+			text,
+			baseline: 'top' as const,
+			align: 'right' as const,
+			fill: '#000000',
+			x: 1920 - dimensions.clockX,
+			y: dimensions.clockY + dimensions.overlayFontSize * index,
+			font: '34px "JetBrains Mono", monospace'
+		});
 
 		expect(corner).toEqual([
-			{
-				text: '1920x1080',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'video/mp4',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'avc',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize * 2,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'aac',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize * 3,
-				font: '34px "JetBrains Mono", monospace'
-			}
+			line('1920x1080', 0),
+			line('video/mp4', 1),
+			line('avc', 2),
+			line('aac', 3),
+			line('high', 4),
+			line('60FPS', 5)
 		]);
+	});
+
+	it('follows media time when the video frame rate is not 60', () => {
+		const half = draw(12, 1920, 1080, {
+			mimeType: 'video/mp4',
+			videoCodec: 'avc',
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 24
+		});
+		const second = draw(24, 1920, 1080, {
+			mimeType: 'video/mp4',
+			videoCodec: 'avc',
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 24
+		});
+
+		expect(half.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
+		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(second.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
+		expect(second.context.texts.map((text) => text.text)).toContain('Bop!');
+		expect(second.context.texts.filter((text) => text.align === 'right').at(-1)?.text).toBe(
+			'24FPS'
+		);
+		expect(half.context.fills.slice(0, 3)).toEqual(draw(30).context.fills.slice(0, 3));
 	});
 
 	it('rounds arc, padding, text, and swatch geometry to whole pixels', () => {

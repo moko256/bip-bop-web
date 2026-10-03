@@ -1,6 +1,7 @@
 import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
+import { toneSecondAtFrame } from '$lib/bip-bop/media-time';
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 import { placeBipBopTone } from '$lib/bip-bop/video-tone';
 import {
@@ -12,10 +13,12 @@ import {
 	Output,
 	Quality,
 	type AudioCodec,
+	type QualityLevel,
 	type VideoCodec
 } from 'mediabunny';
 import * as m from '$lib/paraglide/messages';
 import { parseResolution, type Resolution, type VideoOutputType } from './output';
+import type { VideoQualityLevel } from './video-quality';
 import { supportedAudioCodecs, videoOutputFormat } from './video-container';
 
 export async function generateBipBopVideo(options: {
@@ -25,6 +28,8 @@ export async function generateBipBopVideo(options: {
 	width: number;
 	height: number;
 	frameCount?: number;
+	fps?: number;
+	videoQuality?: QualityLevel;
 	signal?: AbortSignal;
 }): Promise<Blob> {
 	if (options.signal?.aborted) throw aborted();
@@ -47,29 +52,34 @@ export async function generateBipBopVideo(options: {
 	const dimensions = createBipBopDimensions(options.width, options.height);
 	const target = new BufferTarget();
 	const output = new Output({ format, target });
+	const fps = options.fps ?? BIP_BOP_FPS;
+	const videoQuality = options.videoQuality ?? 'high';
 	const source = new CanvasSource(canvas, {
 		codec: options.videoCodec,
-		quality: new Quality('high')
+		quality: new Quality(videoQuality)
 	});
 	const audioSource = new AudioSampleSource({
 		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
-	output.addVideoTrack(source, { frameRate: BIP_BOP_FPS });
+	output.addVideoTrack(source, { frameRate: fps });
 	output.addAudioTrack(audioSource);
 
 	try {
 		await output.start();
 		const frameCount = options.frameCount ?? BIP_BOP_MAX_FRAME;
-		const frameDuration = 1 / BIP_BOP_FPS;
+		const frameDuration = 1 / fps;
 		for (let frame = 0; frame < frameCount; frame += 1) {
 			if (options.signal?.aborted) throw aborted();
 			BipBopRenderer(canvas, dimensions, frame, {
 				mimeType: format.mimeType,
 				videoCodec: options.videoCodec,
-				audioCodec: options.audioCodec
+				audioCodec: options.audioCodec,
+				videoQuality,
+				fps
 			});
-			if (frame % BIP_BOP_FPS === 0) await placeBipBopTone(audioSource, frame / BIP_BOP_FPS);
+			const toneSecond = toneSecondAtFrame(frame, fps);
+			if (toneSecond !== null) await placeBipBopTone(audioSource, toneSecond);
 			await source.add(frame * frameDuration, frameDuration);
 		}
 		if (options.signal?.aborted) throw aborted();
@@ -97,6 +107,9 @@ export async function generatePlayback(options: {
 	videoCodec: VideoCodec;
 	audioCodec: AudioCodec;
 	resolution: Resolution;
+	frameCount: number;
+	fps: number;
+	videoQuality: VideoQualityLevel;
 	signal?: AbortSignal;
 }): Promise<string> {
 	const { width, height } = parseResolution(options.resolution);
@@ -106,6 +119,9 @@ export async function generatePlayback(options: {
 		audioCodec: options.audioCodec,
 		width,
 		height,
+		frameCount: options.frameCount,
+		fps: options.fps,
+		videoQuality: options.videoQuality,
 		signal: options.signal
 	});
 	if (options.signal?.aborted) throw aborted();

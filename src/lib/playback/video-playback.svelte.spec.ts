@@ -108,6 +108,24 @@ describe('video playback', () => {
 		expect(session.playing).toBe(false);
 	});
 
+	it('seeks with the timeline rate passed to the adapter', () => {
+		const time = manualClock();
+		const element = fakeVideo();
+		const timeline = { fps: 24, maxFrame: 240 };
+		const side = videoPlayback(time.clock, timeline);
+		const session = new PlaybackSession({
+			maxFrame: timeline.maxFrame,
+			fps: timeline.fps,
+			connect: side.connect
+		});
+		side.attach(element as unknown as HTMLVideoElement);
+
+		session.seek(12);
+
+		expect(element.currentTime).toBeCloseTo(0.5);
+		expect(session.frame).toBe(12);
+	});
+
 	it('restarts a finished element at the first frame', () => {
 		const time = manualClock();
 		const element = fakeVideo();

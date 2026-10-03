@@ -11,8 +11,7 @@ const { generatePlayback, loadVideoOutput, loadVideoOutputActual } = vi.hoisted(
 	loadVideoOutput: vi.fn(),
 	loadVideoOutputActual: {
 		current: undefined as
-			| undefined
-			| (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
+			undefined | (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
 	}
 }));
 
@@ -73,9 +72,7 @@ describe('OutputControls', () => {
 			.toHaveAttribute('aria-current', 'true');
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).toBeVisible();
 		await expect.element(page.getByRole('button', { name: m.generate() })).not.toBeInTheDocument();
-		await expect
-			.element(page.getByRole('button', { name: 'ダウンロード' }))
-			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.download() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
 		assertPrecedes(
 			page.getByLabelText(m.bip_bop_preview_aria()),
@@ -132,11 +129,15 @@ describe('OutputControls', () => {
 		);
 		assertPrecedes(
 			page.getByRole('group', { name: m.output_type_group_aria_label() }),
-			page.getByRole('combobox', { name: m.resolution() })
+			page.getByRole('button', { name: m.generate() })
 		);
 		assertPrecedes(
-			page.getByRole('combobox', { name: m.resolution() }),
-			page.getByRole('button', { name: m.generate() })
+			page.getByRole('button', { name: m.generate() }),
+			page.getByRole('button', { name: m.download() })
+		);
+		assertPrecedes(
+			page.getByRole('button', { name: m.download() }),
+			page.getByRole('combobox', { name: m.resolution() })
 		);
 
 		await page.getByRole('button', { name: 'webm' }).click();
@@ -222,6 +223,7 @@ describe('OutputControls', () => {
 		await page.getByRole('button', { name: m.generate() }).click();
 
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeDisabled();
+		await expect.element(page.getByRole('button', { name: m.download() })).toBeDisabled();
 		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
 		await expect
 			.element(page.getByRole('progressbar', { name: m.generating_aria() }))
@@ -261,6 +263,9 @@ describe('OutputControls', () => {
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
 			resolution: '1920x1080',
+			frameCount: 3600,
+			fps: 60,
+			videoQuality: 'high',
 			signal: expect.any(AbortSignal)
 		});
 
@@ -276,7 +281,9 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('slider', { name: m.playback_position_aria() }))
 			.toBeVisible();
-		await expect.element(page.getByText('00:00 / 00:10')).toBeVisible();
+		await expect.element(page.getByText('00:00 / 01:00')).toBeVisible();
+		await expect.element(page.getByRole('button', { name: m.download() })).toBeEnabled();
+		expect(page.getByRole('button', { name: m.download() }).element().tagName).toBe('BUTTON');
 		const seekBar = page.getByRole('slider', { name: m.playback_position_aria() }).element();
 		expect(seekBar.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
 		const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
@@ -371,6 +378,9 @@ describe('OutputControls', () => {
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
 			resolution: '640x480',
+			frameCount: 3600,
+			fps: 60,
+			videoQuality: 'high',
 			signal: expect.any(AbortSignal)
 		});
 	});
@@ -402,6 +412,67 @@ describe('OutputControls', () => {
 		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
 		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
+	});
+
+	it('offers quality, frame count, and fps, and keeps a typed count across fps changes', async () => {
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+
+		const quality = page.getByRole('combobox', { name: m.video_quality() });
+		const frames = page.getByRole('spinbutton', { name: m.frame_count() });
+		const fps = page.getByRole('spinbutton', { name: m.fps() });
+
+		await expect.element(quality).toHaveValue('high');
+		expect([...quality.element().querySelectorAll('option')].map((option) => option.value)).toEqual(
+			['very-high', 'high', 'medium', 'low', 'very-low']
+		);
+		await expect.element(frames).toHaveValue(3600);
+		await expect.element(fps).toHaveValue(60);
+
+		const frameInput = frames.element() as HTMLInputElement;
+		const fpsInput = fps.element() as HTMLInputElement;
+		expect(frameInput.min).toBe('1');
+		expect(frameInput.step).toBe('1');
+		expect(frameInput.required).toBe(true);
+		expect(frameInput.max).toBe('216000');
+		expect(fpsInput.min).toBe('1');
+		expect(fpsInput.max).toBe('240');
+		expect(fpsInput.step).toBe('any');
+		expect(fpsInput.required).toBe(true);
+		expect(
+			[...document.querySelectorAll('#fps-presets option')].map(
+				(option) => (option as HTMLOptionElement).value
+			)
+		).toEqual(['120', '60', '59.94', '50', '30', '29.97', '25', '24', '23.976']);
+
+		assertPrecedes(page.getByRole('combobox', { name: m.audio_codec() }), quality);
+		assertPrecedes(quality, frames);
+		assertPrecedes(frames, fps);
+
+		await expect.element(page.getByRole('button', { name: m.download() })).toBeDisabled();
+
+		await frames.fill('1000');
+		await fps.fill('23.976');
+		await expect.element(frames).toHaveValue(Math.round((1000 * 23.976) / 60));
+		await fps.fill('0');
+		await expect.element(frames).toHaveValue(Math.round((1000 * 23.976) / 60));
+		await page.getByRole('button', { name: m.generate() }).click();
+		expect(generatePlayback).not.toHaveBeenCalled();
+
+		await fps.fill('60');
+		await expect.element(frames).toHaveValue(1000);
+		await page.getByRole('button', { name: m.generate() }).click();
+		expect(generatePlayback).toHaveBeenCalledWith({
+			outputType: 'mp4',
+			videoCodec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
+			resolution: '1920x1080',
+			frameCount: 1000,
+			fps: 60,
+			videoQuality: 'high',
+			signal: expect.any(AbortSignal)
+		});
 	});
 
 	it('shows the live canvas and fullscreen url controls', async () => {
