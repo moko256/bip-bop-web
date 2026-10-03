@@ -2,7 +2,6 @@
 	import type { Attachment } from 'svelte/attachments';
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
 	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
-	import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
@@ -15,12 +14,24 @@
 	import OutputLayout from './OutputLayout.svelte';
 	import ResolutionSelect from './ResolutionSelect.svelte';
 	import {
+		DEFAULT_FPS,
+		DEFAULT_FRAME_COUNT,
+		displayedFrameCount,
+		FPS_PRESETS,
+		initialFrameTimeline,
+		maxFrameCountForFps,
+		withCurrentFps,
+		withEnteredFrameCount
+	} from './frame-timeline';
+	import {
 		parseResolution,
 		defaultResolution,
 		type Resolution,
 		type VideoOutputType
 	} from './output';
-	import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
+	import { videoDownloadName } from './video-download-name';
+	import { defaultVideoQuality, videoQualityLevels, type VideoQualityLevel } from './video-quality';
+	import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
@@ -34,13 +45,24 @@
 	let resolution = $state<Resolution>(defaultResolution);
 	let bitmap = $derived(parseResolution(resolution));
 	let videoAspectRatio = $derived(`${bitmap.width} / ${bitmap.height}`);
+	let mimeType = $derived(videoOutputFormat(outputType).mimeType);
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
+	let videoQuality = $state<VideoQualityLevel>(defaultVideoQuality);
+	let timeline = $state(initialFrameTimeline());
+	let fpsText = $state(String(initialFrameTimeline().currentFps));
+	let frameCountText = $state(String(displayedFrameCount(initialFrameTimeline())));
+	let downloadName = $state<string | null>(null);
+	let frameCountMax = $derived(maxFrameCountForFps(timeline.currentFps));
 	const generation = new VideoGeneration(generatePlayback);
-	const playbackSide = videoPlayback(browserPlaybackClock());
+	const playbackTimeline = {
+		fps: DEFAULT_FPS,
+		maxFrame: DEFAULT_FRAME_COUNT
+	};
+	const playbackSide = videoPlayback(browserPlaybackClock(), playbackTimeline);
 	const session = new PlaybackSession({
-		maxFrame: BIP_BOP_MAX_FRAME,
-		fps: BIP_BOP_FPS,
+		maxFrame: playbackTimeline.maxFrame,
+		fps: playbackTimeline.fps,
 		connect: playbackSide.connect
 	});
 
@@ -62,6 +84,7 @@
 	});
 
 	function invalidate() {
+		downloadName = null;
 		generation.cancel();
 		session.reset();
 	}
@@ -71,14 +94,66 @@
 		invalidate();
 	});
 
-	function start() {
+	function onFpsInput(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		fpsText = input.value;
+		if (!input.validity.valid) return;
+		const next = withCurrentFps(timeline, input.valueAsNumber);
+		if (next === timeline) return;
+		timeline = next;
+		frameCountText = String(displayedFrameCount(next));
+		invalidate();
+	}
+
+	function onFrameCountInput(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		frameCountText = input.value;
+		if (!input.validity.valid) return;
+		const next = withEnteredFrameCount(timeline, input.valueAsNumber);
+		if (next === timeline) return;
+		timeline = next;
+		invalidate();
+	}
+
+	function onSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		const form = event.currentTarget;
+		if (!(form instanceof HTMLFormElement) || !form.checkValidity()) return;
+		const frameCount = Number(frameCountText);
+		const fps = Number(fpsText);
+		downloadName = videoDownloadName({
+			width: bitmap.width,
+			height: bitmap.height,
+			fps,
+			frameCount,
+			videoCodec,
+			audioCodec,
+			videoQuality,
+			extension: outputType
+		});
+		playbackTimeline.fps = fps;
+		playbackTimeline.maxFrame = frameCount;
+		session.setTimeline(frameCount, fps);
 		session.reset();
 		generation.start({
 			outputType,
 			videoCodec,
 			audioCodec,
-			resolution
+			resolution,
+			frameCount,
+			fps,
+			videoQuality
 		});
+	}
+
+	function save(url: string) {
+		if (!downloadName) return;
+		const anchor = document.createElement('a');
+		anchor.href = url;
+		anchor.download = downloadName;
+		document.body.append(anchor);
+		anchor.click();
+		anchor.remove();
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
@@ -117,15 +192,33 @@
 			{#if overlay}
 				{@render overlay()}
 			{:else}
-				<BipBopStill width={bitmap.width} height={bitmap.height} />
+				<BipBopStill
+					width={bitmap.width}
+					height={bitmap.height}
+					video={{
+						mimeType,
+						videoCodec,
+						audioCodec,
+						videoQuality,
+						fps: timeline.currentFps
+					}}
+				/>
 			{/if}
 		</div>
 		<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>
 	</div>
 {/snippet}
 
-{#snippet actions(pending: boolean)}
-	<button type="button" class="generate" disabled={pending} onclick={start}>{m.generate()}</button>
+{#snippet actions(pending: boolean, downloadUrl: string | null)}
+	<button type="submit" class="action" disabled={pending}>{m.generate()}</button>
+	<button
+		type="button"
+		class="action"
+		disabled={downloadUrl === null}
+		onclick={() => {
+			if (downloadUrl) save(downloadUrl);
+		}}>{m.download()}</button
+	>
 {/snippet}
 
 <OutputLayout>
@@ -156,7 +249,7 @@
 					<PlaybackControls
 						playing={session.playing}
 						frame={session.frame}
-						maxFrame={session.maxFrame}
+						maxFrame={session.maxFrame ?? playbackTimeline.maxFrame}
 						fps={session.fps}
 						onplaybackchange={(next) => session.setPlaying(next)}
 						onframechange={(next) => session.seek(next)}
@@ -171,8 +264,22 @@
 		</div>
 	{/snippet}
 	{#snippet settings()}
-		<div class="settings-form" onchange={invalidate}>
+		<form class="settings-form" onsubmit={onSubmit} onchange={invalidate}>
 			{@render outputTypeSelector()}
+			<div class="settings-actions">
+				{#if generation.playback}
+					{#await generation.playback}
+						{@render actions(true, null)}
+					{:then url}
+						{@render actions(false, url)}
+					{:catch error}
+						{@render actions(false, null)}
+						<p role="alert">{errorMessage(error)}</p>
+					{/await}
+				{:else}
+					{@render actions(false, null)}
+				{/if}
+			</div>
 			<div class="output-fields">
 				<ResolutionSelect bind:value={resolution} />
 				<label>
@@ -191,22 +298,46 @@
 						{/each}
 					</select>
 				</label>
+				<label>
+					{m.video_quality()}
+					<select bind:value={videoQuality}>
+						{#each videoQualityLevels as level (level)}
+							<option value={level}>{level}</option>
+						{/each}
+					</select>
+				</label>
+				<label>
+					{m.frame_count()}
+					<input
+						type="number"
+						min="1"
+						step="1"
+						max={frameCountMax}
+						required
+						value={frameCountText}
+						oninput={onFrameCountInput}
+					/>
+				</label>
+				<label>
+					{m.fps()}
+					<input
+						type="number"
+						min="1"
+						max="240"
+						step="any"
+						required
+						list="fps-presets"
+						value={fpsText}
+						oninput={onFpsInput}
+					/>
+					<datalist id="fps-presets">
+						{#each FPS_PRESETS as preset (preset)}
+							<option value={preset}></option>
+						{/each}
+					</datalist>
+				</label>
 			</div>
-			<div class="settings-actions">
-				{#if generation.playback}
-					{#await generation.playback}
-						{@render actions(true)}
-					{:then}
-						{@render actions(false)}
-					{:catch error}
-						{@render actions(false)}
-						<p role="alert">{errorMessage(error)}</p>
-					{/await}
-				{:else}
-					{@render actions(false)}
-				{/if}
-			</div>
-		</div>
+		</form>
 	{/snippet}
 </OutputLayout>
 
@@ -281,16 +412,16 @@
 		gap: var(--pico-spacing, 1rem);
 		flex: 1;
 		min-height: 100%;
+		margin: 0;
 	}
 
 	.settings-actions {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
-		margin-top: auto;
 	}
 
-	.generate {
+	.action {
 		width: 100%;
 		margin: 0;
 	}

@@ -1,15 +1,32 @@
-import { frameAtSeconds, secondsAtFrame } from '$lib/bip-bop/timeline';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 import type { PlaybackClock } from './clock';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
+
+export type VideoPlaybackTimeline = {
+	fps: number;
+	maxFrame: number;
+};
 
 /**
  * Video element adapter. The element owns the clock.
  * `attach` binds whichever element the page mounted.
  */
-export function videoPlayback(clock: PlaybackClock): {
+export function videoPlayback(
+	clock: PlaybackClock,
+	timeline: VideoPlaybackTimeline = { fps: BIP_BOP_FPS, maxFrame: BIP_BOP_MAX_FRAME }
+): {
 	connect: (host: PlaybackHost) => PlaybackAdapter;
 	attach: (video: HTMLVideoElement) => () => void;
 } {
+	function frameAt(seconds: number): number {
+		if (!Number.isFinite(seconds) || seconds <= 0) return 0;
+		return Math.min(timeline.maxFrame, Math.floor((seconds * 1000 * timeline.fps) / 1000));
+	}
+
+	function secondsAt(frame: number): number {
+		if (!Number.isFinite(frame) || frame <= 0) return 0;
+		return frame / timeline.fps;
+	}
 	let element: HTMLVideoElement | undefined;
 	let detachListeners = () => {};
 	let running = false;
@@ -24,7 +41,7 @@ export function videoPlayback(clock: PlaybackClock): {
 	function tick() {
 		const video = element;
 		if (!video || !host || !running) return;
-		host.advance(frameAtSeconds(video.currentTime));
+		host.advance(frameAt(video.currentTime));
 		if (!running) return;
 		raf = clock.requestFrame(tick);
 	}
@@ -42,7 +59,7 @@ export function videoPlayback(clock: PlaybackClock): {
 				start(frame) {
 					running = true;
 					const video = element;
-					if (video) video.currentTime = secondsAtFrame(frame);
+					if (video) video.currentTime = secondsAt(frame);
 					void video?.play().catch(() => host?.halt());
 					startRaf();
 				},
@@ -52,7 +69,7 @@ export function videoPlayback(clock: PlaybackClock): {
 					element?.pause();
 				},
 				place(frame) {
-					if (element) element.currentTime = secondsAtFrame(frame);
+					if (element) element.currentTime = secondsAt(frame);
 				},
 				atEnd() {
 					return element?.ended === true;
@@ -70,7 +87,7 @@ export function videoPlayback(clock: PlaybackClock): {
 			element = video;
 			const update = () => {
 				if (!host) return;
-				host.advance(frameAtSeconds(video.currentTime));
+				host.advance(frameAt(video.currentTime));
 			};
 			const onPlay = () => {
 				running = true;

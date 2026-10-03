@@ -54,6 +54,8 @@ class MockContext {
 	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 	fonts: string[] = [];
 	strokes: Stroke[] = [];
+	/** Paint order of field, trace, and color-bar rectangles. */
+	paintOrder: ('rect' | 'stroke')[] = [];
 	private ops: PathOp[] = [];
 
 	setTransform(): void {}
@@ -61,6 +63,7 @@ class MockContext {
 	fillRect(x: number, y: number, w: number, h: number): void {
 		this.fills.push(this.fillStyle);
 		this.rects.push({ x, y, w, h, fill: this.fillStyle });
+		this.paintOrder.push('rect');
 	}
 
 	beginPath(): void {
@@ -91,6 +94,7 @@ class MockContext {
 			color: this.strokeStyle,
 			ops: this.ops.map((op) => ({ ...op }))
 		});
+		this.paintOrder.push('stroke');
 	}
 
 	fill(): void {
@@ -145,7 +149,7 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.colorBarX).toBe(34);
 		expect(dimensions.colorBarY).toBe(978);
 		expect(dimensions.toneAxisY).toBe(1012);
-		expect(dimensions.toneAmplitude).toBe(34);
+		expect(dimensions.toneAmplitude).toBe(17);
 	});
 
 	it('uses the short side and rounds center, radius, and an odd diameter to whole pixels', () => {
@@ -165,7 +169,7 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.colorBarX).toBe(23);
 		expect(portrait.colorBarY).toBe(1212);
 		expect(portrait.toneAxisY).toBe(1235);
-		expect(portrait.toneAmplitude).toBe(23);
+		expect(portrait.toneAmplitude).toBe(11);
 		expect(uneven.radius).toBe(200);
 		expect(uneven.overlayFontSize).toBe(32);
 		expect(uneven.colorBarSize).toBe(63);
@@ -189,7 +193,7 @@ describe('createBipBopDimensions', () => {
 			colorBarX: 31,
 			colorBarY: 1907,
 			toneAxisY: 1938,
-			toneAmplitude: 31
+			toneAmplitude: 16
 		});
 	});
 
@@ -212,7 +216,7 @@ describe('createBipBopDimensions', () => {
 			colorBarX: 3,
 			colorBarY: 72,
 			toneAxisY: 75,
-			toneAmplitude: 3
+			toneAmplitude: 1
 		});
 	});
 });
@@ -376,8 +380,20 @@ describe('BipBopRenderer', () => {
 			draw(frame).context.texts.map((text) => text.text)
 		);
 		const videoFrames = [
-			draw(0, 1920, 1080, { mimeType: 'video/mp4', videoCodec: 'avc', audioCodec: 'aac' }),
-			draw(0, 720, 480, { mimeType: 'video/webm', videoCodec: 'vp9', audioCodec: 'opus' })
+			draw(0, 1920, 1080, {
+				mimeType: 'video/mp4',
+				videoCodec: 'avc',
+				audioCodec: 'aac',
+				videoQuality: 'high',
+				fps: 60
+			}),
+			draw(0, 720, 480, {
+				mimeType: 'video/webm',
+				videoCodec: 'vp9',
+				audioCodec: 'opus',
+				videoQuality: 'very-high',
+				fps: 23.976
+			})
 		].flatMap((frame) => frame.context.texts.map((text) => text.text));
 		const drawn = [...pageFrames, ...videoFrames].join('');
 		const listed = new Set(BIP_BOP_FONT_TEXT);
@@ -434,52 +450,62 @@ describe('BipBopRenderer', () => {
 		]);
 	});
 
-	it('draws the mime type and codecs under the resolution', () => {
+	it('draws the mime type, codecs, quality, and frame rate under the resolution', () => {
 		const { context, dimensions } = draw(60, 1920, 1080, {
 			mimeType: 'video/mp4',
 			videoCodec: 'avc',
-			audioCodec: 'aac'
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 60
 		});
 		const corner = context.texts.filter((text) => text.align === 'right');
+		const line = (text: string, index: number) => ({
+			text,
+			baseline: 'top' as const,
+			align: 'right' as const,
+			fill: '#000000',
+			x: 1920 - dimensions.clockX,
+			y: dimensions.clockY + dimensions.overlayFontSize * index,
+			font: '34px "JetBrains Mono", monospace'
+		});
 
 		expect(corner).toEqual([
-			{
-				text: '1920x1080',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'video/mp4',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'avc',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize * 2,
-				font: '34px "JetBrains Mono", monospace'
-			},
-			{
-				text: 'aac',
-				baseline: 'top',
-				align: 'right',
-				fill: '#000000',
-				x: 1920 - dimensions.clockX,
-				y: dimensions.clockY + dimensions.overlayFontSize * 3,
-				font: '34px "JetBrains Mono", monospace'
-			}
+			line('1920x1080', 0),
+			line('video/mp4', 1),
+			line('avc', 2),
+			line('aac', 3),
+			line('high', 4),
+			line('60FPS', 5)
 		]);
+	});
+
+	it('follows media time when the video frame rate is not 60', () => {
+		const half = draw(12, 1920, 1080, {
+			mimeType: 'video/mp4',
+			videoCodec: 'avc',
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 24
+		});
+		const second = draw(24, 1920, 1080, {
+			mimeType: 'video/mp4',
+			videoCodec: 'avc',
+			audioCodec: 'aac',
+			videoQuality: 'high',
+			fps: 24
+		});
+
+		expect(half.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
+		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(half.context.strokes).toEqual([]);
+		expect(second.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
+		expect(second.context.texts.map((text) => text.text)).toContain('Bop!');
+		expect(second.context.strokes).toHaveLength(2);
+		expect(second.context.strokes[1]?.color).toBe('#000000');
+		expect(second.context.texts.filter((text) => text.align === 'right').at(-1)?.text).toBe(
+			'24FPS'
+		);
+		expect(half.context.fills.slice(0, 3)).toEqual(draw(30).context.fills.slice(0, 3));
 	});
 
 	it('rounds arc, padding, text, and swatch geometry to whole pixels', () => {
@@ -559,16 +585,28 @@ describe('BipBopRenderer', () => {
 		});
 		expect(wave?.lineWidth).toBe(1);
 		expect(wave?.color).toBe('#ffffff');
-		expect(wave?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1046.5 });
+		expect(bip.context.paintOrder).toEqual([
+			'rect',
+			'stroke',
+			'stroke',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect'
+		]);
+		expect(wave?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1029.5 });
 		expect(beziers).toHaveLength(100);
 		// Quarter of the first 1500 Hz cycle. Flat tangent on the lower edge: -cos(0) = -1.
 		const first = beziers?.[0];
 		expect(first?.kind).toBe('bezier');
 		if (first?.kind === 'bezier') {
 			expect(first.c1x).toBeCloseTo(6.4);
-			expect(first.c1y).toBeCloseTo(1046.5);
+			expect(first.c1y).toBeCloseTo(1029.5);
 			expect(first.c2x).toBeCloseTo(12.8);
-			expect(first.c2y).toBeCloseTo(1012.5 + (34 * Math.PI) / 6);
+			expect(first.c2y).toBeCloseTo(1012.5 + (17 * Math.PI) / 6);
 			expect(first.x).toBeCloseTo(19.2);
 			expect(first.y).toBeCloseTo(1012.5);
 		}
@@ -576,13 +614,13 @@ describe('BipBopRenderer', () => {
 		expect(crest?.kind).toBe('bezier');
 		if (crest?.kind === 'bezier') {
 			expect(crest.x).toBeCloseTo(38.4);
-			expect(crest.y).toBeCloseTo(978.5);
+			expect(crest.y).toBeCloseTo(995.5);
 		}
 		const end = beziers?.at(-1);
 		expect(end?.kind).toBe('bezier');
 		if (end?.kind === 'bezier') {
 			expect(end.x).toBeCloseTo(1920);
-			expect(end.y).toBeCloseTo(1046.5);
+			expect(end.y).toBeCloseTo(1029.5);
 		}
 
 		expect(draw(1).context.strokes).toEqual([]);
@@ -601,7 +639,7 @@ describe('BipBopRenderer', () => {
 		expect(bopEnd?.kind).toBe('bezier');
 		if (bopEnd?.kind === 'bezier') {
 			expect(bopEnd.x).toBeCloseTo(1920);
-			expect(bopEnd.y).toBeCloseTo(1012.5 + (34 * Math.sqrt(3)) / 2);
+			expect(bopEnd.y).toBeCloseTo(1012.5 + (17 * Math.sqrt(3)) / 2);
 		}
 
 		const portrait = draw(0, 720, 1280);
@@ -609,12 +647,12 @@ describe('BipBopRenderer', () => {
 			{ kind: 'move', x: 0, y: 1235.5 },
 			{ kind: 'line', x: 720, y: 1235.5 }
 		]);
-		expect(portrait.context.strokes[1]?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1258.5 });
+		expect(portrait.context.strokes[1]?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1246.5 });
 		const portraitEnd = portrait.context.strokes[1]?.ops.at(-1);
 		expect(portraitEnd?.kind).toBe('bezier');
 		if (portraitEnd?.kind === 'bezier') {
 			expect(portraitEnd.x).toBeCloseTo(720);
-			expect(portraitEnd.y).toBeCloseTo(1258.5);
+			expect(portraitEnd.y).toBeCloseTo(1246.5);
 		}
 	});
 

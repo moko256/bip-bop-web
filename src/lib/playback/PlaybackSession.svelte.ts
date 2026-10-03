@@ -24,8 +24,8 @@ export type PlaybackAdapter = {
 export class PlaybackSession {
 	playing = $state(false);
 	frame = $state(0);
-	readonly maxFrame?: number;
-	readonly fps: number;
+	maxFrame?: number;
+	fps: number;
 	private readonly adapter: PlaybackAdapter;
 	private disposed = false;
 
@@ -42,6 +42,13 @@ export class PlaybackSession {
 		});
 	}
 
+	/** Length and rate of the video currently shown in the transport. */
+	setTimeline(maxFrame: number, fps: number): void {
+		if (this.disposed) return;
+		this.maxFrame = maxFrame;
+		this.fps = fps;
+	}
+
 	setPlaying(next: boolean): void {
 		if (this.disposed) return;
 		if (!next) {
@@ -49,10 +56,7 @@ export class PlaybackSession {
 			this.adapter.stop();
 			return;
 		}
-		if (
-			this.maxFrame !== undefined &&
-			(this.frame >= this.maxFrame || this.adapter.atEnd())
-		) {
+		if (this.maxFrame !== undefined && (this.frame >= this.maxFrame || this.adapter.atEnd())) {
 			this.frame = 0;
 		}
 		this.playing = true;

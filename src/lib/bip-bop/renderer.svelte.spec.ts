@@ -39,11 +39,12 @@ describe('BipBopRenderer pixels', () => {
 		expect(rgb(canvas, 8, 1011)).toBe('0,0,0');
 		expect(rgb(canvas, 8, 1012)).toBe('255,255,255');
 		expect(rgb(canvas, 8, 1013)).toBe('0,0,0');
-		// 15th peak of the 1500 Hz -cos sits on the upper edge. Coverage of the three
-		// rows adds up to one pixel: the crest holds it, and the row above stays black.
-		const above = red(canvas, 576, 977);
-		const crest = red(canvas, 576, 978);
-		const below = red(canvas, 576, 979);
+		// The first color swatch covers the trace. Its center stays 75% white.
+		expect(rgb(canvas, 40, 1012)).toBe('191,191,191');
+		// 15th peak of the 1500 Hz -cos sits on the upper edge, past the color bar.
+		const above = red(canvas, 576, 994);
+		const crest = red(canvas, 576, 995);
+		const below = red(canvas, 576, 996);
 		expect(above).toBe(0);
 		expect(crest).toBeGreaterThan(below);
 		expect(crest + below).toBeGreaterThan(240);
