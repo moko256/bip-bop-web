@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browserPlaybackClock } from '$lib/playback/clock';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
@@ -79,7 +80,7 @@
 	};
 </script>
 
-{#snippet content({ onclick })}
+{#snippet content({ onclick }: PlaybackContentProps)}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="preview" {onclick} {@attach paint} {@attach release}></div>
