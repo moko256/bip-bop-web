@@ -7,6 +7,7 @@
 	"output_type_fullscreen_url": "Fullscreen URL",
 	"output_type_group_aria_label": "Output type",
 	"resolution": "Resolution",
+	"window_size": "Window size",
 	"video_codec": "Video codec",
 	"audio_codec": "Audio codec",
 	"video_quality": "Video quality",

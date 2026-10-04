@@ -29,5 +29,13 @@ describe('error page', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Back to TOP' }))
 			.toHaveAttribute('href', '/bip-bop-web/');
+		expect(themeColor('light')).toBe('#ffffff');
+		expect(themeColor('dark')).toBe('#13171f');
 	});
 });
+
+function themeColor(scheme: 'light' | 'dark'): string | null | undefined {
+	return document
+		.querySelector(`meta[name="theme-color"][media="(prefers-color-scheme: ${scheme})"]`)
+		?.getAttribute('content');
+}
