@@ -64,16 +64,43 @@ describe('OutputControls', () => {
 		defaultMp4AudioCodec = audioCodec;
 	});
 
-	it('starts on page with the live canvas above OutputType', async () => {
+	it('starts on page with the title, description, and live canvas above OutputType', async () => {
 		render(OutputControls);
 
 		await expect
 			.element(page.getByRole('button', { name: m.output_type_page() }))
 			.toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('heading', { level: 1, name: m.site_title() }))
+			.toBeVisible();
+		await expect.element(page.getByText(m.site_description())).toBeVisible();
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).toBeVisible();
 		await expect.element(page.getByRole('button', { name: m.generate() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.download() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
+		expect(
+			[
+				...page
+					.getByRole('group', { name: m.output_type_group_aria_label() })
+					.element()
+					.querySelectorAll('button')
+			].map((button) => button.textContent)
+		).toEqual([m.output_type_page(), m.output_type_fullscreen_url(), 'mp4', 'webm']);
+		const settings = page
+			.getByRole('heading', { level: 1, name: m.site_title() })
+			.element().parentElement;
+		if (!(settings instanceof HTMLElement)) throw new Error('Expected settings column');
+		if (window.matchMedia('(min-width: 721px)').matches) {
+			expect(getComputedStyle(settings).minWidth).toBe('400px');
+		}
+		assertPrecedes(
+			page.getByRole('heading', { level: 1, name: m.site_title() }),
+			page.getByRole('group', { name: m.output_type_group_aria_label() })
+		);
+		assertPrecedes(
+			page.getByRole('group', { name: m.output_type_group_aria_label() }),
+			page.getByText(m.site_description())
+		);
 		assertPrecedes(
 			page.getByLabelText(m.bip_bop_preview_aria()),
 			page.getByRole('group', { name: m.output_type_group_aria_label() })
@@ -88,6 +115,10 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'mp4' }))
 			.toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('heading', { level: 1, name: m.site_title() }))
+			.toBeVisible();
+		await expect.element(page.getByText(m.site_description())).not.toBeInTheDocument();
 		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
 		await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).not.toBeInTheDocument();
@@ -533,6 +564,10 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('button', { name: m.output_type_fullscreen_url() }))
 			.toHaveAttribute('aria-current', 'true');
+		await expect
+			.element(page.getByRole('heading', { level: 1, name: m.site_title() }))
+			.toBeVisible();
+		await expect.element(page.getByText(m.site_description())).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).toBeVisible();
 		await expect.element(page.getByRole('combobox', { name: m.resolution() })).toBeInTheDocument();
 		await expect.element(page.getByRole('textbox', { name: m.url_label() })).toBeInTheDocument();

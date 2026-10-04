@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browserPlaybackClock } from '$lib/playback/clock';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';

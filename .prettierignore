@@ -10,3 +10,7 @@ bun.lockb
 
 # Agent skills (vendored; not project source)
 .agents/skills/
+
+# Generated unpacked inlang files. settings.json stays formatted.
+project.inlang/**
+!project.inlang/settings.json
