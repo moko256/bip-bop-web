@@ -15,7 +15,7 @@ describe('frameAtElapsedMs', () => {
 });
 
 describe('frameAtSeconds', () => {
-	it('uses the same truncation as the preview clock and stops at ten seconds', () => {
+	it('truncates a partial frame and stops at ten seconds', () => {
 		expect(frameAtSeconds(0)).toBe(0);
 		expect(frameAtSeconds(1.016)).toBe(60);
 		expect(frameAtSeconds(1.5)).toBe(90);

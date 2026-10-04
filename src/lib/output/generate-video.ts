@@ -1,7 +1,7 @@
 import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
 import { loadBipBopFont } from '$lib/bip-bop/font';
 import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
-import { toneSecondAtFrame } from '$lib/bip-bop/media-time';
+import { toneSecondAtFrame, videoPictureAtFrame } from '$lib/bip-bop/media-time';
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
 import { placeBipBopTone } from '$lib/bip-bop/video-tone';
 import {
@@ -71,7 +71,7 @@ export async function generateBipBopVideo(options: {
 		const frameDuration = 1 / fps;
 		for (let frame = 0; frame < frameCount; frame += 1) {
 			if (options.signal?.aborted) throw aborted();
-			BipBopRenderer(canvas, dimensions, frame, {
+			BipBopRenderer(canvas, dimensions, videoPictureAtFrame(frame, fps), {
 				mimeType: format.mimeType,
 				videoCodec: options.videoCodec,
 				audioCodec: options.audioCodec,

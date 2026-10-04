@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { videoPictureAtFrame } from './media-time';
 import { BipBopRenderer, createBipBopDimensions } from './renderer';
 
 function rgb(canvas: HTMLCanvasElement, x: number, y: number): string {
@@ -17,7 +18,7 @@ describe('BipBopRenderer pixels', () => {
 		canvas.width = 201;
 		canvas.height = 151;
 		const dimensions = createBipBopDimensions(canvas.width, canvas.height);
-		BipBopRenderer(canvas, dimensions, 15);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(15, 60));
 
 		expect(dimensions).toMatchObject({ centerX: 101, centerY: 76, radius: 30 });
 		// Frame 15 splits the disk at 91°. 45° is in the gray arc, 270° is in the white arc.
@@ -33,7 +34,7 @@ describe('BipBopRenderer pixels', () => {
 		canvas.width = 1920;
 		canvas.height = 1080;
 		const dimensions = createBipBopDimensions(canvas.width, canvas.height);
-		BipBopRenderer(canvas, dimensions, 0);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(0, 60));
 
 		// Axis row 1012 is white. The rows above and below stay the black field.
 		expect(rgb(canvas, 8, 1011)).toBe('0,0,0');
@@ -50,7 +51,7 @@ describe('BipBopRenderer pixels', () => {
 		expect(crest + below).toBeGreaterThan(240);
 		expect(crest + below).toBeLessThanOrEqual(255);
 
-		BipBopRenderer(canvas, dimensions, 1);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(1, 60));
 		expect(rgb(canvas, 8, 1012)).toBe('4,4,4');
 	});
 });

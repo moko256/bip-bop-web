@@ -3,14 +3,17 @@
 	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
-	import { canvasPlayback } from './canvas-playback';
+	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
 	import { loadBipBopFont } from './font';
-	import { BipBopRenderer, createBipBopDimensions } from './renderer';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
+	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
 	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './timeline';
+	const playbackClock = browserPlaybackClock();
+	const picture = createCanvasPicture();
 	const session = new PlaybackSession({
 		fps: BIP_BOP_FPS,
-		connect: canvasPlayback(browserPlaybackClock())
+		connect: canvasPlayback(playbackClock, liveCanvasAudio(playbackClock), picture)
 	});
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
@@ -47,7 +50,7 @@
 				dimensions = createBipBopDimensions(size.width, size.height);
 				host.replaceChildren(canvas);
 			}
-			BipBopRenderer(canvas, dimensions, current);
+			BipBopRenderer(canvas, dimensions, previewSample(current));
 		};
 
 		void loadBipBopFont().finally(() => {
@@ -74,12 +77,24 @@
 		};
 	};
 
+	function previewSample(frame: number): BipBopSample {
+		return {
+			frame,
+			clockCentiseconds: picture.clockCentiseconds,
+			cycleFraction: picture.cycleFraction,
+			cycleLength: 1,
+			beat: picture.beat,
+			showBeat: picture.showBeat,
+			...(picture.previewFps === null ? {} : { previewFps: picture.previewFps })
+		};
+	}
+
 	const release: Attachment<HTMLDivElement> = () => {
 		return () => session.dispose();
 	};
 </script>
 
-{#snippet content({ onclick })}
+{#snippet content({ onclick }: PlaybackContentProps)}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="preview" {onclick} {@attach paint} {@attach release}></div>

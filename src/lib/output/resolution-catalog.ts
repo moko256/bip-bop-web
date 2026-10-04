@@ -505,4 +505,6 @@ export type Resolution = (typeof resolutionCatalog)[number]['value'];
 export const defaultResolution = '1920x1080' satisfies Resolution;
 
 /** Flat list of resolutions in grouped-select order. */
-export const resolutions = resolutionGroups.flatMap((group) => group.options);
+export const resolutions = resolutionGroups.flatMap(
+	(group): ResolutionGroup['options'] => group.options
+);

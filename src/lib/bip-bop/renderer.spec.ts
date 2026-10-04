@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { videoPictureAtFrame } from './media-time';
 import {
 	BIP_BOP_FONT_TEXT,
 	BipBopRenderer,
 	createBipBopDimensions,
+	type BipBopSample,
 	type BipBopVideoCorner
 } from './renderer';
 
@@ -121,7 +123,17 @@ function draw(frame: number, width = 1920, height = 1080, video?: BipBopVideoCor
 		getContext: () => context
 	} as unknown as HTMLCanvasElement;
 	const dimensions = createBipBopDimensions(width, height);
-	BipBopRenderer(canvas, dimensions, frame, video);
+	BipBopRenderer(canvas, dimensions, videoPictureAtFrame(frame, video?.fps ?? 60), video);
+	return { context, dimensions };
+}
+
+function drawSample(sample: BipBopSample, width = 1920, height = 1080) {
+	const context = new MockContext();
+	const canvas = {
+		getContext: () => context
+	} as unknown as HTMLCanvasElement;
+	const dimensions = createBipBopDimensions(width, height);
+	BipBopRenderer(canvas, dimensions, sample);
 	return { context, dimensions };
 }
 
@@ -239,13 +251,13 @@ describe('BipBopRenderer', () => {
 		} as unknown as HTMLCanvasElement;
 		const dimensions = createBipBopDimensions(320, 180);
 
-		BipBopRenderer(canvas, dimensions, 0);
-		BipBopRenderer(canvas, dimensions, 1);
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(0, 60));
+		BipBopRenderer(canvas, dimensions, videoPictureAtFrame(1, 60));
 
 		expect(calls).toBe(1);
 		expect(context.imageSmoothingEnabled).toBe(false);
 
-		BipBopRenderer(canvas, createBipBopDimensions(640, 360), 0);
+		BipBopRenderer(canvas, createBipBopDimensions(640, 360), videoPictureAtFrame(0, 60));
 		expect(calls).toBe(2);
 	});
 
@@ -536,7 +548,7 @@ describe('BipBopRenderer', () => {
 				toneAxisY: 70.4,
 				toneAmplitude: 2.4
 			},
-			0
+			videoPictureAtFrame(0, 60)
 		);
 
 		expect(context.arcs.map(({ x, y, radius }) => ({ x, y, radius }))).toEqual([
@@ -552,6 +564,76 @@ describe('BipBopRenderer', () => {
 		expect(context.rects[0]).toMatchObject({ x: 0, y: 0, w: 101, h: 80 });
 		expect(context.rects[1]).toMatchObject({ x: 4, y: 66, w: 11, h: 11 });
 		expect(context.rects[2]).toMatchObject({ x: 15, y: 66, w: 11, h: 11 });
+	});
+
+	it('draws the supplied clock and leaves the frame counter out of the motion', () => {
+		const half = drawSample({
+			frame: 12,
+			clockCentiseconds: 150,
+			cycleFraction: 0.5,
+			cycleLength: 1,
+			beat: 'bop',
+			showBeat: false
+		});
+		const sameMotion = drawSample({
+			frame: 999999,
+			clockCentiseconds: 150,
+			cycleFraction: 0.5,
+			cycleLength: 1,
+			beat: 'bop',
+			showBeat: false
+		});
+		const clock = half.context.texts.find((text) => text.align === 'left');
+
+		expect(half.context.texts.map((text) => text.text)).toContain('000012');
+		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(clock?.text).toBe('00:00:01.50');
+		expect(half.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+		expect(sameMotion.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
+		expect(sameMotion.context.fills.slice(0, 3)).toEqual(half.context.fills.slice(0, 3));
+		expect(sameMotion.context.texts.map((text) => text.text)).toContain('999999');
+	});
+
+	it('draws Bip or Bop only when the caller asks, on the supplied beat', () => {
+		const hidden = drawSample({
+			frame: 0,
+			clockCentiseconds: 0,
+			cycleFraction: 0,
+			cycleLength: 1,
+			beat: 'bip',
+			showBeat: false
+		});
+		const bop = drawSample({
+			frame: 4,
+			clockCentiseconds: 100,
+			cycleFraction: 0,
+			cycleLength: 1,
+			beat: 'bop',
+			showBeat: true
+		});
+
+		expect(hidden.context.texts.map((text) => text.text)).not.toContain('Bip!');
+		expect(bop.context.texts.map((text) => text.text)).toContain('Bop!');
+		expect(bop.context.texts.map((text) => text.text)).not.toContain('Bip!');
+	});
+
+	it('draws the rounded preview frame rate under the resolution', () => {
+		const { context, dimensions } = drawSample({
+			frame: 4,
+			clockCentiseconds: 20,
+			cycleFraction: 0.2,
+			cycleLength: 1,
+			beat: 'bip',
+			showBeat: false,
+			previewFps: 1000 / 17
+		});
+		const corner = context.texts.filter((text) => text.align === 'right');
+
+		expect(corner.map((text) => text.text)).toEqual(['1920x1080', '59FPS']);
+		expect(corner[1]).toMatchObject({
+			x: 1920 - dimensions.clockX,
+			y: dimensions.clockY + dimensions.overlayFontSize
+		});
 	});
 
 	it('draws a 75% sRGB color bar as seven squares along the bottom-left', () => {

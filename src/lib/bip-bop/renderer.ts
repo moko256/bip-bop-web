@@ -1,12 +1,10 @@
 import { BIP_BOP_AUDIO_SAMPLE_RATE, bipBopFrequencyHz } from './audio';
 import { formatFpsOverlay } from './fps-text';
+import type { FramePicture } from './media-time';
 import { BIP_BOP_FPS } from './timeline';
 
 /** One drawing cycle is one Timeline second. */
 const CYCLE_FRAMES = BIP_BOP_FPS;
-/** Two-second color loop. Endpoints are one second apart. */
-const COLOR_PERIOD_FRAMES = CYCLE_FRAMES * 2;
-
 const BLACK = '#000000';
 
 type Rgb = readonly [number, number, number];
@@ -175,24 +173,21 @@ export type BipBopVideoCorner = {
 };
 
 /**
- * Draws one frame. Stateless: the caller owns the frame counter and the canvas size.
+ * Draws one frame. Stateless: the caller owns the frame counter, the clock,
+ * and the motion. The frame count is only the digits in the center.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * The disk is two filled arcs that meet at the center. Frame 0 of each 60-frame
- * turn splits them at 1°: one arc runs 0°–1° and the other 1°–360°. Each frame
- * moves the split 6° clockwise, so the leading edge completes one turn per second.
- * The two fills do not animate inside a second. They switch only when the frame
- * index is divisible by 60: frames 0–59 paint the 0°–split arc gray and the
- * split–360° arc white, frames 60–119 swap those fills, and each later second
- * swaps again.
- * Field and clock colors still ping-pong over 120 frames (2 seconds), swapping black
- * and white. On each turn boundary the
- * label above center is `Bip!` (black) or `Bop!` (white), alternating every second.
- * The corner clock is elapsed media time, truncated to centiseconds (`HH:MM:SS.CC`).
- * A page and a 60 fps video count that time as `frame / 60`. Any other video
- * frame rate counts it as `frame / fps`, and moves the split, the fills, and
- * Bip/Bop on that same media time. Bip/Bop is drawn on the first frame of each
- * media second.
+ * The disk is two filled arcs that meet at the center. At cycle fraction 0 the
+ * split is 1°: one arc runs 0°–1° and the other 1°–360°. The split then moves
+ * clockwise and completes one turn as {@link FramePicture.cycleFraction}
+ * completes one {@link FramePicture.cycleLength}.
+ * A Bip second paints the 0°–split arc gray and the split–360° arc white.
+ * A Bop second swaps those fills. Field and clock colors ping-pong across the
+ * two seconds, black toward white through the Bip second and back through the
+ * Bop second. `sample.showBeat` draws `Bip!` or `Bop!` above center for
+ * `sample.beat`.
+ * The corner clock is `sample.clockCentiseconds`, truncated by the caller
+ * (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
  * `round(shortSide * 1/64)` below center, and its height is `round(shortSide * 1/16)`.
  * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
@@ -222,16 +217,26 @@ export type BipBopVideoCorner = {
  * centered on a half-pixel, and its Beziers follow `-cos`.
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
  * `video.videoCodec`, `video.audioCodec`, `video.videoQuality`, and the frame rate
- * as `{fps}FPS` on the following lines. Each line is
+ * as `{fps}FPS` on the following lines. The web preview lists the resolution and,
+ * once a 200ms sample of animation frames has been counted, the measured frame
+ * rate rounded to a whole number (`{fps}FPS`). Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
- * and from the right by the clock's left inset. A page omits `video` and draws
- * the resolution only.
+ * and from the right by the clock's left inset. A still page omits `video` and
+ * `sample.previewFps` and draws the resolution only.
  * Image smoothing is off for every canvas and video frame.
  */
+export type BipBopSample = FramePicture & {
+	/**
+	 * Frame rate from the web preview's latest closed 200ms sample.
+	 * The web preview draws `round(previewFps)` at the top-right. A video omits this.
+	 */
+	previewFps?: number;
+};
+
 export function BipBopRenderer(
 	canvas: BipBopCanvas,
 	dimensions: BipBopDimensions,
-	frame: number,
+	sample: BipBopSample,
 	video?: BipBopVideoCorner
 ): void {
 	if (dimensions.width <= 0 || dimensions.height <= 0) return;
@@ -257,9 +262,9 @@ export function BipBopRenderer(
 	const colorBarY = wholePixels(dimensions.colorBarY);
 	const toneAxisY = wholePixels(dimensions.toneAxisY);
 	const toneAmplitude = wholePixels(dimensions.toneAmplitude);
-	const marks = pictureMarks(frame, video?.fps ?? BIP_BOP_FPS);
-	const circleSwapped = nonNegativeMod(marks.turn, 2) === 1;
-	const circleMix = circleSwapped ? CYCLE_FRAMES : 0;
+	const frame = sample.frame;
+	const marks = pictureMarks(sample);
+	const circleMix = marks.bip ? 0 : CYCLE_FRAMES;
 
 	ctx.fillStyle = mixColor(RGB_BLACK, RGB_WHITE, marks.towardMidpoint, CYCLE_FRAMES);
 	ctx.fillRect(0, 0, width, height);
@@ -290,16 +295,7 @@ export function BipBopRenderer(
 
 	ctx.font = monospaceFont(overlayFontSize);
 	ctx.textAlign = 'right';
-	const lines = video
-		? [
-				`${width}x${height}`,
-				video.mimeType,
-				video.videoCodec,
-				video.audioCodec,
-				video.videoQuality,
-				formatFpsOverlay(video.fps)
-			]
-		: [`${width}x${height}`];
+	const lines = overlayLines(width, height, video, sample.previewFps);
 	for (const [index, line] of lines.entries()) {
 		ctx.fillText(line, wholePixels(width - clockX), wholePixels(clockY + index * overlayFontSize));
 	}
@@ -310,7 +306,7 @@ export function BipBopRenderer(
 			width,
 			toneAxisY + 0.5,
 			toneAmplitude,
-			bipBopFrequencyHz(marks.turn),
+			bipBopFrequencyHz(marks.bip ? 0 : 1),
 			mixColor(RGB_WHITE, RGB_BLACK, marks.towardMidpoint, CYCLE_FRAMES)
 		);
 	}
@@ -324,6 +320,27 @@ export function BipBopRenderer(
 			colorBarSize
 		);
 	}
+}
+
+function overlayLines(
+	width: number,
+	height: number,
+	video: BipBopVideoCorner | undefined,
+	previewFps: number | undefined
+): string[] {
+	const resolution = `${width}x${height}`;
+	if (video) {
+		return [
+			resolution,
+			video.mimeType,
+			video.videoCodec,
+			video.audioCodec,
+			video.videoQuality,
+			formatFpsOverlay(video.fps)
+		];
+	}
+	if (typeof previewFps !== 'number' || !Number.isFinite(previewFps)) return [resolution];
+	return [resolution, formatFpsOverlay(Math.round(previewFps))];
 }
 
 /**
@@ -406,7 +423,6 @@ function formatFrameCount(frame: number): string {
 }
 
 type PictureMarks = {
-	turn: number;
 	startDegrees: number;
 	towardMidpoint: number;
 	showLabel: boolean;
@@ -415,38 +431,29 @@ type PictureMarks = {
 };
 
 /**
- * Timing for one drawn frame.
- * At 60 fps the counts stay on whole frames, matching the page preview.
- * Any other rate uses media time `frame / fps`.
+ * Motion for one drawn sample.
+ * `cycleFraction / cycleLength` is the fraction of the current second.
+ * The caller chooses the beat and whether this sample draws it.
  */
-function pictureMarks(frame: number, fps: number): PictureMarks {
-	if (fps === BIP_BOP_FPS) {
-		const cycleFrame = nonNegativeMod(frame, CYCLE_FRAMES);
-		const periodFrame = nonNegativeMod(frame, COLOR_PERIOD_FRAMES);
-		const turn = Math.floor(frame / CYCLE_FRAMES);
-		return {
-			turn,
-			startDegrees: 1 + cycleFrame * (360 / CYCLE_FRAMES),
-			towardMidpoint: periodFrame <= CYCLE_FRAMES ? periodFrame : COLOR_PERIOD_FRAMES - periodFrame,
-			showLabel: cycleFrame === 0,
-			bip: periodFrame === 0,
-			clockCentiseconds: Math.floor((Math.trunc(frame) * 100) / CYCLE_FRAMES)
-		};
-	}
-
-	const time = frame / fps;
-	const turn = Math.floor(time);
-	const fractional = time - turn;
-	const periodPos = time - Math.floor(time / 2) * 2;
-	const previousTurn = frame === 0 ? -1 : Math.floor((frame - 1) / fps);
+function pictureMarks(sample: BipBopSample): PictureMarks {
+	const cycleLength =
+		Number.isFinite(sample.cycleLength) && sample.cycleLength > 0 ? sample.cycleLength : 1;
+	const cycleFraction =
+		Number.isFinite(sample.cycleFraction) && sample.cycleFraction > 0 ? sample.cycleFraction : 0;
+	const alongSecond = (cycleFraction * CYCLE_FRAMES) / cycleLength;
+	const bip = sample.beat !== 'bop';
 	return {
-		turn,
-		startDegrees: 1 + fractional * 360,
-		towardMidpoint: periodPos <= 1 ? periodPos * CYCLE_FRAMES : (2 - periodPos) * CYCLE_FRAMES,
-		showLabel: turn !== previousTurn,
-		bip: turn % 2 === 0,
-		clockCentiseconds: Math.max(0, Math.floor(time * 100))
+		startDegrees: 1 + (cycleFraction * 360) / cycleLength,
+		towardMidpoint: bip ? alongSecond : CYCLE_FRAMES - alongSecond,
+		showLabel: sample.showBeat === true,
+		bip,
+		clockCentiseconds: nonNegativeCentiseconds(sample.clockCentiseconds)
 	};
+}
+
+function nonNegativeCentiseconds(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 0;
+	return Math.floor(value);
 }
 
 /** `HH:MM:SS.CC`. Centiseconds are truncated, not rounded. */
@@ -475,10 +482,6 @@ function monospaceFont(size: number): string {
 
 function pad2(value: number): string {
 	return String(value).padStart(2, '0');
-}
-
-function nonNegativeMod(value: number, modulus: number): number {
-	return ((value % modulus) + modulus) % modulus;
 }
 
 /** Linear mix from `from` at numerator 0 to `to` at numerator === denominator. */

@@ -1,8 +1,48 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
 import type { PlaybackClock } from '$lib/playback/clock';
 import { bipBopPreviewPictureMs } from './audio';
-import { frameAtElapsedMs, secondsAtFrame } from './timeline';
+import {
+	clockCentisecondsAtMs,
+	previewBeat,
+	previewCycleFraction,
+	previewShowBeat,
+	type PictureBeat
+} from './media-time';
 import { scheduleLiveTones } from './tone-schedule';
+
+/** How long one preview frame-rate sample stays open before it is published. */
+const FPS_SAMPLE_MS = 200;
+
+/**
+ * Web preview picture clock.
+ * `elapsedSeconds` is time since playback started. The frame counter lives on
+ * the session and is not derived from this clock. `previewFps` is the rounded
+ * rate of the latest closed 200ms sample, or null until that sample closes.
+ * The displayed rate stays put until the next sample closes.
+ */
+export type CanvasPicture = {
+	elapsedSeconds: number;
+	clockCentiseconds: number;
+	/** `elapsedSeconds % 1`, the fraction of the current second. */
+	cycleFraction: number;
+	/** Previous cycle fraction. Null until the first published sample. */
+	previousCycleFraction: number | null;
+	beat: PictureBeat;
+	showBeat: boolean;
+	previewFps: number | null;
+};
+
+export function createCanvasPicture(): CanvasPicture {
+	return {
+		elapsedSeconds: 0,
+		clockCentiseconds: 0,
+		cycleFraction: 0,
+		previousCycleFraction: null,
+		beat: 'bip',
+		showBeat: true,
+		previewFps: null
+	};
+}
 
 /** Live Bip/Bop bursts while the canvas clock is running. */
 export type CanvasAudio = {
@@ -161,23 +201,71 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 	};
 }
 
-/** Canvas clock adapter. Tones follow the wall clock. The picture waits out the opening burst. */
+/**
+ * Canvas clock adapter. Tones follow the wall clock. The picture waits out the opening burst.
+ * Each animation frame adds one to the frame counter. Elapsed time is time since
+ * playback started, not `frame / fps`.
+ */
 export function canvasPlayback(
 	clock: PlaybackClock,
-	audio: CanvasAudio = liveCanvasAudio(clock)
+	audio: CanvasAudio = liveCanvasAudio(clock),
+	picture: CanvasPicture = createCanvasPicture()
 ): (host: PlaybackHost) => PlaybackAdapter {
 	return (host) => {
 		let running = false;
 		let rafId = 0;
 		let startedAt = 0;
 		let startElapsedMs = 0;
+		let pictureElapsedMs = 0;
+		let frameCount = 0;
+		let sampledFrames = 0;
+		let sampleStartedAt: number | null = null;
 		let disposed = false;
 
 		function elapsedNow(): number {
 			return clock.now() - startedAt;
 		}
 
+		function publish(elapsedMs: number, previewFps: number | null): void {
+			const elapsedSeconds = elapsedMs > 0 && Number.isFinite(elapsedMs) ? elapsedMs / 1000 : 0;
+			const cycleFraction = previewCycleFraction(elapsedSeconds);
+			picture.showBeat = previewShowBeat(cycleFraction, picture.previousCycleFraction);
+			picture.previousCycleFraction = cycleFraction;
+			picture.cycleFraction = cycleFraction;
+			picture.beat = previewBeat(elapsedSeconds);
+			picture.elapsedSeconds = elapsedSeconds;
+			picture.clockCentiseconds = clockCentisecondsAtMs(elapsedMs);
+			if (previewFps !== null) picture.previewFps = previewFps;
+		}
+
+		/**
+		 * Counts animation frames into one open sample.
+		 * When that sample has been open for {@link FPS_SAMPLE_MS}, returns the
+		 * rounded rate of the frames counted in it and starts the next sample at
+		 * zero. Until then it returns null, so the displayed rate stays on the
+		 * previous closed sample.
+		 */
+		function sampleFps(now: number): number | null {
+			sampledFrames += 1;
+			if (sampleStartedAt === null) sampleStartedAt = now;
+			const elapsed = now - sampleStartedAt;
+			if (!Number.isFinite(elapsed) || elapsed < FPS_SAMPLE_MS) return null;
+			const fps = Math.round((sampledFrames * 1000) / elapsed);
+			sampledFrames = 0;
+			sampleStartedAt = now;
+			return fps;
+		}
+
 		function stopClock() {
+			if (running) {
+				pictureElapsedMs = bipBopPreviewPictureMs(
+					elapsedNow(),
+					audio.pictureShiftMs(),
+					startElapsedMs
+				);
+			}
+			sampledFrames = 0;
+			sampleStartedAt = null;
 			clock.cancelFrame(rafId);
 			rafId = 0;
 			running = false;
@@ -186,26 +274,29 @@ export function canvasPlayback(
 
 		function tick() {
 			if (disposed || !running) return;
+			const previewFps = sampleFps(clock.now());
+			frameCount += 1;
 			const pictureMs = bipBopPreviewPictureMs(
 				elapsedNow(),
 				audio.pictureShiftMs(),
 				startElapsedMs
 			);
-			const next = frameAtElapsedMs(pictureMs);
-			host.advance(next);
+			pictureElapsedMs = pictureMs;
+			publish(pictureMs, previewFps);
+			host.advance(frameCount);
 			if (disposed || !running) return;
 			rafId = clock.requestFrame(tick);
 		}
 
 		function arm(frame: number) {
 			stopClock();
-			const elapsedMs = secondsAtFrame(frame) * 1000;
-			startElapsedMs = elapsedMs;
-			startedAt = clock.now() - elapsedMs;
+			frameCount = frame;
+			startElapsedMs = pictureElapsedMs;
+			startedAt = clock.now() - pictureElapsedMs;
 			running = true;
-			audio.start(elapsedMs, elapsedNow, () => {
+			audio.start(pictureElapsedMs, elapsedNow, () => {
 				if (disposed || !running) return;
-				startedAt = clock.now() - elapsedMs;
+				startedAt = clock.now() - pictureElapsedMs;
 				clock.cancelFrame(rafId);
 				rafId = clock.requestFrame(tick);
 			});
@@ -221,7 +312,7 @@ export function canvasPlayback(
 			},
 			place(frame) {
 				if (disposed || !running) return;
-				arm(frame);
+				frameCount = frame;
 			},
 			atEnd() {
 				return false;

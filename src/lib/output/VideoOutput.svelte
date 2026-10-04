@@ -4,6 +4,7 @@
 	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import { seekReserveHeight } from '$lib/playback/seek-bar';
@@ -228,7 +229,7 @@
 				{#await generation.playback}
 					{@render placeholderViewport(loadingOverlay)}
 				{:then url}
-					{#snippet content({ onclick })}
+					{#snippet content({ onclick }: PlaybackContentProps)}
 						<!-- svelte-ignore a11y_media_has_caption -->
 						<video
 							class="media viewport"

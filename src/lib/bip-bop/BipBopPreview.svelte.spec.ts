@@ -210,7 +210,7 @@ describe('BipBopPreview', () => {
 		}
 	});
 
-	it('starts a later burst early and lets the picture move without the opening hold', async () => {
+	it('keeps the picture at the start when the frame counter changes', async () => {
 		PreviewAudioContext.instances = [];
 		PreviewAudioContext.outputLatencySeconds = 0.05;
 		const realAudioContext = window.AudioContext;
@@ -223,8 +223,7 @@ describe('BipBopPreview', () => {
 			await input.fill('30');
 			await expect.element(input).toHaveValue(30);
 
-			const held = fieldLevel();
-			const started = Date.now();
+			expect(fieldLevel()).toBe(0);
 			await page.getByRole('button', { name: m.playback_play() }).first().click();
 
 			await expect
@@ -232,14 +231,13 @@ describe('BipBopPreview', () => {
 				.toBeGreaterThan(0);
 
 			const opening = PreviewAudioContext.instances[0]!.tones[0]!;
-			expect(opening.frequencyHz).toBe(475);
-			expect(opening.start).toBeCloseTo(0.45);
+			expect(opening.frequencyHz).toBe(1500);
+			expect(opening.start).toBeCloseTo(0.05);
 			expect(opening.stop - opening.start).toBeCloseTo(0.016);
 			expect(frameField().disabled).toBe(true);
 			expect(frameField().value).toBe('');
 
-			await expect.poll(() => fieldLevel()).not.toBe(held);
-			expect(Date.now() - started).toBeLessThan(200);
+			await expect.poll(() => fieldLevel()).toBeGreaterThan(0);
 		} finally {
 			window.AudioContext = realAudioContext;
 		}
