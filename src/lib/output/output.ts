@@ -55,9 +55,7 @@ export function outputTypeLabel(type: OutputType): string {
 	}
 }
 
-const resolutionByValue = new Map(
-	resolutionCatalog.map((entry) => [entry.value, entry] as const)
-);
+const resolutionByValue = new Map(resolutionCatalog.map((entry) => [entry.value, entry] as const));
 
 export function resolutionPixelLabel(value: Resolution): string {
 	const entry = resolutionByValue.get(value);

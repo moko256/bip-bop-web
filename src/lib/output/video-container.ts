@@ -16,15 +16,23 @@ export function videoOutputFormat(type: VideoOutputType): OutputFormat {
 	}
 }
 
-const mp4VideoCodecOrder = ['avc', 'hevc', 'av1', 'vp9', 'vp8'] as const satisfies readonly VideoCodec[];
-const mp4AudioCodecOrder = ['aac', 'mp3', 'opus', 'vorbis'] as const satisfies readonly AudioCodec[];
+const mp4VideoCodecOrder = [
+	'avc',
+	'hevc',
+	'av1',
+	'vp9',
+	'vp8'
+] as const satisfies readonly VideoCodec[];
+const mp4AudioCodecOrder = [
+	'aac',
+	'mp3',
+	'opus',
+	'vorbis'
+] as const satisfies readonly AudioCodec[];
 const webmVideoCodecOrder = ['av1', 'vp9', 'vp8'] as const satisfies readonly VideoCodec[];
 const webmAudioCodecOrder = ['opus', 'vorbis'] as const satisfies readonly AudioCodec[];
 
-function sortCodecsByPreference<T extends string>(
-	codecs: T[],
-	preference: readonly T[]
-): T[] {
+function sortCodecsByPreference<T extends string>(codecs: T[], preference: readonly T[]): T[] {
 	const rank = new Map(preference.map((codec, index) => [codec, index]));
 	const preferred: T[] = [];
 	const rest: T[] = [];

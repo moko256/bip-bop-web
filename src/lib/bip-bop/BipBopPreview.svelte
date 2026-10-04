@@ -5,6 +5,7 @@
 	import type { Attachment } from 'svelte/attachments';
 	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
 	import { loadBipBopFont } from './font';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
 	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './timeline';
@@ -93,7 +94,7 @@
 	};
 </script>
 
-{#snippet content({ onclick })}
+{#snippet content({ onclick }: PlaybackContentProps)}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="preview" {onclick} {@attach paint} {@attach release}></div>

@@ -4,9 +4,10 @@
 	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
 	import type { Snippet } from 'svelte';
 	import { browserPlaybackClock } from '$lib/playback/clock';
+	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-	import { seekBarHeight } from '$lib/playback/seek-bar';
+	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
@@ -205,7 +206,7 @@
 				/>
 			{/if}
 		</div>
-		<div class="seek-reserve" style:height={seekBarHeight} aria-hidden="true"></div>
+		<div class="seek-reserve" style:height={seekReserveHeight} aria-hidden="true"></div>
 	</div>
 {/snippet}
 
@@ -228,7 +229,7 @@
 				{#await generation.playback}
 					{@render placeholderViewport(loadingOverlay)}
 				{:then url}
-					{#snippet content({ onclick })}
+					{#snippet content({ onclick }: PlaybackContentProps)}
 						<!-- svelte-ignore a11y_media_has_caption -->
 						<video
 							class="media viewport"
@@ -237,13 +238,7 @@
 							playsinline
 							aria-label={m.generated_video_aria()}
 							{onclick}
-							{@attach (element) => {
-								const detach = playbackSide.attach(element);
-								return () => {
-									detach();
-									URL.revokeObjectURL(url);
-								};
-							}}
+							{@attach playbackSide.attach}
 						></video>
 					{/snippet}
 					<PlaybackControls
@@ -360,6 +355,13 @@
 		width: 100%;
 		min-width: 0;
 		background: #000;
+	}
+
+	.viewport:has(> .loading) {
+		outline: 1px solid var(--pico-muted-border-color, #ccc);
+	}
+
+	.media.viewport {
 		outline: 1px solid var(--pico-muted-border-color, #ccc);
 	}
 

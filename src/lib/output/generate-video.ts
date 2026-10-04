@@ -102,6 +102,7 @@ export async function preferredAudioCodec(type: VideoOutputType): Promise<AudioC
 	});
 }
 
+/** Blob URL for one generated video. The caller revokes it. */
 export async function generatePlayback(options: {
 	outputType: VideoOutputType;
 	videoCodec: VideoCodec;
@@ -125,13 +126,7 @@ export async function generatePlayback(options: {
 		signal: options.signal
 	});
 	if (options.signal?.aborted) throw aborted();
-	const url = URL.createObjectURL(blob);
-	if (options.signal?.aborted) {
-		URL.revokeObjectURL(url);
-		throw aborted();
-	}
-	options.signal?.addEventListener('abort', () => URL.revokeObjectURL(url), { once: true });
-	return url;
+	return URL.createObjectURL(blob);
 }
 
 function aborted(): DOMException {

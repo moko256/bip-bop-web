@@ -34,14 +34,18 @@ export class VideoGeneration {
 
 	start(request: VideoGenerationRequest): void {
 		if (this.disposed) return;
-		this.playback = this.generate({ ...request, signal: this.abort.signal });
+		this.disconnect();
+		const signal = this.abort.signal;
+		const playback = Promise.resolve(this.generate({ ...request, signal })).then((url) =>
+			this.hold(url, signal)
+		);
+		void playback.catch(() => undefined);
+		this.playback = playback;
 	}
 
 	cancel(): void {
 		if (this.disposed) return;
-		this.abort.abort();
-		this.abort = new AbortController();
-		this.playback = null;
+		this.disconnect();
 	}
 
 	async loadDefaultAudioCodec(type: VideoOutputType): Promise<void> {
@@ -55,5 +59,23 @@ export class VideoGeneration {
 		if (this.disposed) return;
 		this.disposed = true;
 		this.abort.abort();
+	}
+
+	/** Drop the current playback. Aborting revokes its blob URL. */
+	private disconnect(): void {
+		this.abort.abort();
+		this.abort = new AbortController();
+		this.playback = null;
+	}
+
+	/** Keep a blob URL until its generation aborts, then revoke it. */
+	private hold(url: string, signal: AbortSignal): string {
+		const revoke = () => URL.revokeObjectURL(url);
+		if (signal.aborted) {
+			revoke();
+			throw new DOMException('The operation was aborted.', 'AbortError');
+		}
+		signal.addEventListener('abort', revoke, { once: true });
+		return url;
 	}
 }

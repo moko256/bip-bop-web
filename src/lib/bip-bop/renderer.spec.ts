@@ -16,8 +16,27 @@ type ArcCall = {
 	end: number;
 };
 
+type PathOp =
+	| { kind: 'move'; x: number; y: number }
+	| { kind: 'line'; x: number; y: number }
+	| {
+			kind: 'bezier';
+			c1x: number;
+			c1y: number;
+			c2x: number;
+			c2y: number;
+			x: number;
+			y: number;
+	  };
+
+type Stroke = { lineWidth: number; color: string; ops: PathOp[] };
+
 class MockContext {
 	fillStyle = '';
+	strokeStyle = '';
+	lineWidth = 1;
+	lineCap = '';
+	lineJoin = '';
 	font = '';
 	textAlign = '';
 	textBaseline = '';
@@ -36,23 +55,49 @@ class MockContext {
 
 	rects: { x: number; y: number; w: number; h: number; fill: string }[] = [];
 	fonts: string[] = [];
+	strokes: Stroke[] = [];
+	/** Paint order of field, trace, and color-bar rectangles. */
+	paintOrder: ('rect' | 'stroke')[] = [];
+	private ops: PathOp[] = [];
 
 	setTransform(): void {}
 
 	fillRect(x: number, y: number, w: number, h: number): void {
 		this.fills.push(this.fillStyle);
 		this.rects.push({ x, y, w, h, fill: this.fillStyle });
+		this.paintOrder.push('rect');
 	}
 
-	beginPath(): void {}
+	beginPath(): void {
+		this.ops = [];
+	}
 
 	arc(x: number, y: number, radius: number, start: number, end: number): void {
 		this.arcs.push({ x, y, radius, start, end });
 	}
 
-	moveTo(): void {}
+	moveTo(x: number, y: number): void {
+		this.ops.push({ kind: 'move', x, y });
+	}
+
+	lineTo(x: number, y: number): void {
+		this.ops.push({ kind: 'line', x, y });
+	}
+
+	bezierCurveTo(c1x: number, c1y: number, c2x: number, c2y: number, x: number, y: number): void {
+		this.ops.push({ kind: 'bezier', c1x, c1y, c2x, c2y, x, y });
+	}
 
 	closePath(): void {}
+
+	stroke(): void {
+		this.strokes.push({
+			lineWidth: this.lineWidth,
+			color: this.strokeStyle,
+			ops: this.ops.map((op) => ({ ...op }))
+		});
+		this.paintOrder.push('stroke');
+	}
 
 	fill(): void {
 		this.fills.push(this.fillStyle);
@@ -115,6 +160,8 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.colorBarSize).toBe(68);
 		expect(dimensions.colorBarX).toBe(34);
 		expect(dimensions.colorBarY).toBe(978);
+		expect(dimensions.toneAxisY).toBe(1012);
+		expect(dimensions.toneAmplitude).toBe(17);
 	});
 
 	it('uses the short side and rounds center, radius, and an odd diameter to whole pixels', () => {
@@ -133,6 +180,8 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.colorBarSize).toBe(45);
 		expect(portrait.colorBarX).toBe(23);
 		expect(portrait.colorBarY).toBe(1212);
+		expect(portrait.toneAxisY).toBe(1235);
+		expect(portrait.toneAmplitude).toBe(11);
 		expect(uneven.radius).toBe(200);
 		expect(uneven.overlayFontSize).toBe(32);
 		expect(uneven.colorBarSize).toBe(63);
@@ -154,7 +203,9 @@ describe('createBipBopDimensions', () => {
 			overlayFontSize: 32,
 			colorBarSize: 63,
 			colorBarX: 31,
-			colorBarY: 1907
+			colorBarY: 1907,
+			toneAxisY: 1938,
+			toneAmplitude: 16
 		});
 	});
 
@@ -175,7 +226,9 @@ describe('createBipBopDimensions', () => {
 			overlayFontSize: 3,
 			colorBarSize: 5,
 			colorBarX: 3,
-			colorBarY: 72
+			colorBarY: 72,
+			toneAxisY: 75,
+			toneAmplitude: 1
 		});
 	});
 });
@@ -456,8 +509,11 @@ describe('BipBopRenderer', () => {
 
 		expect(half.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
 		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
+		expect(half.context.strokes).toEqual([]);
 		expect(second.context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:01.00');
 		expect(second.context.texts.map((text) => text.text)).toContain('Bop!');
+		expect(second.context.strokes).toHaveLength(2);
+		expect(second.context.strokes[1]?.color).toBe('#000000');
 		expect(second.context.texts.filter((text) => text.align === 'right').at(-1)?.text).toBe(
 			'24FPS'
 		);
@@ -488,7 +544,9 @@ describe('BipBopRenderer', () => {
 				overlayFontSize: 5.5,
 				colorBarSize: 10.6,
 				colorBarX: 3.5,
-				colorBarY: 66.4
+				colorBarY: 66.4,
+				toneAxisY: 70.4,
+				toneAmplitude: 2.4
 			},
 			videoPictureAtFrame(0, 60)
 		);
@@ -591,6 +649,93 @@ describe('BipBopRenderer', () => {
 			{ x: 374, y: 978, w: 68, h: 68, fill: '#bf0000' },
 			{ x: 442, y: 978, w: 68, h: 68, fill: '#0000bf' }
 		]);
+	});
+
+	it('draws a 1px -cos trace across the width while Bip or Bop is sounding', () => {
+		const bip = draw(0);
+		const [axis, wave] = bip.context.strokes;
+		const beziers = wave?.ops.filter((op) => op.kind === 'bezier');
+
+		expect(bip.context.strokes).toHaveLength(2);
+		expect(axis).toEqual({
+			lineWidth: 1,
+			color: '#ffffff',
+			ops: [
+				{ kind: 'move', x: 0, y: 1012.5 },
+				{ kind: 'line', x: 1920, y: 1012.5 }
+			]
+		});
+		expect(wave?.lineWidth).toBe(1);
+		expect(wave?.color).toBe('#ffffff');
+		expect(bip.context.paintOrder).toEqual([
+			'rect',
+			'stroke',
+			'stroke',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect',
+			'rect'
+		]);
+		expect(wave?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1029.5 });
+		expect(beziers).toHaveLength(100);
+		// Quarter of the first 1500 Hz cycle. Flat tangent on the lower edge: -cos(0) = -1.
+		const first = beziers?.[0];
+		expect(first?.kind).toBe('bezier');
+		if (first?.kind === 'bezier') {
+			expect(first.c1x).toBeCloseTo(6.4);
+			expect(first.c1y).toBeCloseTo(1029.5);
+			expect(first.c2x).toBeCloseTo(12.8);
+			expect(first.c2y).toBeCloseTo(1012.5 + (17 * Math.PI) / 6);
+			expect(first.x).toBeCloseTo(19.2);
+			expect(first.y).toBeCloseTo(1012.5);
+		}
+		const crest = beziers?.[1];
+		expect(crest?.kind).toBe('bezier');
+		if (crest?.kind === 'bezier') {
+			expect(crest.x).toBeCloseTo(38.4);
+			expect(crest.y).toBeCloseTo(995.5);
+		}
+		const end = beziers?.at(-1);
+		expect(end?.kind).toBe('bezier');
+		if (end?.kind === 'bezier') {
+			expect(end.x).toBeCloseTo(1920);
+			expect(end.y).toBeCloseTo(1029.5);
+		}
+
+		expect(draw(1).context.strokes).toEqual([]);
+		expect(draw(59).context.strokes).toEqual([]);
+
+		const bop = draw(60);
+		const bopWave = bop.context.strokes[1];
+		const bopBeziers = bopWave?.ops.filter((op) => op.kind === 'bezier');
+
+		expect(bop.context.strokes[0]?.color).toBe('#000000');
+		expect(bopWave?.lineWidth).toBe(1);
+		expect(bopWave?.color).toBe('#000000');
+		expect(bopBeziers).toHaveLength(32);
+		// 475/60 cycles ends 11/12 through a cycle, where -cos is -√3/2, above the lower edge.
+		const bopEnd = bopBeziers?.at(-1);
+		expect(bopEnd?.kind).toBe('bezier');
+		if (bopEnd?.kind === 'bezier') {
+			expect(bopEnd.x).toBeCloseTo(1920);
+			expect(bopEnd.y).toBeCloseTo(1012.5 + (17 * Math.sqrt(3)) / 2);
+		}
+
+		const portrait = draw(0, 720, 1280);
+		expect(portrait.context.strokes[0]?.ops).toEqual([
+			{ kind: 'move', x: 0, y: 1235.5 },
+			{ kind: 'line', x: 720, y: 1235.5 }
+		]);
+		expect(portrait.context.strokes[1]?.ops[0]).toEqual({ kind: 'move', x: 0, y: 1246.5 });
+		const portraitEnd = portrait.context.strokes[1]?.ops.at(-1);
+		expect(portraitEnd?.kind).toBe('bezier');
+		if (portraitEnd?.kind === 'bezier') {
+			expect(portraitEnd.x).toBeCloseTo(720);
+			expect(portraitEnd.y).toBeCloseTo(1246.5);
+		}
 	});
 
 	it('uses the width as the short side when the canvas is portrait', () => {
