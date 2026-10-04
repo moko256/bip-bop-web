@@ -21,6 +21,9 @@ export default defineConfig({
 	},
 	plugins: [
 		sveltekit({
+			prerender: {
+				entries: ['*', '/fullscreen']
+			},
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.
 				runes: ({ filename }) =>
@@ -41,6 +44,13 @@ export default defineConfig({
 			emitTsDeclarations: true,
 			strategy: ['url', 'preferredLanguage', 'baseLocale'],
 			urlPatterns: [
+				{
+					pattern: `${siteBase}/fullscreen`,
+					localized: [
+						['en', `${siteBase}/fullscreen`],
+						['ja', `${siteBase}/fullscreen`]
+					]
+				},
 				{
 					pattern: `${siteBase}/:path(.*)?`,
 					localized: inlangSettings.locales.map((lang) => {

@@ -1,7 +1,10 @@
 <script lang="ts">
+	import ThemeColor from '$lib/components/ThemeColor.svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 </script>
+
+<ThemeColor light="#ffffff" dark="#13171f" />
 
 <main class="container">
 	<h1>{page.status} {page.error?.message}</h1>

@@ -1,7 +1,6 @@
 import { AudioBufferSink, BlobSource, Input, MP4 } from 'mediabunny';
 import * as m from '$lib/paraglide/messages';
 import { describe, expect, it } from 'vitest';
-import * as m from '$lib/paraglide/messages';
 import { generateBipBopVideo, preferredAudioCodec } from './generate-video';
 
 function correlation(samples: Float32Array, frequencyHz: number, sampleRate: number): number {

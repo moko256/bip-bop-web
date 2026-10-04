@@ -14,6 +14,12 @@ vi.mock('$app/state', () => ({
 	}
 }));
 
+function themeColor(scheme: 'light' | 'dark'): string | null | undefined {
+	return document
+		.querySelector(`meta[name="theme-color"][media="(prefers-color-scheme: ${scheme})"]`)
+		?.getAttribute('content');
+}
+
 function alternateHref(hreflang: string): string | null | undefined {
 	return document
 		.querySelector(`link[rel="alternate"][hreflang="${hreflang}"]`)
@@ -31,6 +37,8 @@ describe('top page', () => {
 		expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
 			m.site_description()
 		);
+		expect(themeColor('light')).toBe('#ffffff');
+		expect(themeColor('dark')).toBe('#13171f');
 		expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
 			'https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'
 		);

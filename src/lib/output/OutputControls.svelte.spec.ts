@@ -6,6 +6,16 @@ import OutputControls from './OutputControls.svelte';
 import { preferredAudioCodec } from './generate-video';
 import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
 
+const currentPage = vi.hoisted(() => new URL('https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'));
+
+vi.mock('$app/state', () => ({
+	page: {
+		get url() {
+			return currentPage;
+		}
+	}
+}));
+
 const { generatePlayback, loadVideoOutput, loadVideoOutputActual } = vi.hoisted(() => ({
 	generatePlayback: vi.fn(),
 	loadVideoOutput: vi.fn(),
@@ -569,17 +579,62 @@ describe('OutputControls', () => {
 			.toBeVisible();
 		await expect.element(page.getByText(m.site_description())).not.toBeInTheDocument();
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).toBeVisible();
-		await expect.element(page.getByRole('combobox', { name: m.resolution() })).toBeInTheDocument();
-		await expect.element(page.getByRole('textbox', { name: m.url_label() })).toBeInTheDocument();
-		await expect.element(page.getByRole('button', { name: m.copy() })).toBeInTheDocument();
-		await expect.element(page.getByRole('button', { name: m.open() })).toBeInTheDocument();
+		const resolution = page.getByRole('combobox', { name: m.resolution() });
+		await expect.element(resolution).toHaveValue('');
+		expect(resolution.element().querySelector('option')?.textContent).toBe(m.window_size());
+		expect(resolution.element().querySelector('optgroup')).not.toBeNull();
+
+		const windowUrl = 'https://moko256.github.io/bip-bop-web/fullscreen';
+		const link = page.getByRole('link', { name: windowUrl });
+		await expect.element(link).toHaveAttribute('href', windowUrl);
+		await expect.element(link).toHaveAttribute('target', '_blank');
+		await expect.element(link).toHaveAttribute('rel', 'noopener noreferrer');
+		await expect
+			.element(page.getByRole('textbox', { name: m.url_label() }))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.generate() })).not.toBeInTheDocument();
 		await expect
 			.element(page.getByRole('combobox', { name: m.video_codec() }))
 			.not.toBeInTheDocument();
+		expect(getComputedStyle(previewHost()).aspectRatio).toBe('16 / 9');
+		assertPrecedes(resolution, page.getByRole('button', { name: m.copy() }));
+		assertPrecedes(page.getByRole('button', { name: m.copy() }), link);
 		assertPrecedes(
 			page.getByLabelText(m.bip_bop_preview_aria()),
 			page.getByRole('group', { name: m.output_type_group_aria_label() })
 		);
+
+		const writeText = vi.fn().mockResolvedValue(undefined);
+		Object.defineProperty(navigator, 'clipboard', {
+			configurable: true,
+			value: { writeText }
+		});
+		await page.getByRole('button', { name: m.copy() }).click();
+		expect(writeText).toHaveBeenCalledWith(windowUrl);
+
+		const frames = page.getByRole('spinbutton', { name: m.frame_aria() });
+		await frames.fill('12');
+		await resolution.selectOptions('640x480');
+
+		const sizedUrl = 'https://moko256.github.io/bip-bop-web/fullscreen?resolution=640x480';
+		await expect
+			.element(page.getByRole('link', { name: sizedUrl }))
+			.toHaveAttribute('href', sizedUrl);
+		expect(getComputedStyle(previewHost()).aspectRatio).toBe('640 / 480');
+		await expect.element(frames).toHaveValue(12);
+
+		await resolution.selectOptions('');
+		await expect
+			.element(page.getByRole('link', { name: windowUrl }))
+			.toHaveAttribute('href', windowUrl);
+		expect(getComputedStyle(previewHost()).aspectRatio).toBe('16 / 9');
+		await expect.element(frames).toHaveValue(12);
 	});
 });
+
+function previewHost(): HTMLElement {
+	const host = page.getByLabelText(m.bip_bop_preview_aria()).element().parentElement;
+	if (!(host instanceof HTMLElement)) throw new Error('Expected preview host');
+	return host;
+}

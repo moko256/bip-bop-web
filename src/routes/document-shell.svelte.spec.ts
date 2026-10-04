@@ -22,5 +22,6 @@ describe('document shell', () => {
 		expect(document.querySelector('meta[name="text-scale"]')?.getAttribute('content')).toBe(
 			'scale'
 		);
+		expect(document.querySelector('meta[name="theme-color"]')).toBeNull();
 	});
 });

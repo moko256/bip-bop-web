@@ -6,10 +6,12 @@
 	import type { Attachment } from 'svelte/attachments';
 	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
 	import { loadBipBopFont } from './font';
-	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
 	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './timeline';
+
+	let { aspectRatio = '16 / 9' }: { aspectRatio?: string } = $props();
+
 	const playbackClock = browserPlaybackClock();
 	const picture = createCanvasPicture();
 	const session = new PlaybackSession({
@@ -98,7 +100,13 @@
 {#snippet content({ onclick }: PlaybackContentProps)}
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="preview" {onclick} {@attach paint} {@attach release}></div>
+	<div
+		class="preview"
+		style:aspect-ratio={aspectRatio}
+		{onclick}
+		{@attach paint}
+		{@attach release}
+	></div>
 {/snippet}
 
 <UnlimitedPlaybackControls
@@ -113,7 +121,6 @@
 	.preview {
 		position: relative;
 		width: 100%;
-		aspect-ratio: 16 / 9;
 	}
 
 	.preview :global(canvas) {
