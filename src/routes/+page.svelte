@@ -17,9 +17,11 @@
 <LocaleAnchor />
 
 <main class="container main-container">
-	<NoScript />
+	<div>
+		<NoScript />
 
-	<OutputControls />
+		<OutputControls />
+	</div>
 
 	<Footer />
 </main>

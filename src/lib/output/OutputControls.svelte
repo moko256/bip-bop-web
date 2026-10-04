@@ -16,6 +16,8 @@
 </script>
 
 {#snippet outputTypeSelector()}
+	<h1>{m.site_title()}</h1>
+
 	<div class="output-type-switcher" role="group" aria-label={m.output_type_group_aria_label()}>
 		{#each outputTypes as type (type)}
 			<button

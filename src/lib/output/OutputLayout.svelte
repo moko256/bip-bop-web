@@ -58,7 +58,7 @@
 		.settings {
 			flex: 0 1 25%;
 			width: auto;
-			min-width: 360px;
+			min-width: 400px;
 			max-width: 25%;
 		}
 	}

@@ -3,7 +3,7 @@
 	"site_title": "Bip Bop Web",
 	"site_description": "秒・フレーム・アニメーションを含む、複数解像度・コーデックのテスト用動画を生成できるサイト",
 	"bip_bop_preview_aria": "Bip-Bop プレビュー",
-	"output_type_page": "ページ",
+	"output_type_page": "概要",
 	"output_type_fullscreen_url": "フルスクリーンURL",
 	"output_type_group_aria_label": "出力形式",
 	"resolution": "解像度",

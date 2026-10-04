@@ -3,7 +3,7 @@
 	"site_title": "Bip Bop Web",
 	"site_description": "Generate test videos at multiple resolutions and codecs, including seconds, frames, and animation.",
 	"bip_bop_preview_aria": "Bip-Bop preview",
-	"output_type_page": "Page",
+	"output_type_page": "About",
 	"output_type_fullscreen_url": "Fullscreen URL",
 	"output_type_group_aria_label": "Output type",
 	"resolution": "Resolution",

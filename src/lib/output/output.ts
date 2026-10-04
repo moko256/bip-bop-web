@@ -17,7 +17,7 @@ export {
 	type ResolutionGroup
 };
 
-export const outputTypes = ['page', 'mp4', 'webm', 'fullscreen-url'] as const;
+export const outputTypes = ['page', 'fullscreen-url', 'mp4', 'webm'] as const;
 
 export type OutputType = (typeof outputTypes)[number];
 
