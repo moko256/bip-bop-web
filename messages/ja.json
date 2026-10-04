@@ -30,5 +30,7 @@
 	"error_audio_codec_cannot_encode": "このオーディオコーデックはエンコードできません",
 	"error_video_generation_aborted": "動画の生成を中断しました",
 	"error_unknown_resolution": "未知の解像度です: {value}",
-	"error_audio_codec_unavailable": "音声コーデックを利用できません"
+	"error_audio_codec_unavailable": "音声コーデックを利用できません",
+	"footer_source_link_title": "ソースコード",
+	"noscript_description": "※JavaScriptを有効にしてください"
 }

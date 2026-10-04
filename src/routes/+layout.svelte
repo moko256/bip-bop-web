@@ -1,16 +1,23 @@
 <script lang="ts">
-	import { page } from '$app/state';
-	import * as m from '$lib/paraglide/messages';
-	import { locales, localizeHref } from '$lib/paraglide/runtime';
 	import icon_svg from '$lib/assets/icons/icon.svg';
 	import { asset } from '$app/paths';
+	import { applyDocumentLocale } from '$lib/html-lang';
+	import { getLocale } from '$lib/paraglide/runtime';
+	import { page } from '$app/state';
 
 	let { children } = $props();
 </script>
 
+<svelte:document
+	{@attach (doc) => {
+		void page.url;
+		applyDocumentLocale(doc.documentElement, getLocale());
+	}}
+/>
+
 <svelte:head>
-	<title>{m.site_title()}</title>
-	<meta name="description" content={m.site_description()} />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="text-scale" content="scale" />
 
 	<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 	<meta name="theme-color" content="#13171f" media="(prefers-color-scheme: dark)" />
@@ -20,15 +27,3 @@
 	<link rel="apple-touch-icon" href={asset('/icons/apple-touch-icon.png')} />
 </svelte:head>
 {@render children()}
-
-<div style="display:none">
-	{#each locales as locale (locale)}
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-		<a href={localizeHref(page.url.pathname, { locale })}>{locale}</a>
-	{/each}
-</div>
-
-<style>
-	@import 'kiso.css';
-	@import '$lib/styles/pico.scss';
-</style>

@@ -30,5 +30,7 @@
 	"error_audio_codec_cannot_encode": "This audio codec cannot be encoded",
 	"error_video_generation_aborted": "Video generation was aborted",
 	"error_unknown_resolution": "Unknown resolution: {value}",
-	"error_audio_codec_unavailable": "Audio codec is unavailable"
+	"error_audio_codec_unavailable": "Audio codec is unavailable",
+	"footer_source_link_title": "Source code",
+	"noscript_description": "Note: Please enable JavaScript."
 }
