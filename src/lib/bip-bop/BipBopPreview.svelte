@@ -80,8 +80,8 @@
 		return {
 			frame,
 			clockCentiseconds: picture.clockCentiseconds,
-			coefficient: picture.coefficient,
-			coefficientSpan: 1,
+			cycleFraction: picture.cycleFraction,
+			cycleLength: 1,
 			beat: picture.beat,
 			showBeat: picture.showBeat,
 			...(picture.previewFps === null ? {} : { previewFps: picture.previewFps })

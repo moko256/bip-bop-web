@@ -512,16 +512,16 @@ describe('BipBopRenderer', () => {
 		const half = drawSample({
 			frame: 12,
 			clockCentiseconds: 150,
-			coefficient: 0.5,
-			coefficientSpan: 1,
+			cycleFraction: 0.5,
+			cycleLength: 1,
 			beat: 'bop',
 			showBeat: false
 		});
 		const sameMotion = drawSample({
 			frame: 999999,
 			clockCentiseconds: 150,
-			coefficient: 0.5,
-			coefficientSpan: 1,
+			cycleFraction: 0.5,
+			cycleLength: 1,
 			beat: 'bop',
 			showBeat: false
 		});
@@ -540,16 +540,16 @@ describe('BipBopRenderer', () => {
 		const hidden = drawSample({
 			frame: 0,
 			clockCentiseconds: 0,
-			coefficient: 0,
-			coefficientSpan: 1,
+			cycleFraction: 0,
+			cycleLength: 1,
 			beat: 'bip',
 			showBeat: false
 		});
 		const bop = drawSample({
 			frame: 4,
 			clockCentiseconds: 100,
-			coefficient: 0,
-			coefficientSpan: 1,
+			cycleFraction: 0,
+			cycleLength: 1,
 			beat: 'bop',
 			showBeat: true
 		});
@@ -563,8 +563,8 @@ describe('BipBopRenderer', () => {
 		const { context, dimensions } = drawSample({
 			frame: 4,
 			clockCentiseconds: 20,
-			coefficient: 0.2,
-			coefficientSpan: 1,
+			cycleFraction: 0.2,
+			cycleLength: 1,
 			beat: 'bip',
 			showBeat: false,
 			previewFps: 1000 / 17

@@ -167,10 +167,10 @@ export type BipBopVideoCorner = {
  * and the motion. The frame count is only the digits in the center.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
- * The disk is two filled arcs that meet at the center. At coefficient 0 the
+ * The disk is two filled arcs that meet at the center. At cycle fraction 0 the
  * split is 1°: one arc runs 0°–1° and the other 1°–360°. The split then moves
- * clockwise and completes one turn as the coefficient completes one
- * {@link FramePicture.coefficientSpan}.
+ * clockwise and completes one turn as {@link FramePicture.cycleFraction}
+ * completes one {@link FramePicture.cycleLength}.
  * A Bip second paints the 0°–split arc gray and the split–360° arc white.
  * A Bop second swaps those fills. Field and clock colors ping-pong across the
  * two seconds, black toward white through the Bip second and back through the
@@ -195,8 +195,8 @@ export type BipBopVideoCorner = {
  * The top-right corner lists `{width}x{height}`. A video also lists `video.mimeType`,
  * `video.videoCodec`, `video.audioCodec`, `video.videoQuality`, and the frame rate
  * as `{fps}FPS` on the following lines. The web preview lists the resolution and,
- * once two animation frames have been timed, the measured frame rate rounded to
- * a whole number (`{fps}FPS`). Each line is
+ * once a 200ms sample of animation frames has been counted, the measured frame
+ * rate rounded to a whole number (`{fps}FPS`). Each line is
  * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
  * and from the right by the clock's left inset. A still page omits `video` and
  * `sample.previewFps` and draws the resolution only.
@@ -204,7 +204,7 @@ export type BipBopVideoCorner = {
  */
 export type BipBopSample = FramePicture & {
 	/**
-	 * Frame rate measured from the previous animation frame.
+	 * Frame rate from the web preview's latest closed 200ms sample.
 	 * The web preview draws `round(previewFps)` at the top-right. A video omits this.
 	 */
 	previewFps?: number;
@@ -340,20 +340,18 @@ type PictureMarks = {
 
 /**
  * Motion for one drawn sample.
- * The coefficient runs from 0 through {@link BipBopSample.coefficientSpan}
- * once per second. The caller chooses the beat and whether this sample draws it.
+ * `cycleFraction / cycleLength` is the fraction of the current second.
+ * The caller chooses the beat and whether this sample draws it.
  */
 function pictureMarks(sample: BipBopSample): PictureMarks {
-	const span =
-		Number.isFinite(sample.coefficientSpan) && sample.coefficientSpan > 0
-			? sample.coefficientSpan
-			: 1;
-	const coefficient =
-		Number.isFinite(sample.coefficient) && sample.coefficient > 0 ? sample.coefficient : 0;
-	const alongSecond = (coefficient * CYCLE_FRAMES) / span;
+	const cycleLength =
+		Number.isFinite(sample.cycleLength) && sample.cycleLength > 0 ? sample.cycleLength : 1;
+	const cycleFraction =
+		Number.isFinite(sample.cycleFraction) && sample.cycleFraction > 0 ? sample.cycleFraction : 0;
+	const alongSecond = (cycleFraction * CYCLE_FRAMES) / cycleLength;
 	const bip = sample.beat !== 'bop';
 	return {
-		startDegrees: 1 + (coefficient * 360) / span,
+		startDegrees: 1 + (cycleFraction * 360) / cycleLength,
 		towardMidpoint: bip ? alongSecond : CYCLE_FRAMES - alongSecond,
 		showLabel: sample.showBeat === true,
 		bip,

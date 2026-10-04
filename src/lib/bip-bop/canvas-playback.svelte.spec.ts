@@ -236,7 +236,7 @@ describe('canvas playback', () => {
 		expect(session.frame).toBe(1);
 		expect(session.playing).toBe(true);
 		expect(picture.clockCentiseconds).toBe(0);
-		expect(picture.coefficient).toBe(0);
+		expect(picture.cycleFraction).toBe(0);
 		expect(picture.beat).toBe('bip');
 		expect(picture.showBeat).toBe(true);
 		expect(picture.previewFps).toBeNull();
@@ -245,17 +245,18 @@ describe('canvas playback', () => {
 		expect(session.frame).toBe(2);
 		expect(picture.elapsedSeconds).toBe(0.5);
 		expect(picture.clockCentiseconds).toBe(50);
-		expect(picture.coefficient).toBeCloseTo(0.5);
+		expect(picture.cycleFraction).toBeCloseTo(0.5);
 		expect(picture.showBeat).toBe(false);
-		expect(picture.previewFps).toBe(2);
+		expect(picture.previewFps).toBe(4);
 
 		time.advance(500);
 		expect(session.frame).toBe(3);
 		expect(session.playing).toBe(false);
 		expect(picture.clockCentiseconds).toBe(100);
-		expect(picture.coefficient).toBe(0);
+		expect(picture.cycleFraction).toBe(0);
 		expect(picture.beat).toBe('bop');
 		expect(picture.showBeat).toBe(true);
+		expect(picture.previewFps).toBe(2);
 		expect(audio.events.at(-1)).toBe('stop');
 	});
 
@@ -291,22 +292,28 @@ describe('canvas playback', () => {
 		time.advance(1000);
 		expect(session.frame).toBe(2);
 		expect(picture.clockCentiseconds).toBe(1100);
-		expect(picture.previewFps).toBe(1);
+		expect(picture.previewFps).toBe(2);
 		expect(session.playing).toBe(true);
 	});
 
-	it('rounds fps from the gap since the previous animation frame', () => {
+	it('publishes fps from each closed 200ms sample and holds it until the next one closes', () => {
 		const { time, picture, session } = playingSession();
 
 		session.setPlaying(true);
 		time.flush();
 		expect(picture.previewFps).toBeNull();
 
-		time.advance(16);
-		expect(picture.previewFps).toBe(63);
+		time.advance(199);
+		expect(picture.previewFps).toBeNull();
 
-		time.advance(17);
-		expect(picture.previewFps).toBe(59);
+		time.advance(1);
+		expect(picture.previewFps).toBe(15);
+
+		time.advance(100);
+		expect(picture.previewFps).toBe(15);
+
+		time.advance(100);
+		expect(picture.previewFps).toBe(10);
 	});
 
 	it('continues the picture clock after a pause and drops the paused gap from fps', () => {
@@ -314,26 +321,27 @@ describe('canvas playback', () => {
 
 		session.setPlaying(true);
 		time.flush();
-		time.advance(16);
-		expect(picture.previewFps).toBe(63);
-		expect(picture.clockCentiseconds).toBe(1);
+		time.advance(200);
+		expect(picture.previewFps).toBe(10);
+		expect(picture.clockCentiseconds).toBe(20);
 
 		session.setPlaying(false);
 		time.advance(5000);
 		expect(session.frame).toBe(2);
-		expect(picture.clockCentiseconds).toBe(1);
+		expect(picture.previewFps).toBe(10);
+		expect(picture.clockCentiseconds).toBe(20);
 
 		session.setPlaying(true);
-		expect(audio.events.at(-1)).toBe('start:16');
+		expect(audio.events.at(-1)).toBe('start:200');
 		time.flush();
 		expect(session.frame).toBe(3);
-		expect(picture.previewFps).toBe(63);
-		expect(picture.clockCentiseconds).toBe(1);
+		expect(picture.previewFps).toBe(10);
+		expect(picture.clockCentiseconds).toBe(20);
 
-		time.advance(20);
+		time.advance(200);
 		expect(session.frame).toBe(4);
-		expect(picture.previewFps).toBe(50);
-		expect(picture.clockCentiseconds).toBe(3);
+		expect(picture.previewFps).toBe(10);
+		expect(picture.clockCentiseconds).toBe(40);
 	});
 
 	it('keeps a paused seek on the frame without starting audio or the clock', () => {

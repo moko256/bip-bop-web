@@ -5,21 +5,23 @@ export type PictureBeat = 'bip' | 'bop';
 
 /**
  * Timing the renderer draws. The frame count is only the digits in the center.
- * The circle, the field, and the Bip/Bop label follow `coefficient` and `beat`.
+ * The circle, the field, and the Bip/Bop label follow `cycleFraction` and `beat`.
  */
 export type FramePicture = {
 	frame: number;
 	clockCentiseconds: number;
 	/**
-	 * Position in the current second.
-	 * A video passes `frame % fps`. The web preview passes `elapsedSeconds % 1`.
+	 * Fraction of the current second, in the same units as {@link FramePicture.cycleLength}.
+	 * `cycleFraction / cycleLength` runs from 0 at the start of the second up to,
+	 * but not including, 1. A video passes `frame % fps`. The web preview passes
+	 * `elapsedSeconds % 1`.
 	 */
-	coefficient: number;
+	cycleFraction: number;
 	/**
-	 * Amount of {@link FramePicture.coefficient} that fills one second.
+	 * Length of one second in {@link FramePicture.cycleFraction} units.
 	 * A video passes `fps`. The web preview passes `1`.
 	 */
-	coefficientSpan: number;
+	cycleLength: number;
 	beat: PictureBeat;
 	/** Draw the Bip! or Bop! label on this sample. */
 	showBeat: boolean;
@@ -61,8 +63,8 @@ export function clockCentisecondsAtMs(elapsedMs: number): number {
 	return Math.floor(elapsedMs / 10);
 }
 
-/** `frame % fps`, or 0 when the frame or the rate cannot place a sample. */
-export function videoCoefficient(frame: number, fps: number): number {
+/** `frame % fps`, the cycle fraction for one video frame. 0 when that sample cannot be placed. */
+export function videoCycleFraction(frame: number, fps: number): number {
 	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
 	return frame % fps;
 }
@@ -75,26 +77,26 @@ export function beatAtSecond(second: number): PictureBeat {
 
 /**
  * Picture timing for one video frame.
- * The coefficient is {@link videoCoefficient}. The label is drawn when that
- * coefficient is 0. Elapsed time on the clock stays `frame / fps`.
+ * The cycle fraction is {@link videoCycleFraction}. The label is drawn when that
+ * fraction is 0. Elapsed time on the clock stays `frame / fps`.
  */
 export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	const index = Number.isFinite(frame) ? frame : 0;
 	const rate = Number.isFinite(fps) && fps > 0 ? fps : BIP_BOP_FPS;
-	const coefficient = videoCoefficient(index, rate);
+	const cycleFraction = videoCycleFraction(index, rate);
 	const second = index > 0 ? Math.floor(index / rate) : 0;
 	return {
 		frame: index,
 		clockCentiseconds: clockCentisecondsAtFrame(index, rate),
-		coefficient,
-		coefficientSpan: rate,
+		cycleFraction,
+		cycleLength: rate,
 		beat: beatAtSecond(second),
-		showBeat: coefficient === 0
+		showBeat: cycleFraction === 0
 	};
 }
 
 /** Fractional second of a live clock. `elapsedSeconds % 1`. */
-export function previewCoefficient(elapsedSeconds: number): number {
+export function previewCycleFraction(elapsedSeconds: number): number {
 	if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 0;
 	return elapsedSeconds % 1;
 }
@@ -106,10 +108,13 @@ export function previewBeat(elapsedSeconds: number): PictureBeat {
 }
 
 /**
- * The label is drawn when the coefficient wraps back toward 0.
- * The opening sample has no previous coefficient, and draws when it sits at 0.
+ * The label is drawn when the cycle fraction wraps back toward 0.
+ * The opening sample has no previous fraction, and draws when it sits at 0.
  */
-export function previewShowBeat(coefficient: number, previousCoefficient: number | null): boolean {
-	if (previousCoefficient === null) return coefficient === 0;
-	return coefficient < previousCoefficient;
+export function previewShowBeat(
+	cycleFraction: number,
+	previousCycleFraction: number | null
+): boolean {
+	if (previousCycleFraction === null) return cycleFraction === 0;
+	return cycleFraction < previousCycleFraction;
 }

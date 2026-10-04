@@ -4,10 +4,10 @@ import {
 	clockCentisecondsAtMs,
 	elapsedSecondsAtFrame,
 	previewBeat,
-	previewCoefficient,
+	previewCycleFraction,
 	previewShowBeat,
 	toneSecondAtFrame,
-	videoCoefficient,
+	videoCycleFraction,
 	videoPictureAtFrame
 } from './media-time';
 
@@ -54,48 +54,48 @@ describe('elapsed time at a frame', () => {
 		expect(clockCentisecondsAtMs(-10)).toBe(0);
 	});
 
-	it('takes the video coefficient from the frame count modulo the frame rate', () => {
-		expect(videoCoefficient(0, 60)).toBe(0);
-		expect(videoCoefficient(30, 60)).toBe(30);
-		expect(videoCoefficient(60, 60)).toBe(0);
-		expect(videoCoefficient(12, 24)).toBe(12);
-		expect(videoCoefficient(24, 24)).toBe(0);
-		expect(videoCoefficient(-5, 60)).toBe(0);
+	it('takes the video cycle fraction from the frame count modulo the frame rate', () => {
+		expect(videoCycleFraction(0, 60)).toBe(0);
+		expect(videoCycleFraction(30, 60)).toBe(30);
+		expect(videoCycleFraction(60, 60)).toBe(0);
+		expect(videoCycleFraction(12, 24)).toBe(12);
+		expect(videoCycleFraction(24, 24)).toBe(0);
+		expect(videoCycleFraction(-5, 60)).toBe(0);
 
 		expect(videoPictureAtFrame(60, 60)).toMatchObject({
 			frame: 60,
 			clockCentiseconds: 100,
-			coefficient: 0,
-			coefficientSpan: 60,
+			cycleFraction: 0,
+			cycleLength: 60,
 			beat: 'bop',
 			showBeat: true
 		});
 		expect(videoPictureAtFrame(30, 60)).toMatchObject({
-			coefficient: 30,
+			cycleFraction: 30,
 			beat: 'bip',
 			showBeat: false
 		});
 		expect(videoPictureAtFrame(0, 24)).toMatchObject({
-			coefficient: 0,
+			cycleFraction: 0,
 			beat: 'bip',
 			showBeat: true
 		});
 		expect(videoPictureAtFrame(24, 24)).toMatchObject({
-			coefficient: 0,
-			coefficientSpan: 24,
+			cycleFraction: 0,
+			cycleLength: 24,
 			beat: 'bop',
 			showBeat: true
 		});
 	});
 });
 
-describe('preview coefficient', () => {
-	it('uses the fractional second and draws the label when the coefficient wraps', () => {
-		expect(previewCoefficient(0)).toBe(0);
-		expect(previewCoefficient(0.25)).toBeCloseTo(0.25);
-		expect(previewCoefficient(1)).toBe(0);
-		expect(previewCoefficient(1.5)).toBeCloseTo(0.5);
-		expect(previewCoefficient(-1)).toBe(0);
+describe('preview cycle fraction', () => {
+	it('uses the fractional second and draws the label when the fraction wraps', () => {
+		expect(previewCycleFraction(0)).toBe(0);
+		expect(previewCycleFraction(0.25)).toBeCloseTo(0.25);
+		expect(previewCycleFraction(1)).toBe(0);
+		expect(previewCycleFraction(1.5)).toBeCloseTo(0.5);
+		expect(previewCycleFraction(-1)).toBe(0);
 
 		expect(previewBeat(0)).toBe('bip');
 		expect(previewBeat(0.9)).toBe('bip');
