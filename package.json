@@ -41,7 +41,7 @@
 		"sass-embedded": "^1.105.0",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
-		"typescript": "^7.0.2",
+		"typescript": "npm:@typescript/typescript6@^6.0.2",
 		"typescript-eslint": "^8.70.1",
 		"vite": "^8.3.1",
 		"vitest": "^5.0.2",
