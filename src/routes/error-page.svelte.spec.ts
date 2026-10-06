@@ -1,7 +1,6 @@
 import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
-import { picoThemeColors } from '$lib/styles/pico-theme-colors';
 import ErrorPage from './+error.svelte';
 
 const kit = vi.hoisted(() => ({
@@ -30,8 +29,8 @@ describe('error page', () => {
 		await expect
 			.element(page.getByRole('link', { name: 'Back to TOP' }))
 			.toHaveAttribute('href', '/bip-bop-web/');
-		expect(themeColor('light')).toBe(picoThemeColors.light);
-		expect(themeColor('dark')).toBe(picoThemeColors.dark);
+		expect(themeColor('light')).toBe('#ffffff');
+		expect(themeColor('dark')).toBe('#13171f');
 	});
 });
 

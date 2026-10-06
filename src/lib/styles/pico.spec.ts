@@ -3,9 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { transform } from 'lightningcss';
 import { compile } from 'sass-embedded';
 import { describe, expect, it } from 'vitest';
-import { extractPicoThemeColors } from './extract-pico-theme-colors';
-import { picoThemeColors } from './pico-theme-colors';
-
 const entry = fileURLToPath(new URL('./pico.scss', import.meta.url));
 
 function compilePicoCss(): string {
@@ -50,8 +47,9 @@ describe('Pico stylesheet', () => {
 		expect(css).toContain('--pico-primary:#5d6b89');
 	});
 
-	it('matches the generated theme-color values', () => {
-		expect(extractPicoThemeColors(css)).toEqual(picoThemeColors);
+	it('exposes page background colors for theme-color', () => {
+		expect(css).toContain('--pico-background-color:#fff');
+		expect(css).toContain('--pico-background-color:#13171f');
 	});
 });
 

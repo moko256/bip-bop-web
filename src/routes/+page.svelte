@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ThemeColor from '$lib/components/ThemeColor.svelte';
-	import { picoThemeColors } from '$lib/styles/pico-theme-colors';
 	import HeadUrlLinks from '$lib/components/HeadUrlLinks.svelte';
 	import LocaleAnchor from '$lib/components/LocaleAnchor.svelte';
 	import NoScript from '$lib/components/NoScript.svelte';
@@ -16,7 +15,7 @@
 	<HeadUrlLinks />
 </svelte:head>
 
-<ThemeColor {...picoThemeColors} />
+<ThemeColor light="#ffffff" dark="#13171f" />
 
 <LocaleAnchor />
 
