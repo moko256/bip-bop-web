@@ -14,12 +14,19 @@ export type VideoGenerationRequest = {
 };
 
 export type GeneratePlayback = (
-	options: VideoGenerationRequest & { signal: AbortSignal }
+	options: VideoGenerationRequest & {
+		signal: AbortSignal;
+		onProgress: (completedFrames: number) => void;
+	}
 ) => Promise<string>;
 
 /** Start, cancel, and the default audio codec for one video OutputType. */
 export class VideoGeneration {
 	playback = $state<Promise<string> | null>(null);
+	/** Frames written for the in-flight video. Zero while idle. */
+	completedFrames = $state(0);
+	/** Frame count requested for the in-flight video. Zero while idle. */
+	totalFrames = $state(0);
 	defaultAudioCodec = $state<AudioCodec | null>(null);
 	private abort = new AbortController();
 	private codecToken = 0;
@@ -36,9 +43,18 @@ export class VideoGeneration {
 		if (this.disposed) return;
 		this.disconnect();
 		const signal = this.abort.signal;
-		const playback = Promise.resolve(this.generate({ ...request, signal })).then((url) =>
-			this.hold(url, signal)
-		);
+		this.totalFrames = request.frameCount;
+		this.completedFrames = 0;
+		const playback = Promise.resolve(
+			this.generate({
+				...request,
+				signal,
+				onProgress: (completedFrames) => {
+					if (signal.aborted) return;
+					this.completedFrames = completedFrames;
+				}
+			})
+		).then((url) => this.hold(url, signal));
 		void playback.catch(() => undefined);
 		this.playback = playback;
 	}
@@ -66,6 +82,8 @@ export class VideoGeneration {
 		this.abort.abort();
 		this.abort = new AbortController();
 		this.playback = null;
+		this.completedFrames = 0;
+		this.totalFrames = 0;
 	}
 
 	/** Keep a blob URL until its generation aborts, then revoke it. */

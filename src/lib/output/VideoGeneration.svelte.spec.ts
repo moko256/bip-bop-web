@@ -149,6 +149,28 @@ describe('VideoGeneration', () => {
 		}
 	});
 
+	it('records written frames until the generation is dropped', () => {
+		let report: (completedFrames: number) => void = () => {};
+		const generation = new VideoGeneration((options) => {
+			report = options.onProgress;
+			return new Promise(() => {});
+		});
+
+		generation.start(request);
+		expect(generation.completedFrames).toBe(0);
+		expect(generation.totalFrames).toBe(3600);
+
+		report(12);
+		expect(generation.completedFrames).toBe(12);
+
+		generation.cancel();
+		expect(generation.completedFrames).toBe(0);
+		expect(generation.totalFrames).toBe(0);
+
+		report(13);
+		expect(generation.completedFrames).toBe(0);
+	});
+
 	it('keeps the latest default audio codec when the OutputType changes', async () => {
 		let releaseFirst: (codec: AudioCodec | null) => void = () => {};
 		const first = new Promise<AudioCodec | null>((resolve) => {

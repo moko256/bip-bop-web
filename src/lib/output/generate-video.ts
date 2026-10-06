@@ -31,6 +31,7 @@ export async function generateBipBopVideo(options: {
 	fps?: number;
 	videoQuality?: QualityLevel;
 	signal?: AbortSignal;
+	onProgress?: (completedFrames: number) => void;
 }): Promise<Blob> {
 	if (options.signal?.aborted) throw aborted();
 	await loadBipBopFont();
@@ -81,6 +82,7 @@ export async function generateBipBopVideo(options: {
 			const toneSecond = toneSecondAtFrame(frame, fps);
 			if (toneSecond !== null) await placeBipBopTone(audioSource, toneSecond);
 			await source.add(frame * frameDuration, frameDuration);
+			options.onProgress?.(frame + 1);
 		}
 		if (options.signal?.aborted) throw aborted();
 		await output.finalize();
@@ -112,6 +114,7 @@ export async function generatePlayback(options: {
 	fps: number;
 	videoQuality: VideoQualityLevel;
 	signal?: AbortSignal;
+	onProgress?: (completedFrames: number) => void;
 }): Promise<string> {
 	const { width, height } = parseResolution(options.resolution);
 	const blob = await generateBipBopVideo({
@@ -123,7 +126,8 @@ export async function generatePlayback(options: {
 		frameCount: options.frameCount,
 		fps: options.fps,
 		videoQuality: options.videoQuality,
-		signal: options.signal
+		signal: options.signal,
+		onProgress: options.onProgress
 	});
 	if (options.signal?.aborted) throw aborted();
 	return URL.createObjectURL(blob);
