@@ -622,6 +622,10 @@ describe('OutputControls', () => {
 			.element(page.getByRole('link', { name: sizedUrl }))
 			.toHaveAttribute('href', sizedUrl);
 		expect(getComputedStyle(previewHost()).aspectRatio).toBe('640 / 480');
+		await expect.poll(() => `${previewCanvas().width}x${previewCanvas().height}`).toBe('640x480');
+		expect(previewCanvas().clientWidth).toBe(previewHost().clientWidth);
+		expect(previewCanvas().clientHeight).toBe(previewHost().clientHeight);
+		expect(previewCanvas().width).not.toBe(previewCanvas().clientWidth);
 		await expect.element(frames).toHaveValue(12);
 
 		await resolution.selectOptions('');
@@ -629,12 +633,31 @@ describe('OutputControls', () => {
 			.element(page.getByRole('link', { name: windowUrl }))
 			.toHaveAttribute('href', windowUrl);
 		expect(getComputedStyle(previewHost()).aspectRatio).toBe('16 / 9');
+		const dpr = window.devicePixelRatio || 1;
+		await expect
+			.poll(() => {
+				const canvas = previewCanvas();
+				const host = previewHost();
+				return (
+					canvas.width === Math.round(host.clientWidth * dpr) &&
+					canvas.height === Math.round(host.clientHeight * dpr) &&
+					canvas.clientWidth === host.clientWidth &&
+					canvas.clientHeight === host.clientHeight
+				);
+			})
+			.toBe(true);
 		await expect.element(frames).toHaveValue(12);
 	});
 });
 
+function previewCanvas(): HTMLCanvasElement {
+	const canvas = page.getByLabelText(m.bip_bop_preview_aria()).element();
+	if (!(canvas instanceof HTMLCanvasElement)) throw new Error('Expected preview canvas');
+	return canvas;
+}
+
 function previewHost(): HTMLElement {
-	const host = page.getByLabelText(m.bip_bop_preview_aria()).element().parentElement;
+	const host = previewCanvas().parentElement;
 	if (!(host instanceof HTMLElement)) throw new Error('Expected preview host');
 	return host;
 }

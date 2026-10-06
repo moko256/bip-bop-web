@@ -13,11 +13,8 @@
 	let href = $derived(
 		fullscreenPageUrl(currentPageAbsoluteUrl(), resolution === '' ? null : resolution).href
 	);
-	let aspectRatio = $derived.by(() => {
-		if (resolution === '') return '16 / 9';
-		const bitmap = parseResolution(resolution);
-		return `${bitmap.width} / ${bitmap.height}`;
-	});
+	let bitmap = $derived(resolution === '' ? null : parseResolution(resolution));
+	let aspectRatio = $derived(bitmap === null ? '16 / 9' : `${bitmap.width} / ${bitmap.height}`);
 
 	function copyHref() {
 		void navigator.clipboard.writeText(href).catch(() => {});
@@ -26,7 +23,7 @@
 
 <OutputLayout>
 	{#snippet media()}
-		<BipBopPreview {aspectRatio} />
+		<BipBopPreview {aspectRatio} {bitmap} />
 	{/snippet}
 	{#snippet settings()}
 		{@render outputTypeSelector()}
