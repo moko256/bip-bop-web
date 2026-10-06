@@ -43,25 +43,15 @@ export default defineConfig(({ command }) => {
 				csp: {
 					directives:
 						isE2E || !isRelease
-							? {
-									// Vite's dev modules and HMR need sources production does not allow.
-								}
+							? {}
 							: {
-									// Fetch directives fall back to this.
 									'default-src': ['none'],
-									// Same-origin modules and stylesheets. Inline startup hashes are appended.
 									'script-src': ['self'],
 									'style-src': ['self'],
-									// Prerendered style attributes. 'self' does not allow them.
 									'style-src-attr': ['unsafe-inline'],
-									// Favicons, the inlined SVG icon, and CSS data-URI icons.
 									'img-src': ['self', 'data:'],
-									// Canvas text uses an inlined woff2 data URL.
 									'font-src': ['data:'],
-									// Generated playback is a blob URL.
 									'media-src': ['blob:'],
-									// These directives do not fall back to default-src.
-									// Prerendered pages emit CSP as a meta tag, which drops frame-ancestors.
 									'base-uri': ['none'],
 									'form-action': ['none'],
 									'frame-ancestors': ['none'],

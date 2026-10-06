@@ -6,7 +6,6 @@ export default defineConfig({
 		port: 4173,
 		env: {
 			...process.env,
-			// Relaxes CSP for this preview build. Production builds keep default-src none.
 			E2E: '1'
 		}
 	},
