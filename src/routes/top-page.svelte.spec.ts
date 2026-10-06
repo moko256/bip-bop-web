@@ -2,6 +2,7 @@ import * as m from '$lib/paraglide/messages';
 import { page } from 'vitest/browser';
 import { describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
+import { picoThemeColors } from '$lib/styles/pico-theme-colors';
 import TopPage from './+page.svelte';
 
 const currentPage = vi.hoisted(() => new URL('https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'));
@@ -37,8 +38,8 @@ describe('top page', () => {
 		expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
 			m.site_description()
 		);
-		expect(themeColor('light')).toBe('#ffffff');
-		expect(themeColor('dark')).toBe('#13171f');
+		expect(themeColor('light')).toBe(picoThemeColors.light);
+		expect(themeColor('dark')).toBe(picoThemeColors.dark);
 		expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
 			'https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'
 		);

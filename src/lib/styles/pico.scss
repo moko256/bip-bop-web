@@ -1,7 +1,7 @@
-// Pico stylesheet compiled from Sass. Every module stays enabled.
+// Pico stylesheet compiled from Sass.
 // See https://picocss.com/docs/sass
 @use '@picocss/pico/scss/pico' with (
-	$theme-color: 'blue',
+	$theme-color: 'slate',
 	$modules: (
 		// Theme
 		'themes/default': true,
@@ -10,39 +10,39 @@
 		'layout/document': true,
 		'layout/landmarks': true,
 		'layout/container': true,
-		'layout/section': true,
-		'layout/grid': true,
-		'layout/overflow-auto': true,
+		'layout/section': false,
+		'layout/grid': false,
+		'layout/overflow-auto': false,
 
 		// Content
 		'content/link': true,
 		'content/typography': true,
 		'content/embedded': true,
 		'content/button': true,
-		'content/table': true,
-		'content/code': true,
-		'content/figure': true,
+		'content/table': false,
+		'content/code': false,
+		'content/figure': false,
 		'content/misc': true,
 
 		// Forms
 		'forms/basics': true,
-		'forms/checkbox-radio-switch': true,
-		'forms/input-color': true,
-		'forms/input-date': true,
-		'forms/input-file': true,
-		'forms/input-range': true,
-		'forms/input-search': true,
+		'forms/checkbox-radio-switch': false,
+		'forms/input-color': false,
+		'forms/input-date': false,
+		'forms/input-file': false,
+		'forms/input-range': false,
+		'forms/input-search': false,
 
 		// Components
-		'components/accordion': true,
-		'components/card': true,
-		'components/dropdown': true,
+		'components/accordion': false,
+		'components/card': false,
+		'components/dropdown': false,
 		'components/group': true,
-		'components/loading': true,
-		'components/modal': true,
+		'components/loading': false,
+		'components/modal': false,
 		'components/nav': true,
 		'components/progress': true,
-		'components/tooltip': true,
+		'components/tooltip': false,
 
 		// Utilities
 		'utilities/accessibility': true,
