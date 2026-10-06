@@ -1,0 +1,1 @@
+import{A as e,C as t,H as n,M as r,Y as i,m as a,q as o}from"./D8QELVY2.js";import"./xihTtKlq.js";var s=r(`<meta name="theme-color" media="(prefers-color-scheme: light)"/> <meta name="theme-color" media="(prefers-color-scheme: dark)"/>`,1);function c(r,c){t(`3los1k`,t=>{var r=s(),l=o(r),u=i(l,2);n(()=>{a(l,`content`,c.light),a(u,`content`,c.dark)}),e(t,r)})}export{c as t};
