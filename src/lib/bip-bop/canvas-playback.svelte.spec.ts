@@ -78,7 +78,7 @@ class LatencyAudioContext {
 	currentTime = 0;
 	outputLatency = 0;
 	destination = {} as AudioDestinationNode;
-	tones: { frequencyHz: number; start: number; stop: number }[] = [];
+	tones: { frequencyHz: number; start: number; stop: number; connected: boolean }[] = [];
 
 	constructor() {
 		LatencyAudioContext.created += 1;
@@ -86,7 +86,7 @@ class LatencyAudioContext {
 	}
 
 	createOscillator(): OscillatorNode {
-		const tone = { frequencyHz: 0, start: 0, stop: 0 };
+		const tone = { frequencyHz: 0, start: 0, stop: 0, connected: false };
 		this.tones.push(tone);
 		return {
 			type: 'sine',
@@ -98,8 +98,12 @@ class LatencyAudioContext {
 					return tone.frequencyHz;
 				}
 			},
-			connect: () => undefined,
-			disconnect: () => undefined,
+			connect: () => {
+				tone.connected = true;
+			},
+			disconnect: () => {
+				tone.connected = false;
+			},
 			addEventListener: () => undefined,
 			start: (when = 0) => {
 				tone.start = when;
@@ -209,6 +213,49 @@ describe('live canvas audio', () => {
 		expect(LatencyAudioContext.latest).toBe(started);
 		expect(LatencyAudioContext.created).toBe(1);
 		expect(started.state).toBe('running');
+		audio.dispose?.();
+	});
+
+	it('plays one burst on resume, not the queued second and a new start burst', async () => {
+		useLatencyContext();
+		const time = manualClock();
+		let elapsed = 0;
+		const audio = liveCanvasAudio(time.clock);
+		audio.start(
+			0,
+			() => elapsed,
+			() => undefined
+		);
+		const started = LatencyAudioContext.latest;
+		if (!started) throw new Error('missing audio context');
+		started.currentTime = 0.05;
+		started.outputLatency = 0.08;
+		time.flush();
+
+		elapsed = 176;
+		started.currentTime = 0.226;
+		time.advance(176);
+
+		const queued = started.tones[1];
+		expect(queued?.frequencyHz).toBe(475);
+		expect(queued?.connected).toBe(true);
+
+		audio.stop();
+		await Promise.resolve();
+		expect(queued?.connected).toBe(false);
+
+		audio.start(
+			176,
+			() => elapsed,
+			() => undefined
+		);
+		await Promise.resolve();
+
+		const sounding = started.tones.filter(
+			(tone) => tone.connected && tone.start >= started.currentTime
+		);
+		expect(sounding).toHaveLength(1);
+		expect(sounding[0]?.frequencyHz).toBe(475);
 		audio.dispose?.();
 	});
 });
