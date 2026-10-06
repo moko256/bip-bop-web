@@ -86,6 +86,7 @@ describe('OutputControls', () => {
 		await expect.element(page.getByText(m.site_description())).toBeVisible();
 		await expect.element(page.getByLabelText(m.bip_bop_preview_aria())).toBeVisible();
 		await expect.element(page.getByRole('button', { name: m.generate() })).not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.stop() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.download() })).not.toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
 		expect(
@@ -150,6 +151,9 @@ describe('OutputControls', () => {
 				.toBeInTheDocument();
 		}
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
+		const stop = page.getByRole('button', { name: m.stop() });
+		await expect.element(stop).toBeDisabled();
+		expect(stop.element().classList.contains('outline')).toBe(true);
 		await expect.element(page.getByRole('option', { name: '640×480' })).toBeInTheDocument();
 		const placeholder = page.getByRole('img', { name: m.video_placeholder_aria() }).element();
 		const canvas = placeholder.querySelector('canvas') as HTMLCanvasElement;
@@ -174,6 +178,10 @@ describe('OutputControls', () => {
 		);
 		assertPrecedes(
 			page.getByRole('button', { name: m.generate() }),
+			page.getByRole('button', { name: m.stop() })
+		);
+		assertPrecedes(
+			page.getByRole('button', { name: m.stop() }),
 			page.getByRole('button', { name: m.download() })
 		);
 		assertPrecedes(
@@ -275,7 +283,9 @@ describe('OutputControls', () => {
 			.element() as HTMLProgressElement;
 		expect(placeholder.getAttribute('aria-busy')).toBeNull();
 		expect(placeholder.clientWidth).toBeGreaterThan(0);
-		expect(progress.hasAttribute('value')).toBe(false);
+		expect(progress.hasAttribute('value')).toBe(true);
+		expect(progress.value).toBe(0);
+		expect(progress.max).toBe(3600);
 		const seekReserve = placeholder.nextElementSibling;
 		if (!(seekReserve instanceof HTMLElement)) throw new Error('Expected seek reserve element');
 		const seekBarPadding = seekReserve.clientHeight;
@@ -307,7 +317,8 @@ describe('OutputControls', () => {
 			frameCount: 3600,
 			fps: 60,
 			videoQuality: 'high',
-			signal: expect.any(AbortSignal)
+			signal: expect.any(AbortSignal),
+			onProgress: expect.any(Function)
 		});
 
 		pending.resolve(videoUrl());
@@ -332,6 +343,40 @@ describe('OutputControls', () => {
 		const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
+	});
+
+	it('fills the progress bar and returns to the placeholder when generation stops', async () => {
+		const pending = deferred<string>();
+		generatePlayback.mockReturnValue(pending.promise);
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: m.generate() }).click();
+
+		const stop = page.getByRole('button', { name: m.stop() });
+		await expect.element(stop).toBeEnabled();
+		const progress = page
+			.getByRole('progressbar', { name: m.generating_aria() })
+			.element() as HTMLProgressElement;
+		const reported = generatePlayback.mock.calls[0]?.[0].onProgress as (frames: number) => void;
+		reported(1200);
+		await expect
+			.element(page.getByRole('progressbar', { name: m.generating_aria() }))
+			.toHaveAttribute('value', '1200');
+		expect(progress.max).toBe(3600);
+
+		await stop.click();
+
+		expect(generatePlayback.mock.calls[0]?.[0].signal.aborted).toBe(true);
+		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
+		await expect
+			.element(page.getByRole('progressbar', { name: m.generating_aria() }))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
+		await expect.element(page.getByRole('button', { name: m.stop() })).toBeDisabled();
+
+		pending.resolve(videoUrl());
+		await expect.element(page.getByLabelText(m.generated_video_aria())).not.toBeInTheDocument();
 	});
 
 	it('toggles playback from the video surface and leaves context menu events alone', async () => {
@@ -471,7 +516,8 @@ describe('OutputControls', () => {
 			frameCount: 3600,
 			fps: 60,
 			videoQuality: 'high',
-			signal: expect.any(AbortSignal)
+			signal: expect.any(AbortSignal),
+			onProgress: expect.any(Function)
 		});
 	});
 
@@ -562,7 +608,8 @@ describe('OutputControls', () => {
 			frameCount: 1000,
 			fps: 60,
 			videoQuality: 'high',
-			signal: expect.any(AbortSignal)
+			signal: expect.any(AbortSignal),
+			onProgress: expect.any(Function)
 		});
 	});
 

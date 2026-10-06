@@ -214,6 +214,12 @@
 	<button type="submit" class="action" disabled={pending}>{m.generate()}</button>
 	<button
 		type="button"
+		class="action outline"
+		disabled={!pending}
+		onclick={() => generation.cancel()}>{m.stop()}</button
+	>
+	<button
+		type="button"
 		class="action"
 		disabled={downloadUrl === null}
 		onclick={() => {
@@ -339,7 +345,11 @@
 {#snippet loadingOverlay()}
 	<div class="loading">
 		<div class="veil" style:background={stoppedVeilColor}></div>
-		<progress aria-label={m.generating_aria()}></progress>
+		<progress
+			aria-label={m.generating_aria()}
+			max={generation.totalFrames}
+			value={generation.completedFrames}
+		></progress>
 	</div>
 {/snippet}
 

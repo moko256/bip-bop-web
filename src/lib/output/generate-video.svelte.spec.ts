@@ -77,6 +77,21 @@ describe('generateBipBopVideo', () => {
 		}
 	});
 
+	it('reports each written frame', async () => {
+		const completed: number[] = [];
+		await generateBipBopVideo({
+			outputType: 'mp4',
+			videoCodec: 'avc',
+			audioCodec: await defaultMp4AudioCodec(),
+			width: 64,
+			height: 64,
+			frameCount: 2,
+			onProgress: (frames) => completed.push(frames)
+		});
+
+		expect(completed).toEqual([1, 2]);
+	});
+
 	it('stops when the caller aborts', async () => {
 		const abort = new AbortController();
 		abort.abort();
@@ -94,5 +109,29 @@ describe('generateBipBopVideo', () => {
 		).rejects.toSatisfy(
 			(error: unknown) => error instanceof DOMException && error.name === 'AbortError'
 		);
+	});
+
+	it('stops writing frames once the caller aborts', async () => {
+		const abort = new AbortController();
+		const completed: number[] = [];
+
+		await expect(
+			generateBipBopVideo({
+				outputType: 'mp4',
+				videoCodec: 'avc',
+				audioCodec: await defaultMp4AudioCodec(),
+				width: 64,
+				height: 64,
+				frameCount: 8,
+				signal: abort.signal,
+				onProgress: (frames) => {
+					completed.push(frames);
+					if (frames === 1) abort.abort();
+				}
+			})
+		).rejects.toSatisfy(
+			(error: unknown) => error instanceof DOMException && error.name === 'AbortError'
+		);
+		expect(completed).toEqual([1]);
 	});
 });
