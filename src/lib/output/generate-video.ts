@@ -55,7 +55,7 @@ export async function generateBipBopVideo(options: {
 	const output = new Output({ format, target });
 	const fps = options.fps ?? BIP_BOP_FPS;
 	const videoQuality = options.videoQuality ?? 'high';
-	const source = new CanvasSource(canvas, {
+	const videoSource = new CanvasSource(canvas, {
 		codec: options.videoCodec,
 		quality: new Quality(videoQuality)
 	});
@@ -63,29 +63,74 @@ export async function generateBipBopVideo(options: {
 		codec: options.audioCodec,
 		quality: new Quality('high')
 	});
-	output.addVideoTrack(source, { frameRate: fps });
+	output.addVideoTrack(videoSource, { frameRate: fps });
 	output.addAudioTrack(audioSource);
 
 	try {
 		await output.start();
 		const frameCount = options.frameCount ?? BIP_BOP_MAX_FRAME;
 		const frameDuration = 1 / fps;
-		for (let frame = 0; frame < frameCount; frame += 1) {
+		const loops = new AbortController();
+		const stopLoops = () => loops.abort();
+		if (options.signal?.aborted) stopLoops();
+		else options.signal?.addEventListener('abort', stopLoops, { once: true });
+
+		// A caller abort throws. A sibling track's failure asks this track to return.
+		const siblingFailed = (): boolean => {
 			if (options.signal?.aborted) throw aborted();
-			BipBopRenderer(canvas, dimensions, videoPictureAtFrame(frame, fps), {
-				mimeType: format.mimeType,
-				videoCodec: options.videoCodec,
-				audioCodec: options.audioCodec,
-				videoQuality,
-				fps
-			});
-			const toneSecond = toneSecondAtFrame(frame, fps);
-			if (toneSecond !== null) await placeBipBopTone(audioSource, toneSecond);
-			await source.add(frame * frameDuration, frameDuration);
-			options.onProgress?.(frame + 1);
+			return loops.signal.aborted;
+		};
+
+		const writeAudioTrack = async (): Promise<void> => {
+			for (let frame = 0; frame < frameCount; frame += 1) {
+				const toneSecond = toneSecondAtFrame(frame, fps);
+				if (toneSecond === null) continue;
+				if (siblingFailed()) return;
+				await placeBipBopTone(audioSource, toneSecond);
+			}
+			if (siblingFailed()) return;
+			audioSource.close();
+		};
+
+		const writeVideoTrack = async (): Promise<void> => {
+			for (let frame = 0; frame < frameCount; frame += 1) {
+				if (siblingFailed()) return;
+				BipBopRenderer(canvas, dimensions, videoPictureAtFrame(frame, fps), {
+					mimeType: format.mimeType,
+					videoCodec: options.videoCodec,
+					audioCodec: options.audioCodec,
+					videoQuality,
+					fps
+				});
+				await videoSource.add(frame * frameDuration, frameDuration);
+				options.onProgress?.(frame + 1);
+			}
+			if (siblingFailed()) return;
+			videoSource.close();
+		};
+
+		// Tone bursts depend only on the second index, so the audio track can finish
+		// and release its encoder while picture frames are still being encoded.
+		const tracks = Promise.all(
+			[writeAudioTrack, writeVideoTrack].map((writeTrack) =>
+				writeTrack().catch((error: unknown) => {
+					stopLoops();
+					throw error;
+				})
+			)
+		);
+
+		try {
+			await tracks;
+			if (options.signal?.aborted) throw aborted();
+			await output.finalize();
+		} catch (error) {
+			stopLoops();
+			await tracks.catch(() => undefined);
+			throw error;
+		} finally {
+			options.signal?.removeEventListener('abort', stopLoops);
 		}
-		if (options.signal?.aborted) throw aborted();
-		await output.finalize();
 	} catch (error) {
 		await cancelOutput(output);
 		throw error;
