@@ -10,7 +10,17 @@
 	import * as m from '$lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './timeline';
 
-	let { aspectRatio = '16 / 9' }: { aspectRatio?: string } = $props();
+	let {
+		aspectRatio = '16 / 9',
+		bitmap = null
+	}: {
+		aspectRatio?: string;
+		/**
+		 * Canvas backing store. CSS still sizes the element to the host.
+		 * Absent means the host size times devicePixelRatio.
+		 */
+		bitmap?: { width: number; height: number } | null;
+	} = $props();
 
 	const playbackClock = browserPlaybackClock();
 	const picture = createCanvasPicture();
@@ -43,14 +53,14 @@
 		let ready = false;
 		let canceled = false;
 
-		const draw = (current: number) => {
-			const size = bitmapSize(host);
-			if (!size) return;
-			if (!canvas || !dimensions || bitmapWidth !== size.width || bitmapHeight !== size.height) {
-				canvas = createPreviewCanvas(size.width, size.height);
-				bitmapWidth = size.width;
-				bitmapHeight = size.height;
-				dimensions = createBipBopDimensions(size.width, size.height);
+		const draw = (current: number, size: { width: number; height: number } | null) => {
+			const next = size ?? bitmapSize(host);
+			if (!next) return;
+			if (!canvas || !dimensions || bitmapWidth !== next.width || bitmapHeight !== next.height) {
+				canvas = createPreviewCanvas(next.width, next.height);
+				bitmapWidth = next.width;
+				bitmapHeight = next.height;
+				dimensions = createBipBopDimensions(next.width, next.height);
 				host.replaceChildren(canvas);
 			}
 			BipBopRenderer(canvas, dimensions, previewSample(current));
@@ -59,18 +69,19 @@
 		void loadBipBopFont().finally(() => {
 			if (canceled) return;
 			ready = true;
-			draw(session.frame);
+			draw(session.frame, bitmap);
 		});
 
 		$effect(() => {
 			const current = session.frame;
+			const size = bitmap;
 			if (!ready) return;
-			draw(current);
+			draw(current, size);
 		});
 
 		const observer = new ResizeObserver(() => {
 			if (!ready) return;
-			draw(session.frame);
+			draw(session.frame, bitmap);
 		});
 		observer.observe(host);
 

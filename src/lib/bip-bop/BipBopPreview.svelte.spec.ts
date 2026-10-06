@@ -122,6 +122,52 @@ describe('BipBopPreview', () => {
 		expect(getComputedStyle(element).imageRendering).toBe('pixelated');
 	});
 
+	it('draws the selected bitmap and keeps the canvas at the host DOM size', async () => {
+		useDevicePixelRatio(3);
+		const view = await render(BipBopPreview, { aspectRatio: '4 / 3' });
+		const container = view.container as HTMLElement;
+		container.style.width = '200px';
+
+		const canvas = page.getByLabelText(m.bip_bop_preview_aria());
+		await expect.element(canvas).toBeVisible();
+		await expect
+			.poll(() => {
+				const element = canvas.element() as HTMLCanvasElement;
+				const host = element.parentElement;
+				if (!host || host.clientWidth !== 200) return false;
+				return element.width === 600 && element.height === Math.round(host.clientHeight * 3);
+			})
+			.toBe(true);
+
+		const host = () => (canvas.element() as HTMLCanvasElement).parentElement as HTMLElement;
+		const domWidth = host().clientWidth;
+		const domHeight = host().clientHeight;
+
+		await view.rerender({ bitmap: { width: 640, height: 480 }, aspectRatio: '640 / 480' });
+
+		await expect.poll(() => (canvas.element() as HTMLCanvasElement).width).toBe(640);
+		const sized = canvas.element() as HTMLCanvasElement;
+		expect(sized.height).toBe(480);
+		expect(sized.clientWidth).toBe(domWidth);
+		expect(sized.clientHeight).toBe(domHeight);
+		expect(sized.clientWidth).toBe(host().clientWidth);
+		expect(sized.clientHeight).toBe(host().clientHeight);
+
+		await view.rerender({ bitmap: null, aspectRatio: '4 / 3' });
+
+		await expect
+			.poll(() => {
+				const element = canvas.element() as HTMLCanvasElement;
+				return (
+					element.width === Math.round(host().clientWidth * 3) &&
+					element.height === Math.round(host().clientHeight * 3) &&
+					element.clientWidth === domWidth &&
+					element.clientHeight === domHeight
+				);
+			})
+			.toBe(true);
+	});
+
 	it('stays stopped until play, then plays a 16ms Bip and schedules Bop', async () => {
 		PreviewAudioContext.instances = [];
 		const realAudioContext = window.AudioContext;
