@@ -124,25 +124,28 @@ export function bipBopToneFrameCount(sampleRate: number): number {
  * The web preview passes how long until the burst should enter the graph, already
  * shifted by output latency. Video writing passes `0`: the burst is the first 16ms
  * of an offline context, and the caller places that buffer on the second it belongs to.
+ * The returned function disconnects the burst. Pause uses it so a burst already
+ * queued for a later second does not play again when playback resumes.
  */
 export function BipBopAudioRenderer(
 	context: BipBopAudioContext,
 	delayMs: number,
 	frequencyHz: number
-): void {
+): () => void {
 	const start = context.currentTime + delayMs / 1000;
 	const end = start + BIP_BOP_TONE_MS / 1000;
 	const oscillator = context.createOscillator();
 	oscillator.type = 'sine';
 	oscillator.frequency.value = frequencyHz;
 	oscillator.connect(context.destination);
-	oscillator.addEventListener(
-		'ended',
-		() => {
-			oscillator.disconnect();
-		},
-		{ once: true }
-	);
+	let silenced = false;
+	const silence = () => {
+		if (silenced) return;
+		silenced = true;
+		oscillator.disconnect();
+	};
+	oscillator.addEventListener('ended', silence, { once: true });
 	oscillator.start(start);
 	oscillator.stop(end);
+	return silence;
 }

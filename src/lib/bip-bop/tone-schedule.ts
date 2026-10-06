@@ -6,7 +6,10 @@ export type ToneClock = {
 	cancelDelay(id: number): void;
 };
 
-/** Cancels the next wait. `pictureShiftMs` is how long the picture waits at start. */
+/**
+ * Cancels the next wait and disconnects the burst already handed to the context.
+ * `pictureShiftMs` is how long the picture waits at start.
+ */
 export type ToneStop = {
 	(): void;
 	pictureShiftMs: number;
@@ -19,7 +22,9 @@ export type ToneStop = {
  * until one output lead after the burst: the sound plays, then the video begins.
  * `getElapsed` is the wall-clock media time, the same clock the canvas uses
  * before the picture hold.
- * Returns a stop function that cancels the next wait.
+ * Returns a stop function that cancels the next wait and disconnects the burst
+ * already in the graph. A paused context keeps that burst, and resume would
+ * play it together with the burst scheduled for the new play click.
  */
 export function scheduleLiveTones(options: {
 	context: AudioContext;
@@ -30,6 +35,7 @@ export function scheduleLiveTones(options: {
 }): ToneStop {
 	let timer = 0;
 	let pictureShiftMs = 0;
+	let silenceBurst = () => {};
 	let startup = true;
 	const anchorMs = options.elapsedMs;
 	const leadMs = outputLeadMs(options.context);
@@ -40,7 +46,7 @@ export function scheduleLiveTones(options: {
 		const cue = planBipBopPreviewCue(pictureMs, leadMs, pictureShiftMs, startup);
 		startup = false;
 		pictureShiftMs = cue.pictureShiftMs;
-		BipBopAudioRenderer(options.context, cue.delayMs, cue.frequencyHz);
+		silenceBurst = BipBopAudioRenderer(options.context, cue.delayMs, cue.frequencyHz);
 		const wallDelta = Math.max(0, options.getElapsed() - anchorMs);
 		const holdRemaining = Math.max(0, pictureShiftMs - wallDelta);
 		timer = options.clock.delay(cue.waitMs + holdRemaining, () => {
@@ -54,6 +60,8 @@ export function scheduleLiveTones(options: {
 		() => {
 			options.clock.cancelDelay(timer);
 			timer = 0;
+			silenceBurst();
+			silenceBurst = () => {};
 		},
 		{ pictureShiftMs }
 	);
