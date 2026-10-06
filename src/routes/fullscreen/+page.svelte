@@ -35,19 +35,15 @@
 {/if}
 
 <style>
-	:global(html:has(.fullscreen-boot)),
-	:global(html:has(.fullscreen-boot) body) {
+	:global(html),
+	:global(body) {
 		margin: 0;
-		height: 100%;
 		background: #000;
-		overflow: hidden;
 	}
 
 	.fullscreen-boot {
 		width: 100%;
 		height: 100dvh;
-		margin: 0;
-		border: 0;
 		background: #000;
 	}
 </style>

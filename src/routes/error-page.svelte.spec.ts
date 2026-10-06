@@ -31,6 +31,14 @@ describe('error page', () => {
 			.toHaveAttribute('href', '/bip-bop-web/');
 		expect(themeColor('light')).toBe('#ffffff');
 		expect(themeColor('dark')).toBe('#13171f');
+		await expect
+			.poll(() =>
+				getComputedStyle(document.documentElement).getPropertyValue('--pico-background-color')
+			)
+			.toBe('#fff');
+		await expect
+			.poll(() => getComputedStyle(document.documentElement).scrollbarGutter)
+			.toBe('stable');
 	});
 });
 

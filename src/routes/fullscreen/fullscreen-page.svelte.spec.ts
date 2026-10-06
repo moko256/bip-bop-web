@@ -35,6 +35,17 @@ describe('fullscreen page', () => {
 		expect(document.querySelector('.locale-anchor')).toBeNull();
 		expect(themeColor('light')).toBe('#000000');
 		expect(themeColor('dark')).toBe('#000000');
+		expect(getComputedStyle(document.documentElement).margin).toBe('0px');
+		expect(getComputedStyle(document.body).margin).toBe('0px');
+		expect(getComputedStyle(document.documentElement).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(getComputedStyle(document.body).backgroundColor).toBe('rgb(0, 0, 0)');
+		expect(
+			getComputedStyle(document.documentElement).getPropertyValue('--pico-background-color')
+		).toBe('');
+		expect(getComputedStyle(document.documentElement).scrollbarGutter).toBe('auto');
+		expect(document.documentElement.scrollHeight).toBeLessThanOrEqual(
+			document.documentElement.clientHeight
+		);
 	});
 
 	it('puts the first accepted resolution in the title', async () => {
