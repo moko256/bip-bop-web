@@ -39,6 +39,10 @@ describe('top page', () => {
 		);
 		expect(themeColor('light')).toBe('#ffffff');
 		expect(themeColor('dark')).toBe('#13171f');
+		expect(
+			getComputedStyle(document.documentElement).getPropertyValue('--pico-background-color')
+		).toBe('#fff');
+		expect(getComputedStyle(document.documentElement).scrollbarGutter).toBe('stable');
 		expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
 			'https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'
 		);

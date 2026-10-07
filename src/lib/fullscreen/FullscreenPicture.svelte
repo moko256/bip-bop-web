@@ -132,14 +132,6 @@
 {/snippet}
 
 <style>
-	:global(html:has(.fullscreen-stage)),
-	:global(html:has(.fullscreen-stage) body) {
-		margin: 0;
-		height: 100%;
-		background: #000;
-		overflow: hidden;
-	}
-
 	.fullscreen-stage {
 		container-type: size;
 		display: flex;
