@@ -37,7 +37,9 @@ export default defineConfig(({ command }) => {
 					fallback: '404.html'
 				}),
 				paths: {
-					assets: `${siteProtocol}://${siteHost}${siteBase}`,
+					// E2E serves the build it just produced. Those hashed files are not
+					// on the published host, so a remote asset origin never hydrates.
+					...(isE2E ? {} : { assets: `${siteProtocol}://${siteHost}${siteBase}` }),
 					base: siteBase
 				},
 				csp: {
