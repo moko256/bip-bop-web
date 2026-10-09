@@ -33,8 +33,7 @@
 	"error_video_generation_aborted": "動画の生成を中断しました",
 	"error_unknown_resolution": "未知の解像度です: {value}",
 	"error_audio_codec_unavailable": "音声コーデックを利用できません",
-	"checking_playback_aria": "再生可否を確認中",
-	"error_playback_unsupported": "このコーデックと画質では再生できません",
+	"error_encode_unsupported": "このコーデックと画質はエンコードできません",
 	"footer_source_link_title": "ソースコード",
 	"noscript_description": "※JavaScriptを有効にしてください"
 }

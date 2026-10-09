@@ -29,6 +29,8 @@ describe('Pico stylesheet', () => {
 		expect(css).toContain('button{');
 		expect(css).toContain('nav,nav ul{');
 		expect(css).toContain('progress{');
+		expect(css).toContain('[aria-busy=true]');
+		expect(css).toContain('--pico-icon-loading');
 		expect(css).toContain('[role=group]');
 		expect(css).toContain('prefers-reduced-motion');
 	});
@@ -40,7 +42,6 @@ describe('Pico stylesheet', () => {
 		expect(css).not.toContain('[data-tooltip]');
 		expect(css).not.toContain('dialog>');
 		expect(css).not.toContain('details.dropdown');
-		expect(css).not.toContain('--pico-icon-loading');
 	});
 
 	it('uses the slate theme', () => {
