@@ -11,6 +11,8 @@
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
+	import { PlaybackCheck } from './PlaybackCheck.svelte';
+	import { canPlaySelection } from './playback-support';
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
 	import ResolutionSelect from './ResolutionSelect.svelte';
@@ -56,6 +58,7 @@
 	let downloadName = $state<string | null>(null);
 	let frameCountMax = $derived(maxFrameCountForFps(timeline.currentFps));
 	const generation = new VideoGeneration(generatePlayback);
+	const playbackCheck = new PlaybackCheck(canPlaySelection);
 	const playbackTimeline = {
 		fps: DEFAULT_FPS,
 		maxFrame: DEFAULT_FRAME_COUNT
@@ -82,6 +85,10 @@
 
 	$effect(() => {
 		void generation.loadDefaultAudioCodec(outputType);
+	});
+
+	$effect(() => {
+		void playbackCheck.load({ videoCodec, audioCodec, videoQuality });
 	});
 
 	function invalidate() {
@@ -120,6 +127,7 @@
 		event.preventDefault();
 		const form = event.currentTarget;
 		if (!(form instanceof HTMLFormElement) || !form.checkValidity()) return;
+		if (!playbackCheck.playable) return;
 		const frameCount = Number(frameCountText);
 		const fps = Number(fpsText);
 		downloadName = videoDownloadName({
@@ -161,6 +169,7 @@
 		return () => {
 			session.dispose();
 			generation.dispose();
+			playbackCheck.dispose();
 		};
 	};
 
@@ -211,7 +220,14 @@
 {/snippet}
 
 {#snippet actions(pending: boolean, downloadUrl: string | null)}
-	<button type="submit" class="action" disabled={pending}>{m.generate()}</button>
+	<button type="submit" class="action" disabled={pending || !playbackCheck.playable}
+		>{m.generate()}</button
+	>
+	{#if playbackCheck.checking}
+		<progress class="playback-check" aria-label={m.checking_playback_aria()}></progress>
+	{:else if !playbackCheck.playable}
+		<p class="playback-check" role="alert">{m.error_playback_unsupported()}</p>
+	{/if}
 	<button
 		type="button"
 		class="action outline"
@@ -434,6 +450,11 @@
 	}
 
 	.action {
+		width: 100%;
+		margin: 0;
+	}
+
+	.playback-check {
 		width: 100%;
 		margin: 0;
 	}

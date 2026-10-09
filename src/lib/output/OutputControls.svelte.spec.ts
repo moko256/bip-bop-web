@@ -16,19 +16,24 @@ vi.mock('$app/state', () => ({
 	}
 }));
 
-const { generatePlayback, loadVideoOutput, loadVideoOutputActual } = vi.hoisted(() => ({
-	generatePlayback: vi.fn(),
-	loadVideoOutput: vi.fn(),
-	loadVideoOutputActual: {
-		current: undefined as
-			undefined | (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
-	}
-}));
+const { generatePlayback, loadVideoOutput, loadVideoOutputActual, canPlaySelection } = vi.hoisted(
+	() => ({
+		generatePlayback: vi.fn(),
+		loadVideoOutput: vi.fn(),
+		loadVideoOutputActual: {
+			current: undefined as
+				undefined | (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
+		},
+		canPlaySelection: vi.fn(() => Promise.resolve(true))
+	})
+);
 
 vi.mock('./generate-video', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./generate-video')>();
 	return { ...actual, generatePlayback };
 });
+
+vi.mock('./playback-support', () => ({ canPlaySelection }));
 
 vi.mock('./load-video-output', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./load-video-output')>();
@@ -65,6 +70,8 @@ describe('OutputControls', () => {
 
 	beforeEach(async () => {
 		generatePlayback.mockReset();
+		canPlaySelection.mockReset();
+		canPlaySelection.mockResolvedValue(true);
 		loadVideoOutput.mockReset();
 		const loadEncoder = loadVideoOutputActual.current;
 		if (!loadEncoder) throw new Error('Expected video output loader');
@@ -611,6 +618,78 @@ describe('OutputControls', () => {
 			signal: expect.any(AbortSignal),
 			onProgress: expect.any(Function)
 		});
+	});
+
+	it('checks playback when codec or quality changes without disabling generate while loading', async () => {
+		const pending = deferred<boolean>();
+		canPlaySelection.mockReturnValue(pending.promise);
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+
+		const generate = page.getByRole('button', { name: m.generate() });
+		const checking = page.getByRole('progressbar', { name: m.checking_playback_aria() });
+		await expect.element(generate).toBeEnabled();
+		await expect.element(checking).toBeVisible();
+		assertPrecedes(generate, checking);
+		assertPrecedes(checking, page.getByRole('button', { name: m.stop() }));
+		expect(canPlaySelection).toHaveBeenCalledWith({
+			videoCodec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'high'
+		});
+
+		generatePlayback.mockResolvedValue(videoUrl());
+		await generate.click();
+		expect(generatePlayback).toHaveBeenCalledTimes(1);
+
+		pending.resolve(false);
+		await expect.element(generate).toBeDisabled();
+		await expect.element(checking).not.toBeInTheDocument();
+		const playbackError = page.getByRole('alert');
+		await expect.element(playbackError).toHaveTextContent(m.error_playback_unsupported());
+		assertPrecedes(generate, playbackError);
+		assertPrecedes(playbackError, page.getByRole('button', { name: m.stop() }));
+		expect(generatePlayback).toHaveBeenCalledTimes(1);
+
+		const next = deferred<boolean>();
+		canPlaySelection.mockReturnValue(next.promise);
+		await page.getByRole('combobox', { name: m.video_quality() }).selectOptions('low');
+
+		await expect.element(generate).toBeEnabled();
+		await expect
+			.element(page.getByRole('progressbar', { name: m.checking_playback_aria() }))
+			.toBeVisible();
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+		expect(canPlaySelection).toHaveBeenLastCalledWith({
+			videoCodec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'low'
+		});
+
+		await page.getByRole('combobox', { name: m.video_codec() }).selectOptions('vp9');
+		expect(canPlaySelection).toHaveBeenLastCalledWith({
+			videoCodec: 'vp9',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'low'
+		});
+		await page.getByRole('combobox', { name: m.audio_codec() }).selectOptions('opus');
+		expect(canPlaySelection).toHaveBeenLastCalledWith({
+			videoCodec: 'vp9',
+			audioCodec: 'opus',
+			videoQuality: 'low'
+		});
+		await expect.element(generate).toBeEnabled();
+		await expect
+			.element(page.getByRole('progressbar', { name: m.checking_playback_aria() }))
+			.toBeVisible();
+
+		next.resolve(true);
+		await expect.element(generate).toBeEnabled();
+		await expect
+			.element(page.getByRole('progressbar', { name: m.checking_playback_aria() }))
+			.not.toBeInTheDocument();
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
 	});
 
 	it('shows the live canvas and fullscreen url controls', async () => {
