@@ -11,6 +11,8 @@
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
 	import { generatePlayback } from './generate-video';
+	import { EncodeCheck } from './EncodeCheck.svelte';
+	import { canEncodeSelection } from './encode-support';
 	import { VideoGeneration } from './VideoGeneration.svelte';
 	import OutputLayout from './OutputLayout.svelte';
 	import ResolutionSelect from './ResolutionSelect.svelte';
@@ -56,6 +58,7 @@
 	let downloadName = $state<string | null>(null);
 	let frameCountMax = $derived(maxFrameCountForFps(timeline.currentFps));
 	const generation = new VideoGeneration(generatePlayback);
+	const encodeCheck = new EncodeCheck(canEncodeSelection);
 	const playbackTimeline = {
 		fps: DEFAULT_FPS,
 		maxFrame: DEFAULT_FRAME_COUNT
@@ -82,6 +85,10 @@
 
 	$effect(() => {
 		void generation.loadDefaultAudioCodec(outputType);
+	});
+
+	$effect(() => {
+		void encodeCheck.load({ videoCodec, audioCodec, videoQuality });
 	});
 
 	function invalidate() {
@@ -120,6 +127,7 @@
 		event.preventDefault();
 		const form = event.currentTarget;
 		if (!(form instanceof HTMLFormElement) || !form.checkValidity()) return;
+		if (!encodeCheck.encodable) return;
 		const frameCount = Number(frameCountText);
 		const fps = Number(fpsText);
 		downloadName = videoDownloadName({
@@ -161,6 +169,7 @@
 		return () => {
 			session.dispose();
 			generation.dispose();
+			encodeCheck.dispose();
 		};
 	};
 
@@ -211,7 +220,15 @@
 {/snippet}
 
 {#snippet actions(pending: boolean, downloadUrl: string | null)}
-	<button type="submit" class="action" disabled={pending}>{m.generate()}</button>
+	<button
+		type="submit"
+		class="action"
+		disabled={pending || !encodeCheck.encodable}
+		aria-busy={encodeCheck.checking ? 'true' : undefined}>{m.generate()}</button
+	>
+	{#if !encodeCheck.checking && !encodeCheck.encodable}
+		<p class="encode-error" role="alert">{m.error_encode_unsupported()}</p>
+	{/if}
 	<button
 		type="button"
 		class="action outline"
@@ -434,6 +451,11 @@
 	}
 
 	.action {
+		width: 100%;
+		margin: 0;
+	}
+
+	.encode-error {
 		width: 100%;
 		margin: 0;
 	}

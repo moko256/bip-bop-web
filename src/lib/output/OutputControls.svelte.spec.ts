@@ -16,19 +16,24 @@ vi.mock('$app/state', () => ({
 	}
 }));
 
-const { generatePlayback, loadVideoOutput, loadVideoOutputActual } = vi.hoisted(() => ({
-	generatePlayback: vi.fn(),
-	loadVideoOutput: vi.fn(),
-	loadVideoOutputActual: {
-		current: undefined as
-			undefined | (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
-	}
-}));
+const { generatePlayback, loadVideoOutput, loadVideoOutputActual, canEncodeSelection } = vi.hoisted(
+	() => ({
+		generatePlayback: vi.fn(),
+		loadVideoOutput: vi.fn(),
+		loadVideoOutputActual: {
+			current: undefined as
+				undefined | (() => ReturnType<typeof import('./load-video-output').loadVideoOutput>)
+		},
+		canEncodeSelection: vi.fn(() => Promise.resolve(true))
+	})
+);
 
 vi.mock('./generate-video', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./generate-video')>();
 	return { ...actual, generatePlayback };
 });
+
+vi.mock('./encode-support', () => ({ canEncodeSelection }));
 
 vi.mock('./load-video-output', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./load-video-output')>();
@@ -65,6 +70,8 @@ describe('OutputControls', () => {
 
 	beforeEach(async () => {
 		generatePlayback.mockReset();
+		canEncodeSelection.mockReset();
+		canEncodeSelection.mockResolvedValue(true);
 		loadVideoOutput.mockReset();
 		const loadEncoder = loadVideoOutputActual.current;
 		if (!loadEncoder) throw new Error('Expected video output loader');
@@ -611,6 +618,65 @@ describe('OutputControls', () => {
 			signal: expect.any(AbortSignal),
 			onProgress: expect.any(Function)
 		});
+	});
+
+	it('checks encoding when codec or quality changes and marks generate busy without disabling it', async () => {
+		const pending = deferred<boolean>();
+		canEncodeSelection.mockReturnValue(pending.promise);
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+
+		const generate = page.getByRole('button', { name: m.generate() });
+		await expect.element(generate).toBeEnabled();
+		await expect.element(generate).toHaveAttribute('aria-busy', 'true');
+		expect(canEncodeSelection).toHaveBeenCalledWith({
+			videoCodec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'high'
+		});
+
+		pending.resolve(false);
+		await expect.element(generate).toBeDisabled();
+		await expect.element(generate).not.toHaveAttribute('aria-busy');
+		const encodeError = page.getByRole('alert');
+		await expect.element(encodeError).toHaveTextContent(m.error_encode_unsupported());
+		assertPrecedes(generate, encodeError);
+		assertPrecedes(encodeError, page.getByRole('button', { name: m.stop() }));
+		expect(generatePlayback).not.toHaveBeenCalled();
+
+		const next = deferred<boolean>();
+		canEncodeSelection.mockReturnValue(next.promise);
+		await page.getByRole('combobox', { name: m.video_quality() }).selectOptions('low');
+
+		await expect.element(generate).toBeEnabled();
+		await expect.element(generate).toHaveAttribute('aria-busy', 'true');
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
+		expect(canEncodeSelection).toHaveBeenLastCalledWith({
+			videoCodec: 'avc',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'low'
+		});
+
+		await page.getByRole('combobox', { name: m.video_codec() }).selectOptions('vp9');
+		expect(canEncodeSelection).toHaveBeenLastCalledWith({
+			videoCodec: 'vp9',
+			audioCodec: defaultMp4AudioCodec,
+			videoQuality: 'low'
+		});
+		await page.getByRole('combobox', { name: m.audio_codec() }).selectOptions('opus');
+		expect(canEncodeSelection).toHaveBeenLastCalledWith({
+			videoCodec: 'vp9',
+			audioCodec: 'opus',
+			videoQuality: 'low'
+		});
+		await expect.element(generate).toBeEnabled();
+		await expect.element(generate).toHaveAttribute('aria-busy', 'true');
+
+		next.resolve(true);
+		await expect.element(generate).toBeEnabled();
+		await expect.element(generate).not.toHaveAttribute('aria-busy');
+		await expect.element(page.getByRole('alert')).not.toBeInTheDocument();
 	});
 
 	it('shows the live canvas and fullscreen url controls', async () => {
