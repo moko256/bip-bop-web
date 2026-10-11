@@ -54,24 +54,25 @@ describe('elapsed time at a frame', () => {
 		expect(elapsedCentisecondsAtMs(-10)).toBe(0);
 	});
 
-	it('takes the video cycle fraction from the frame count modulo the frame rate', () => {
+	it('takes the video cycle fraction as the share of the current second', () => {
 		expect(videoCycleFraction(0, 60)).toBe(0);
-		expect(videoCycleFraction(30, 60)).toBe(30);
+		expect(videoCycleFraction(30, 60)).toBe(0.5);
+		expect(videoCycleFraction(59, 60)).toBeCloseTo(59 / 60);
 		expect(videoCycleFraction(60, 60)).toBe(0);
-		expect(videoCycleFraction(12, 24)).toBe(12);
+		expect(videoCycleFraction(12, 24)).toBe(0.5);
 		expect(videoCycleFraction(24, 24)).toBe(0);
+		expect(videoCycleFraction(24, 23.976)).toBeCloseTo(24 / 23.976 - 1);
 		expect(videoCycleFraction(-5, 60)).toBe(0);
 
 		expect(videoPictureAtFrame(60, 60)).toMatchObject({
 			frame: 60,
 			elapsedCentiseconds: 100,
 			cycleFraction: 0,
-			cycleLength: 60,
 			beat: 'bop',
 			showBeat: true
 		});
 		expect(videoPictureAtFrame(30, 60)).toMatchObject({
-			cycleFraction: 30,
+			cycleFraction: 0.5,
 			beat: 'bip',
 			showBeat: false
 		});
@@ -82,10 +83,10 @@ describe('elapsed time at a frame', () => {
 		});
 		expect(videoPictureAtFrame(24, 24)).toMatchObject({
 			cycleFraction: 0,
-			cycleLength: 24,
 			beat: 'bop',
 			showBeat: true
 		});
+		expect(videoPictureAtFrame(12, 24).cycleFraction).toBe(0.5);
 	});
 });
 

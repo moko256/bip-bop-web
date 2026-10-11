@@ -180,7 +180,7 @@ export type BipBopVideoCorner = {
  * The disk is two filled arcs that meet at the center. At cycle fraction 0 the
  * split is 1°: one arc runs 0°–1° and the other 1°–360°. The split then moves
  * clockwise and completes one turn as {@link FramePicture.cycleFraction}
- * completes one {@link FramePicture.cycleLength}.
+ * approaches 1.
  * A Bip second paints the 0°–split arc gray and the split–360° arc white.
  * A Bop second swaps those fills. Field and elapsed-text colors ping-pong across the
  * two seconds, black toward white through the Bip second and back through the
@@ -436,18 +436,16 @@ type PictureMarks = {
 
 /**
  * Motion for one drawn sample.
- * `cycleFraction / cycleLength` is the fraction of the current second.
+ * `cycleFraction` is the share of the current second, from 0 up to but not including 1.
  * The caller chooses the beat and whether this sample draws it.
  */
 function pictureMarks(sample: BipBopSample): PictureMarks {
-	const cycleLength =
-		Number.isFinite(sample.cycleLength) && sample.cycleLength > 0 ? sample.cycleLength : 1;
 	const cycleFraction =
 		Number.isFinite(sample.cycleFraction) && sample.cycleFraction > 0 ? sample.cycleFraction : 0;
-	const alongSecond = (cycleFraction * CYCLE_FRAMES) / cycleLength;
+	const alongSecond = cycleFraction * CYCLE_FRAMES;
 	const bip = sample.beat !== 'bop';
 	return {
-		startDegrees: 1 + (cycleFraction * 360) / cycleLength,
+		startDegrees: 1 + cycleFraction * 360,
 		towardMidpoint: bip ? alongSecond : CYCLE_FRAMES - alongSecond,
 		showLabel: sample.showBeat === true,
 		bip,

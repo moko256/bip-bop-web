@@ -12,17 +12,11 @@ export type FramePicture = {
 	/** Corner digits. A video uses the frame. The web preview uses the preview clock. */
 	elapsedCentiseconds: number;
 	/**
-	 * Fraction of the current second, in the same units as {@link FramePicture.cycleLength}.
-	 * `cycleFraction / cycleLength` runs from 0 at the start of the second up to,
-	 * but not including, 1. A video passes `frame % fps`. The web preview passes
+	 * Share of the current second. 0 at the start, approaching 1 at the end.
+	 * A video passes the fractional part of `frame / fps`. The web preview passes
 	 * `elapsedSeconds % 1`.
 	 */
 	cycleFraction: number;
-	/**
-	 * Length of one second in {@link FramePicture.cycleFraction} units.
-	 * A video passes `fps`. The web preview passes `1`.
-	 */
-	cycleLength: number;
 	beat: PictureBeat;
 	/** Draw the Bip! or Bop! label on this sample. */
 	showBeat: boolean;
@@ -64,10 +58,13 @@ export function elapsedCentisecondsAtMs(elapsedMs: number): number {
 	return Math.floor(elapsedMs / 10);
 }
 
-/** `frame % fps`, the cycle fraction for one video frame. 0 when that sample cannot be placed. */
+/**
+ * Share of the current second for one video frame.
+ * 0 at a whole second, approaching 1 at the next. 0 when that sample cannot be placed.
+ */
 export function videoCycleFraction(frame: number, fps: number): number {
 	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
-	return frame % fps;
+	return (frame % fps) / fps;
 }
 
 /** Even whole seconds are Bip. Odd whole seconds are Bop. */
@@ -90,7 +87,6 @@ export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 		frame: index,
 		elapsedCentiseconds: elapsedCentisecondsAtFrame(index, rate),
 		cycleFraction,
-		cycleLength: rate,
 		beat: beatAtSecond(second),
 		showBeat: cycleFraction === 0
 	};
