@@ -3,7 +3,7 @@
 	import { loadBipBopFont } from './font';
 	import { videoPictureAtFrame } from './media-time';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopVideoCorner } from './renderer';
-	import { BIP_BOP_FPS } from './timeline';
+	import { BIP_BOP_FPS } from './frames';
 
 	let {
 		width,

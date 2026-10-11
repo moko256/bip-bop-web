@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-	clockCentisecondsAtFrame,
-	clockCentisecondsAtMs,
+	elapsedCentisecondsAtFrame,
+	elapsedCentisecondsAtMs,
 	elapsedSecondsAtFrame,
 	previewBeat,
 	previewCycleFraction,
@@ -37,21 +37,21 @@ describe('elapsed time at a frame', () => {
 		expect(elapsedSecondsAtFrame(-5, 60)).toBe(0);
 	});
 
-	it('truncates the video clock the same way at 60 fps and at other rates', () => {
-		expect(clockCentisecondsAtFrame(1, 60)).toBe(1);
-		expect(clockCentisecondsAtFrame(30, 60)).toBe(50);
-		expect(clockCentisecondsAtFrame(69, 60)).toBe(115);
-		expect(clockCentisecondsAtFrame(60 * 3661 + 30, 60)).toBe(366150);
-		expect(clockCentisecondsAtFrame(12, 24)).toBe(50);
-		expect(clockCentisecondsAtFrame(24, 24)).toBe(100);
-		expect(clockCentisecondsAtFrame(24, 23.976)).toBe(100);
+	it('truncates elapsed centiseconds the same way at 60 fps and at other rates', () => {
+		expect(elapsedCentisecondsAtFrame(1, 60)).toBe(1);
+		expect(elapsedCentisecondsAtFrame(30, 60)).toBe(50);
+		expect(elapsedCentisecondsAtFrame(69, 60)).toBe(115);
+		expect(elapsedCentisecondsAtFrame(60 * 3661 + 30, 60)).toBe(366150);
+		expect(elapsedCentisecondsAtFrame(12, 24)).toBe(50);
+		expect(elapsedCentisecondsAtFrame(24, 24)).toBe(100);
+		expect(elapsedCentisecondsAtFrame(24, 23.976)).toBe(100);
 	});
 
-	it('truncates a live clock to centiseconds', () => {
-		expect(clockCentisecondsAtMs(0)).toBe(0);
-		expect(clockCentisecondsAtMs(16)).toBe(1);
-		expect(clockCentisecondsAtMs(1500)).toBe(150);
-		expect(clockCentisecondsAtMs(-10)).toBe(0);
+	it('truncates preview-clock milliseconds to centiseconds', () => {
+		expect(elapsedCentisecondsAtMs(0)).toBe(0);
+		expect(elapsedCentisecondsAtMs(16)).toBe(1);
+		expect(elapsedCentisecondsAtMs(1500)).toBe(150);
+		expect(elapsedCentisecondsAtMs(-10)).toBe(0);
 	});
 
 	it('takes the video cycle fraction from the frame count modulo the frame rate', () => {
@@ -64,7 +64,7 @@ describe('elapsed time at a frame', () => {
 
 		expect(videoPictureAtFrame(60, 60)).toMatchObject({
 			frame: 60,
-			clockCentiseconds: 100,
+			elapsedCentiseconds: 100,
 			cycleFraction: 0,
 			cycleLength: 60,
 			beat: 'bop',

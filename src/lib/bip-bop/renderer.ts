@@ -1,9 +1,9 @@
 import { BIP_BOP_AUDIO_SAMPLE_RATE, bipBopFrequencyHz } from './audio';
 import { formatFpsOverlay } from './fps-text';
 import type { FramePicture } from './media-time';
-import { BIP_BOP_FPS } from './timeline';
+import { BIP_BOP_FPS } from './frames';
 
-/** One drawing cycle is one Timeline second. */
+/** One drawing cycle is one second. */
 const CYCLE_FRAMES = BIP_BOP_FPS;
 const BLACK = '#000000';
 
@@ -40,7 +40,7 @@ export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
 /**
  * Subset {@link BIP_BOP_FONT_FAMILY} is built from. One string, sent unchanged by
  * `scripts/download-jetbrains-mono.mjs`: RFC 6838 restricted-name symbols
- * (`!#$&-^_.+`), the MIME type slash, the clock colon, ASCII digits,
+ * (`!#$&-^_.+`), the MIME type slash, the elapsed-time colon, ASCII digits,
  * and ASCII letters.
  */
 export const BIP_BOP_FONT_TEXT =
@@ -71,15 +71,15 @@ export type BipBopDimensions = {
 	labelFontSize: number;
 	/** Bottom of `Bip!` / `Bop!`. The gap above center is `round(shortSide * 1/64)`. */
 	labelY: number;
-	/** Elapsed clock. Height is `round(shortSide * 1/16)`. */
-	clockFontSize: number;
-	/** Left inset of the clock. `round(shortSide * 1/32)`. */
-	clockX: number;
-	/** Top inset of the clock. `round(shortSide * 1/32)`. */
-	clockY: number;
+	/** Elapsed centiseconds. Height is `round(shortSide * 1/16)`. */
+	elapsedFontSize: number;
+	/** Left inset of the elapsed centiseconds. `round(shortSide * 1/32)`. */
+	elapsedX: number;
+	/** Top inset of the elapsed centiseconds. `round(shortSide * 1/32)`. */
+	elapsedY: number;
 	/**
 	 * Top-right resolution, and for a video the MIME type and video/audio codecs.
-	 * Height is `round(clockFontSize / 2)`.
+	 * Height is `round(elapsedFontSize / 2)`.
 	 */
 	overlayFontSize: number;
 	/** Side of each 75% color-bar square. Height is `round(shortSide * 1/16)`. */
@@ -118,9 +118,9 @@ export function createBipBopDimensions(width: number, height: number): BipBopDim
 		frameCountY: centerY + centerGap,
 		labelFontSize: pixelsAlongShortSide(shortSide, 1, 12),
 		labelY: centerY - centerGap,
-		clockFontSize: textHeight,
-		clockX: inset,
-		clockY: inset,
+		elapsedFontSize: textHeight,
+		elapsedX: inset,
+		elapsedY: inset,
 		overlayFontSize: wholePixels(textHeight / 2),
 		colorBarSize: textHeight,
 		colorBarX: inset,
@@ -173,8 +173,8 @@ export type BipBopVideoCorner = {
 };
 
 /**
- * Draws one frame. Stateless: the caller owns the frame counter, the clock,
- * and the motion. The frame count is only the digits in the center.
+ * Draws one frame. Stateless: the caller owns the frame counter, the elapsed
+ * centiseconds, and the motion. The frame count is only the digits in the center.
  * `dimensions` must match the canvas bitmap (`canvas.width` / `canvas.height`).
  * Angles are degrees clockwise from 12 o'clock.
  * The disk is two filled arcs that meet at the center. At cycle fraction 0 the
@@ -182,19 +182,19 @@ export type BipBopVideoCorner = {
  * clockwise and completes one turn as {@link FramePicture.cycleFraction}
  * completes one {@link FramePicture.cycleLength}.
  * A Bip second paints the 0°–split arc gray and the split–360° arc white.
- * A Bop second swaps those fills. Field and clock colors ping-pong across the
+ * A Bop second swaps those fills. Field and elapsed-text colors ping-pong across the
  * two seconds, black toward white through the Bip second and back through the
  * Bop second. `sample.showBeat` draws `Bip!` or `Bop!` above center for
  * `sample.beat`.
- * The corner clock is `sample.clockCentiseconds`, truncated by the caller
+ * The elapsed centiseconds are `sample.elapsedCentiseconds`, truncated by the caller
  * (`HH:MM:SS.CC`).
  * The center counter is the frame index, zero-padded to 6 digits. Its top sits
  * `round(shortSide * 1/64)` below center, and its height is `round(shortSide * 1/16)`.
  * `Bip!` / `Bop!` sit above center with `round(shortSide * 1/64)` under the text, at height
  * `round(shortSide * 1/12)`.
- * The corner clock uses the frame-counter height, inset from the top and left by
+ * The elapsed centiseconds use the frame-counter height, inset from the top and left by
  * `round(shortSide * 1/32)`.
- * The counter, the Bip!/Bop! label, the clock, and the top-right lines use {@link BIP_BOP_FONT_FAMILY}.
+ * The counter, the Bip!/Bop! label, the elapsed centiseconds, and the top-right lines use {@link BIP_BOP_FONT_FAMILY}.
  * A 75% sRGB color bar (white, yellow, cyan, green, magenta, red, blue) sits in the
  * bottom-left and stays fixed while the field colors ping-pong. Each swatch is a square
  * of that same height, inset from the left and bottom by that same inset.
@@ -208,7 +208,7 @@ export type BipBopVideoCorner = {
  * Across the width there are `800 / (48000 / frequency)` cycles, one picture
  * frame of 48 kHz audio (`48000 / 60` samples). Bip at 1500 Hz is 25 cycles.
  * Bop at 475 Hz is `475 / 60` cycles. Each quarter cycle is one cubic Bezier
- * that matches `-cos` and its slope at both ends. The trace uses the clock
+ * that matches `-cos` and its slope at both ends. The trace uses the elapsed-text
  * color, so it stays visible on the field.
  * The arc radius is `round(round(shortSide * 2/5) / 2)`, and the center is
  * `round(width / 2)`, `round(height / 2)`, after width and height are rounded.
@@ -220,8 +220,8 @@ export type BipBopVideoCorner = {
  * as `{fps}FPS` on the following lines. The web preview lists the resolution and,
  * once a 200ms sample of animation frames has been counted, the measured frame
  * rate rounded to a whole number (`{fps}FPS`). Each line is
- * `round(clockFontSize / 2)` tall, inset from the top by the clock's top inset
- * and from the right by the clock's left inset. A still page omits `video` and
+ * `round(elapsedFontSize / 2)` tall, inset from the top by the elapsed text's top inset
+ * and from the right by the elapsed text's left inset. A still page omits `video` and
  * `sample.previewFps` and draws the resolution only.
  * Image smoothing is off for every canvas and video frame.
  */
@@ -253,9 +253,9 @@ export function BipBopRenderer(
 	const frameCountY = wholePixels(dimensions.frameCountY);
 	const labelFontSize = wholePixels(dimensions.labelFontSize);
 	const labelY = wholePixels(dimensions.labelY);
-	const clockFontSize = wholePixels(dimensions.clockFontSize);
-	const clockX = wholePixels(dimensions.clockX);
-	const clockY = wholePixels(dimensions.clockY);
+	const elapsedFontSize = wholePixels(dimensions.elapsedFontSize);
+	const elapsedX = wholePixels(dimensions.elapsedX);
+	const elapsedY = wholePixels(dimensions.elapsedY);
 	const overlayFontSize = wholePixels(dimensions.overlayFontSize);
 	const colorBarSize = wholePixels(dimensions.colorBarSize);
 	const colorBarX = wholePixels(dimensions.colorBarX);
@@ -288,16 +288,20 @@ export function BipBopRenderer(
 	}
 
 	ctx.fillStyle = mixColor(RGB_WHITE, RGB_BLACK, marks.towardMidpoint, CYCLE_FRAMES);
-	ctx.font = monospaceFont(clockFontSize);
+	ctx.font = monospaceFont(elapsedFontSize);
 	ctx.textAlign = 'left';
 	ctx.textBaseline = 'top';
-	ctx.fillText(formatCentiseconds(marks.clockCentiseconds), clockX, clockY);
+	ctx.fillText(formatCentiseconds(marks.elapsedCentiseconds), elapsedX, elapsedY);
 
 	ctx.font = monospaceFont(overlayFontSize);
 	ctx.textAlign = 'right';
 	const lines = overlayLines(width, height, video, sample.previewFps);
 	for (const [index, line] of lines.entries()) {
-		ctx.fillText(line, wholePixels(width - clockX), wholePixels(clockY + index * overlayFontSize));
+		ctx.fillText(
+			line,
+			wholePixels(width - elapsedX),
+			wholePixels(elapsedY + index * overlayFontSize)
+		);
 	}
 
 	if (marks.showLabel) {
@@ -427,7 +431,7 @@ type PictureMarks = {
 	towardMidpoint: number;
 	showLabel: boolean;
 	bip: boolean;
-	clockCentiseconds: number;
+	elapsedCentiseconds: number;
 };
 
 /**
@@ -447,7 +451,7 @@ function pictureMarks(sample: BipBopSample): PictureMarks {
 		towardMidpoint: bip ? alongSecond : CYCLE_FRAMES - alongSecond,
 		showLabel: sample.showBeat === true,
 		bip,
-		clockCentiseconds: nonNegativeCentiseconds(sample.clockCentiseconds)
+		elapsedCentiseconds: nonNegativeCentiseconds(sample.elapsedCentiseconds)
 	};
 }
 

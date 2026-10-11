@@ -1,4 +1,4 @@
-/** `MM:SS` or `HH:MM:SS` for one side of the playback clock. */
+/** `MM:SS` or `HH:MM:SS` for one side of the playback time. */
 function wholeSeconds(frame: number, fps: number): number {
 	if (!Number.isFinite(frame) || !Number.isFinite(fps) || fps <= 0 || frame <= 0) return 0;
 	return Math.floor(frame / fps);
@@ -9,9 +9,9 @@ function formatPart(frame: number, fps: number, withHours: boolean): string {
 	const seconds = total % 60;
 	const minutes = Math.floor(total / 60) % 60;
 	const hours = Math.floor(total / 3600);
-	const clock = `${pad2(minutes)}:${pad2(seconds)}`;
-	if (!withHours) return clock;
-	return `${pad2(hours)}:${clock}`;
+	const minutesAndSeconds = `${pad2(minutes)}:${pad2(seconds)}`;
+	if (!withHours) return minutesAndSeconds;
+	return `${pad2(hours)}:${minutesAndSeconds}`;
 }
 
 function pad2(value: number): string {

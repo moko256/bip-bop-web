@@ -3,7 +3,7 @@
 	import type { AudioCodec, VideoCodec } from 'mediabunny';
 	import BipBopStill from '$lib/bip-bop/BipBopStill.svelte';
 	import type { Snippet } from 'svelte';
-	import { browserPlaybackClock } from '$lib/playback/clock';
+	import { browserScheduler } from '$lib/playback/scheduler';
 	import type { PlaybackContentProps } from '$lib/playback/playback-content';
 	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
@@ -21,11 +21,11 @@
 		DEFAULT_FRAME_COUNT,
 		displayedFrameCount,
 		FPS_PRESETS,
-		initialFrameTimeline,
+		initialFrameEntry,
 		maxFrameCountForFps,
 		withCurrentFps,
 		withEnteredFrameCount
-	} from './frame-timeline';
+	} from './frame-entry';
 	import {
 		parseResolution,
 		defaultResolution,
@@ -52,21 +52,21 @@
 	let videoCodecChoice = $state<VideoCodec | null>(null);
 	let audioCodecChoice = $state<AudioCodec | null>(null);
 	let videoQuality = $state<VideoQualityLevel>(defaultVideoQuality);
-	let timeline = $state(initialFrameTimeline());
-	let fpsText = $state(String(initialFrameTimeline().currentFps));
-	let frameCountText = $state(String(displayedFrameCount(initialFrameTimeline())));
+	let frameEntry = $state(initialFrameEntry());
+	let fpsText = $state(String(initialFrameEntry().currentFps));
+	let frameCountText = $state(String(displayedFrameCount(initialFrameEntry())));
 	let downloadName = $state<string | null>(null);
-	let frameCountMax = $derived(maxFrameCountForFps(timeline.currentFps));
+	let frameCountMax = $derived(maxFrameCountForFps(frameEntry.currentFps));
 	const generation = new VideoGeneration(generateVideoUrl);
 	const encodeCheck = new EncodeCheck(canEncodeSelection);
-	const playbackTimeline = {
+	const playbackBounds = {
 		fps: DEFAULT_FPS,
 		maxFrame: DEFAULT_FRAME_COUNT
 	};
-	const playbackSide = videoPlayback(browserPlaybackClock(), playbackTimeline);
+	const playbackSide = videoPlayback(browserScheduler(), playbackBounds);
 	const session = new PlaybackSession({
-		maxFrame: playbackTimeline.maxFrame,
-		fps: playbackTimeline.fps,
+		maxFrame: playbackBounds.maxFrame,
+		fps: playbackBounds.fps,
 		connect: playbackSide.connect
 	});
 
@@ -106,9 +106,9 @@
 		const input = event.currentTarget as HTMLInputElement;
 		fpsText = input.value;
 		if (!input.validity.valid) return;
-		const next = withCurrentFps(timeline, input.valueAsNumber);
-		if (next === timeline) return;
-		timeline = next;
+		const next = withCurrentFps(frameEntry, input.valueAsNumber);
+		if (next === frameEntry) return;
+		frameEntry = next;
 		frameCountText = String(displayedFrameCount(next));
 		invalidate();
 	}
@@ -117,9 +117,9 @@
 		const input = event.currentTarget as HTMLInputElement;
 		frameCountText = input.value;
 		if (!input.validity.valid) return;
-		const next = withEnteredFrameCount(timeline, input.valueAsNumber);
-		if (next === timeline) return;
-		timeline = next;
+		const next = withEnteredFrameCount(frameEntry, input.valueAsNumber);
+		if (next === frameEntry) return;
+		frameEntry = next;
 		invalidate();
 	}
 
@@ -140,9 +140,9 @@
 			videoQuality,
 			extension: outputType
 		});
-		playbackTimeline.fps = fps;
-		playbackTimeline.maxFrame = frameCount;
-		session.setTimeline(frameCount, fps);
+		playbackBounds.fps = fps;
+		playbackBounds.maxFrame = frameCount;
+		session.setBounds(frameCount, fps);
 		session.reset();
 		generation.start({
 			outputType,
@@ -210,7 +210,7 @@
 						videoCodec,
 						audioCodec,
 						videoQuality,
-						fps: timeline.currentFps
+						fps: frameEntry.currentFps
 					}}
 				/>
 			{/if}
@@ -267,7 +267,7 @@
 					<PlaybackControls
 						playing={session.playing}
 						frame={session.frame}
-						maxFrame={session.maxFrame ?? playbackTimeline.maxFrame}
+						maxFrame={session.maxFrame ?? playbackBounds.maxFrame}
 						fps={session.fps}
 						onplaybackchange={(next) => session.setPlaying(next)}
 						onframechange={(next) => session.seek(next)}

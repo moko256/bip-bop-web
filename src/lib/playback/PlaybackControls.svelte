@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PlaybackContent } from './playback-content';
-	import PlaybackClock from './PlaybackClock.svelte';
+	import PlaybackTime from './PlaybackTime.svelte';
 	import PlaybackFrameField from './PlaybackFrameField.svelte';
 	import PlaybackSeekBar from './PlaybackSeekBar.svelte';
 	import PlaybackShell from './PlaybackShell.svelte';
@@ -29,7 +29,7 @@
 {#snippet transport()}
 	<PlaybackToggle {playing} {onplaybackchange} />
 	<PlaybackSeekBar {frame} {maxFrame} {onframechange} />
-	<PlaybackClock {frame} {maxFrame} {fps} />
+	<PlaybackTime {frame} {maxFrame} {fps} />
 	<PlaybackFrameField {frame} {maxFrame} {playing} {onframechange} />
 {/snippet}
 

@@ -1,7 +1,7 @@
 import { BipBopAudioRenderer, bipBopPreviewPictureMs, planBipBopPreviewCue } from './audio';
 
-/** Delay source shared with the canvas playback clock. */
-export type ToneClock = {
+/** delay and cancelDelay from the browser scheduler. */
+export type DelaySource = {
 	delay(ms: number, callback: () => void): number;
 	cancelDelay(id: number): void;
 };
@@ -20,8 +20,8 @@ export type ToneStop = {
  * The opening burst starts at least `outputLatency` ahead, so the device does
  * not drop it. When that push is needed, `pictureShiftMs` holds the picture
  * until one output lead after the burst: the sound plays, then the video begins.
- * `getElapsed` is the wall-clock media time, the same clock the canvas uses
- * before the picture hold.
+ * `getElapsed` is elapsed wall time on the preview clock, measured before the
+ * picture hold.
  * Returns a stop function that cancels the next wait and disconnects the burst
  * already in the graph. A paused context keeps that burst, and resume would
  * play it together with the burst scheduled for the new play click.
@@ -30,7 +30,7 @@ export function scheduleLiveTones(options: {
 	context: AudioContext;
 	elapsedMs: number;
 	getElapsed: () => number;
-	clock: ToneClock;
+	scheduler: DelaySource;
 	active: () => boolean;
 }): ToneStop {
 	let timer = 0;
@@ -49,7 +49,7 @@ export function scheduleLiveTones(options: {
 		silenceBurst = BipBopAudioRenderer(options.context, cue.delayMs, cue.frequencyHz);
 		const wallDelta = Math.max(0, options.getElapsed() - anchorMs);
 		const holdRemaining = Math.max(0, pictureShiftMs - wallDelta);
-		timer = options.clock.delay(cue.waitMs + holdRemaining, () => {
+		timer = options.scheduler.delay(cue.waitMs + holdRemaining, () => {
 			const picture = bipBopPreviewPictureMs(options.getElapsed(), pictureShiftMs, anchorMs);
 			schedule(picture);
 		});
@@ -58,7 +58,7 @@ export function scheduleLiveTones(options: {
 
 	const stop: ToneStop = Object.assign(
 		() => {
-			options.clock.cancelDelay(timer);
+			options.scheduler.cancelDelay(timer);
 			timer = 0;
 			silenceBurst();
 			silenceBurst = () => {};

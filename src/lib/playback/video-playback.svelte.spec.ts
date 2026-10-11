@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PlaybackSession } from './PlaybackSession.svelte';
-import type { PlaybackClock } from './clock';
+import type { Scheduler } from './scheduler';
 import { videoPlayback } from './video-playback';
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/frames';
 
-function manualClock() {
+function manualScheduler() {
 	let now = 0;
 	let nextId = 1;
 	const frames = new Map<number, () => void>();
-	const clock: PlaybackClock = {
+	const scheduler: Scheduler = {
 		now: () => now,
 		requestFrame(callback) {
 			const id = nextId++;
@@ -26,7 +26,7 @@ function manualClock() {
 		cancelDelay() {}
 	};
 	return {
-		clock,
+		scheduler,
 		flush() {
 			const queued = [...frames.values()];
 			frames.clear();
@@ -62,9 +62,9 @@ function fakeVideo() {
 
 describe('video playback', () => {
 	it('plays, seeks, and pauses the element from the session', () => {
-		const time = manualClock();
+		const time = manualScheduler();
 		const element = fakeVideo();
-		const side = videoPlayback(time.clock);
+		const side = videoPlayback(time.scheduler);
 		const session = new PlaybackSession({
 			maxFrame: BIP_BOP_MAX_FRAME,
 			fps: BIP_BOP_FPS,
@@ -86,10 +86,10 @@ describe('video playback', () => {
 		expect(session.playing).toBe(false);
 	});
 
-	it('reads the element clock with the timeline truncation and stops at ten seconds', () => {
-		const time = manualClock();
+	it('reads currentTime in frames and stops at ten seconds', () => {
+		const time = manualScheduler();
 		const element = fakeVideo();
-		const side = videoPlayback(time.clock);
+		const side = videoPlayback(time.scheduler);
 		const session = new PlaybackSession({
 			maxFrame: BIP_BOP_MAX_FRAME,
 			fps: BIP_BOP_FPS,
@@ -108,14 +108,14 @@ describe('video playback', () => {
 		expect(session.playing).toBe(false);
 	});
 
-	it('seeks with the timeline rate passed to the adapter', () => {
-		const time = manualClock();
+	it('seeks with the bounds rate passed to the adapter', () => {
+		const time = manualScheduler();
 		const element = fakeVideo();
-		const timeline = { fps: 24, maxFrame: 240 };
-		const side = videoPlayback(time.clock, timeline);
+		const bounds = { fps: 24, maxFrame: 240 };
+		const side = videoPlayback(time.scheduler, bounds);
 		const session = new PlaybackSession({
-			maxFrame: timeline.maxFrame,
-			fps: timeline.fps,
+			maxFrame: bounds.maxFrame,
+			fps: bounds.fps,
 			connect: side.connect
 		});
 		side.attach(element as unknown as HTMLVideoElement);
@@ -127,11 +127,11 @@ describe('video playback', () => {
 	});
 
 	it('restarts a finished element at the first frame', () => {
-		const time = manualClock();
+		const time = manualScheduler();
 		const element = fakeVideo();
 		element.ended = true;
 		element.currentTime = 10;
-		const side = videoPlayback(time.clock);
+		const side = videoPlayback(time.scheduler);
 		const session = new PlaybackSession({
 			maxFrame: BIP_BOP_MAX_FRAME,
 			fps: BIP_BOP_FPS,

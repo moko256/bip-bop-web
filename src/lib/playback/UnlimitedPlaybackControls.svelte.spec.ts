@@ -11,7 +11,7 @@ function boxOf(element: Element) {
 }
 
 describe('UnlimitedPlaybackControls', () => {
-	it('places play and the frame field under the cover, without a seek bar or a clock', async () => {
+	it('places play and the frame field under the cover, without a seek bar or a playback time', async () => {
 		const playback: boolean[] = [];
 		const frames: number[] = [];
 		render(UnlimitedPlaybackControls, {
