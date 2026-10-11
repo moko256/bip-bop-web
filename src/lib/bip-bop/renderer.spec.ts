@@ -518,6 +518,7 @@ describe('BipBopRenderer', () => {
 			'24FPS'
 		);
 		expect(half.context.fills.slice(0, 3)).toEqual(draw(30).context.fills.slice(0, 3));
+		expect(half.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
 	});
 
 	it('rounds arc, padding, text, and swatch geometry to whole pixels', () => {
@@ -571,7 +572,6 @@ describe('BipBopRenderer', () => {
 			frame: 12,
 			elapsedCentiseconds: 150,
 			cycleFraction: 0.5,
-			cycleLength: 1,
 			beat: 'bop',
 			showBeat: false
 		});
@@ -579,7 +579,6 @@ describe('BipBopRenderer', () => {
 			frame: 999999,
 			elapsedCentiseconds: 150,
 			cycleFraction: 0.5,
-			cycleLength: 1,
 			beat: 'bop',
 			showBeat: false
 		});
@@ -599,7 +598,6 @@ describe('BipBopRenderer', () => {
 			frame: 0,
 			elapsedCentiseconds: 0,
 			cycleFraction: 0,
-			cycleLength: 1,
 			beat: 'bip',
 			showBeat: false
 		});
@@ -607,7 +605,6 @@ describe('BipBopRenderer', () => {
 			frame: 4,
 			elapsedCentiseconds: 100,
 			cycleFraction: 0,
-			cycleLength: 1,
 			beat: 'bop',
 			showBeat: true
 		});
@@ -622,7 +619,6 @@ describe('BipBopRenderer', () => {
 			frame: 4,
 			elapsedCentiseconds: 20,
 			cycleFraction: 0.2,
-			cycleLength: 1,
 			beat: 'bip',
 			showBeat: false,
 			previewFps: 1000 / 17

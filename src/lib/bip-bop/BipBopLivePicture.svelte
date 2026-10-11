@@ -124,7 +124,6 @@
 			frame,
 			elapsedCentiseconds: picture.elapsedCentiseconds,
 			cycleFraction: picture.cycleFraction,
-			cycleLength: 1,
 			beat: picture.beat,
 			showBeat: picture.showBeat,
 			...(picture.previewFps === null ? {} : { previewFps: picture.previewFps })

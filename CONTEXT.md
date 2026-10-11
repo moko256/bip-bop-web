@@ -33,8 +33,8 @@ Centiseconds of elapsed time drawn in the corner of the picture. A video takes t
 _Avoid_: clock, playback time
 
 **Cycle fraction**:
-How far the picture is through the current second. Zero at the start of that second, approaching one at the end. A video takes it from the frame count modulo the frame rate. The web preview takes it from the preview clock modulo one second.
-_Avoid_: coefficient, phase, progress
+How far the picture is through the current second. Zero at the start of that second, approaching one at the end. A video takes it from the fractional part of the Timeline. The web preview takes it from the fractional part of the preview clock.
+_Avoid_: coefficient, phase, progress, cycle length
 
 **Playback**:
 The time position the user plays, pauses, and seeks in the page preview and the exported video.
