@@ -2,7 +2,7 @@ import type { AudioCodec } from 'mediabunny';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	VideoGeneration,
-	type GeneratePlayback,
+	type GenerateVideoUrl,
 	type VideoGenerationRequest
 } from './VideoGeneration.svelte';
 
@@ -25,10 +25,10 @@ const request: VideoGenerationRequest = {
 };
 
 describe('VideoGeneration', () => {
-	it('passes the current signal to generate and clears playback on cancel', async () => {
+	it('passes the current signal to generate and clears the video URL on cancel', async () => {
 		const pending = deferred<string>();
 		const signals: AbortSignal[] = [];
-		const generate: GeneratePlayback = (options) => {
+		const generate: GenerateVideoUrl = (options) => {
 			signals.push(options.signal);
 			return pending.promise;
 		};
@@ -44,18 +44,18 @@ describe('VideoGeneration', () => {
 			videoQuality: 'high'
 		});
 
-		expect(generation.playback).not.toBeNull();
+		expect(generation.videoUrl).not.toBeNull();
 		expect(signals).toHaveLength(1);
 
 		generation.cancel();
 
 		expect(signals[0]?.aborted).toBe(true);
-		expect(generation.playback).toBeNull();
+		expect(generation.videoUrl).toBeNull();
 	});
 
 	it('uses a fresh signal after cancel', () => {
 		const signals: AbortSignal[] = [];
-		const generate: GeneratePlayback = (options) => {
+		const generate: GenerateVideoUrl = (options) => {
 			signals.push(options.signal);
 			return Promise.resolve('blob:video');
 		};
@@ -77,7 +77,7 @@ describe('VideoGeneration', () => {
 		expect(signals[0]?.aborted).toBe(true);
 		expect(signals[1]?.aborted).toBe(false);
 		expect(signals[0]).not.toBe(signals[1]);
-		expect(generation.playback).not.toBeNull();
+		expect(generation.videoUrl).not.toBeNull();
 	});
 
 	it('aborts on dispose', () => {
@@ -101,7 +101,7 @@ describe('VideoGeneration', () => {
 		expect(signal?.aborted).toBe(true);
 	});
 
-	it('revokes the playback URL when a later start, cancel, or dispose drops it', async () => {
+	it('revokes the video URL when a later start, cancel, or dispose drops it', async () => {
 		const revoke = vi.spyOn(URL, 'revokeObjectURL');
 		const signals: AbortSignal[] = [];
 		const generation = new VideoGeneration((options) => {
@@ -111,18 +111,18 @@ describe('VideoGeneration', () => {
 
 		try {
 			generation.start(request);
-			await generation.playback;
+			await generation.videoUrl;
 			generation.start(request);
 			expect(signals[0]?.aborted).toBe(true);
 			expect(revoke).toHaveBeenCalledWith('blob:1');
 
-			await generation.playback;
+			await generation.videoUrl;
 			generation.cancel();
 			expect(revoke).toHaveBeenCalledWith('blob:2');
-			expect(generation.playback).toBeNull();
+			expect(generation.videoUrl).toBeNull();
 
 			generation.start(request);
-			await generation.playback;
+			await generation.videoUrl;
 			generation.dispose();
 			expect(revoke).toHaveBeenCalledWith('blob:3');
 		} finally {
@@ -143,7 +143,7 @@ describe('VideoGeneration', () => {
 			await Promise.resolve();
 
 			expect(revoke).toHaveBeenCalledWith('blob:late');
-			expect(generation.playback).toBeNull();
+			expect(generation.videoUrl).toBeNull();
 		} finally {
 			revoke.mockRestore();
 		}

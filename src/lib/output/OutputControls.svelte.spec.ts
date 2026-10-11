@@ -16,9 +16,9 @@ vi.mock('$app/state', () => ({
 	}
 }));
 
-const { generatePlayback, loadVideoOutput, loadVideoOutputActual, canEncodeSelection } = vi.hoisted(
+const { generateVideoUrl, loadVideoOutput, loadVideoOutputActual, canEncodeSelection } = vi.hoisted(
 	() => ({
-		generatePlayback: vi.fn(),
+		generateVideoUrl: vi.fn(),
 		loadVideoOutput: vi.fn(),
 		loadVideoOutputActual: {
 			current: undefined as
@@ -30,7 +30,7 @@ const { generatePlayback, loadVideoOutput, loadVideoOutputActual, canEncodeSelec
 
 vi.mock('./generate-video', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('./generate-video')>();
-	return { ...actual, generatePlayback };
+	return { ...actual, generateVideoUrl };
 });
 
 vi.mock('./encode-support', () => ({ canEncodeSelection }));
@@ -69,7 +69,7 @@ describe('OutputControls', () => {
 	let defaultMp4AudioCodec: string;
 
 	beforeEach(async () => {
-		generatePlayback.mockReset();
+		generateVideoUrl.mockReset();
 		canEncodeSelection.mockReset();
 		canEncodeSelection.mockResolvedValue(true);
 		loadVideoOutput.mockReset();
@@ -272,7 +272,7 @@ describe('OutputControls', () => {
 
 	it('places the generated video where the placeholder was', async () => {
 		const pending = deferred<string>();
-		generatePlayback.mockReturnValue(pending.promise);
+		generateVideoUrl.mockReturnValue(pending.promise);
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -316,7 +316,7 @@ describe('OutputControls', () => {
 		expect(document.elementFromPoint(bar.left + bar.width / 2, bar.top + bar.height / 2)).toBe(
 			progress
 		);
-		expect(generatePlayback).toHaveBeenCalledWith({
+		expect(generateVideoUrl).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
@@ -354,7 +354,7 @@ describe('OutputControls', () => {
 
 	it('fills the progress bar and returns to the placeholder when generation stops', async () => {
 		const pending = deferred<string>();
-		generatePlayback.mockReturnValue(pending.promise);
+		generateVideoUrl.mockReturnValue(pending.promise);
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -365,7 +365,7 @@ describe('OutputControls', () => {
 		const progress = page
 			.getByRole('progressbar', { name: m.generating_aria() })
 			.element() as HTMLProgressElement;
-		const reported = generatePlayback.mock.calls[0]?.[0].onProgress as (frames: number) => void;
+		const reported = generateVideoUrl.mock.calls[0]?.[0].onProgress as (frames: number) => void;
 		reported(1200);
 		await expect
 			.element(page.getByRole('progressbar', { name: m.generating_aria() }))
@@ -374,7 +374,7 @@ describe('OutputControls', () => {
 
 		await stop.click();
 
-		expect(generatePlayback.mock.calls[0]?.[0].signal.aborted).toBe(true);
+		expect(generateVideoUrl.mock.calls[0]?.[0].signal.aborted).toBe(true);
 		await expect.element(page.getByRole('img', { name: m.video_placeholder_aria() })).toBeVisible();
 		await expect
 			.element(page.getByRole('progressbar', { name: m.generating_aria() }))
@@ -390,7 +390,7 @@ describe('OutputControls', () => {
 		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
 		try {
-			generatePlayback.mockResolvedValue(videoUrl());
+			generateVideoUrl.mockResolvedValue(videoUrl());
 			render(OutputControls);
 
 			await page.getByRole('button', { name: 'mp4' }).click();
@@ -419,7 +419,7 @@ describe('OutputControls', () => {
 		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
 		try {
 			const url = videoUrl();
-			generatePlayback.mockResolvedValue(url);
+			generateVideoUrl.mockResolvedValue(url);
 			render(OutputControls);
 
 			await page.getByRole('button', { name: 'mp4' }).click();
@@ -464,7 +464,7 @@ describe('OutputControls', () => {
 		const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 		const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
 		try {
-			generatePlayback.mockResolvedValue(videoUrl());
+			generateVideoUrl.mockResolvedValue(videoUrl());
 			render(OutputControls);
 
 			await page.getByRole('button', { name: 'mp4' }).click();
@@ -495,7 +495,7 @@ describe('OutputControls', () => {
 	});
 
 	it('returns to the placeholder when the resolution changes', async () => {
-		generatePlayback.mockResolvedValue(videoUrl());
+		generateVideoUrl.mockResolvedValue(videoUrl());
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -515,7 +515,7 @@ describe('OutputControls', () => {
 		expect(Math.abs(host.clientHeight - canvas.clientHeight)).toBeLessThan(1);
 
 		await page.getByRole('button', { name: m.generate() }).click();
-		expect(generatePlayback).toHaveBeenLastCalledWith({
+		expect(generateVideoUrl).toHaveBeenLastCalledWith({
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
@@ -530,7 +530,7 @@ describe('OutputControls', () => {
 
 	it('drops an in-flight video when OutputType changes', async () => {
 		const pending = deferred<string>();
-		generatePlayback.mockReturnValue(pending.promise);
+		generateVideoUrl.mockReturnValue(pending.promise);
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -545,7 +545,7 @@ describe('OutputControls', () => {
 
 	it('shows the encoder error and keeps the placeholder', async () => {
 		const encodeError = 'This codec cannot be encoded';
-		generatePlayback.mockRejectedValue(new Error(encodeError));
+		generateVideoUrl.mockRejectedValue(new Error(encodeError));
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -601,13 +601,13 @@ describe('OutputControls', () => {
 		await fps.fill('0');
 		await expect.element(frames).toHaveValue(Math.round((1000 * 23.976) / 60));
 		await page.getByRole('button', { name: m.generate() }).click();
-		expect(generatePlayback).not.toHaveBeenCalled();
+		expect(generateVideoUrl).not.toHaveBeenCalled();
 
 		await fps.fill('60');
 		await expect.element(frames).toHaveValue(1000);
-		generatePlayback.mockResolvedValue(videoUrl());
+		generateVideoUrl.mockResolvedValue(videoUrl());
 		await page.getByRole('button', { name: m.generate() }).click();
-		expect(generatePlayback).toHaveBeenCalledWith({
+		expect(generateVideoUrl).toHaveBeenCalledWith({
 			outputType: 'mp4',
 			videoCodec: 'avc',
 			audioCodec: defaultMp4AudioCodec,
@@ -643,7 +643,7 @@ describe('OutputControls', () => {
 		await expect.element(encodeError).toHaveTextContent(m.error_encode_unsupported());
 		assertPrecedes(generate, encodeError);
 		assertPrecedes(encodeError, page.getByRole('button', { name: m.stop() }));
-		expect(generatePlayback).not.toHaveBeenCalled();
+		expect(generateVideoUrl).not.toHaveBeenCalled();
 
 		const next = deferred<boolean>();
 		canEncodeSelection.mockReturnValue(next.promise);

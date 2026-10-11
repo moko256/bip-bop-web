@@ -10,7 +10,7 @@
 	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { videoPlayback } from '$lib/playback/video-playback';
-	import { generatePlayback } from './generate-video';
+	import { generateVideoUrl } from './generate-video';
 	import { EncodeCheck } from './EncodeCheck.svelte';
 	import { canEncodeSelection } from './encode-support';
 	import { VideoGeneration } from './VideoGeneration.svelte';
@@ -57,7 +57,7 @@
 	let frameCountText = $state(String(displayedFrameCount(initialFrameTimeline())));
 	let downloadName = $state<string | null>(null);
 	let frameCountMax = $derived(maxFrameCountForFps(timeline.currentFps));
-	const generation = new VideoGeneration(generatePlayback);
+	const generation = new VideoGeneration(generateVideoUrl);
 	const encodeCheck = new EncodeCheck(canEncodeSelection);
 	const playbackTimeline = {
 		fps: DEFAULT_FPS,
@@ -248,8 +248,8 @@
 <OutputLayout>
 	{#snippet media()}
 		<div {@attach release}>
-			{#if generation.playback}
-				{#await generation.playback}
+			{#if generation.videoUrl}
+				{#await generation.videoUrl}
 					{@render placeholderViewport(loadingOverlay)}
 				{:then url}
 					{#snippet content({ onclick }: PlaybackContentProps)}
@@ -285,8 +285,8 @@
 		<form class="settings-form" onsubmit={onSubmit} onchange={invalidate}>
 			{@render outputTypeSelector()}
 			<div class="settings-actions">
-				{#if generation.playback}
-					{#await generation.playback}
+				{#if generation.videoUrl}
+					{#await generation.videoUrl}
 						{@render actions(true, null)}
 					{:then url}
 						{@render actions(false, url)}
