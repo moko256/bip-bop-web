@@ -13,7 +13,7 @@ export type VideoGenerationRequest = {
 	videoQuality: VideoQualityLevel;
 };
 
-export type GeneratePlayback = (
+export type GenerateVideoUrl = (
 	options: VideoGenerationRequest & {
 		signal: AbortSignal;
 		onProgress: (completedFrames: number) => void;
@@ -22,7 +22,8 @@ export type GeneratePlayback = (
 
 /** Start, cancel, and the default audio codec for one video OutputType. */
 export class VideoGeneration {
-	playback = $state<Promise<string> | null>(null);
+	/** Object URL for the in-flight or finished video. Null while idle. */
+	videoUrl = $state<Promise<string> | null>(null);
 	/** Frames written for the in-flight video. Zero while idle. */
 	completedFrames = $state(0);
 	/** Frame count requested for the in-flight video. Zero while idle. */
@@ -33,7 +34,7 @@ export class VideoGeneration {
 	private disposed = false;
 
 	constructor(
-		private readonly generate: GeneratePlayback,
+		private readonly generate: GenerateVideoUrl,
 		private readonly audioCodec: (
 			type: VideoOutputType
 		) => Promise<AudioCodec | null> = preferredAudioCodec
@@ -45,7 +46,7 @@ export class VideoGeneration {
 		const signal = this.abort.signal;
 		this.totalFrames = request.frameCount;
 		this.completedFrames = 0;
-		const playback = Promise.resolve(
+		const pendingUrl = Promise.resolve(
 			this.generate({
 				...request,
 				signal,
@@ -55,8 +56,8 @@ export class VideoGeneration {
 				}
 			})
 		).then((url) => this.hold(url, signal));
-		void playback.catch(() => undefined);
-		this.playback = playback;
+		void pendingUrl.catch(() => undefined);
+		this.videoUrl = pendingUrl;
 	}
 
 	cancel(): void {
@@ -77,11 +78,11 @@ export class VideoGeneration {
 		this.abort.abort();
 	}
 
-	/** Drop the current playback. Aborting revokes its blob URL. */
+	/** Drop the current video URL. Aborting revokes its blob URL. */
 	private disconnect(): void {
 		this.abort.abort();
 		this.abort = new AbortController();
-		this.playback = null;
+		this.videoUrl = null;
 		this.completedFrames = 0;
 		this.totalFrames = 0;
 	}

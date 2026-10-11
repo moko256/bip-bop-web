@@ -149,8 +149,8 @@ export async function preferredAudioCodec(type: VideoOutputType): Promise<AudioC
 	});
 }
 
-/** Blob URL for one generated video. The caller revokes it. */
-export async function generatePlayback(options: {
+/** Object URL for one generated video. The caller revokes it. */
+export async function generateVideoUrl(options: {
 	outputType: VideoOutputType;
 	videoCodec: VideoCodec;
 	audioCodec: AudioCodec;
