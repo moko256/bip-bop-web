@@ -8,7 +8,7 @@ export type PlaybackHost = {
 
 /**
  * What the session asks an adapter to do.
- * `place` moves the underlying position. While running, the canvas clock rebases
+ * `place` moves the underlying position. While running, the preview clock rebases
  * and the video element seeks. `atEnd` is true when the video has finished
  * before the frame count says so.
  */
@@ -20,7 +20,7 @@ export type PlaybackAdapter = {
 	dispose(): void;
 };
 
-/** Play, pause, and seek for one Timeline. Canvas and video are adapters behind this. */
+/** Play, pause, and seek. Canvas and video are adapters behind this. */
 export class PlaybackSession {
 	playing = $state(false);
 	frame = $state(0);
@@ -42,8 +42,8 @@ export class PlaybackSession {
 		});
 	}
 
-	/** Length and rate of the video currently shown in the transport. */
-	setTimeline(maxFrame: number, fps: number): void {
+	/** Playback bounds of the video currently shown. */
+	setBounds(maxFrame: number, fps: number): void {
 		if (this.disposed) return;
 		this.maxFrame = maxFrame;
 		this.fps = fps;

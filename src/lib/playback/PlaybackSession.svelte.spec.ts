@@ -90,7 +90,7 @@ describe('PlaybackSession', () => {
 		expect(adapter.events.at(-1)).toBe('stop');
 	});
 
-	it('seeks while paused and leaves the clock stopped', () => {
+	it('seeks while paused and leaves playback stopped', () => {
 		const adapter = recordingAdapter();
 		const session = sessionWith(adapter);
 
@@ -101,7 +101,7 @@ describe('PlaybackSession', () => {
 		expect(adapter.events).toEqual(['place:120']);
 	});
 
-	it('keeps playing when a seek stays inside the timeline', () => {
+	it('keeps playing when a seek stays inside the max frame', () => {
 		const adapter = recordingAdapter();
 		const session = sessionWith(adapter);
 		session.setPlaying(true);
@@ -125,7 +125,7 @@ describe('PlaybackSession', () => {
 		expect(adapter.events).toEqual(['start:0', 'stop', 'place:600']);
 	});
 
-	it('follows an advancing clock and stops at the last frame', () => {
+	it('follows an advancing scheduler and stops at the last frame', () => {
 		const adapter = recordingAdapter();
 		const session = sessionWith(adapter);
 		session.setPlaying(true);

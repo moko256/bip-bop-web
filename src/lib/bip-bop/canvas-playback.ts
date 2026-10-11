@@ -1,8 +1,8 @@
 import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
-import type { PlaybackClock } from '$lib/playback/clock';
+import type { Scheduler } from '$lib/playback/scheduler';
 import { bipBopPreviewPictureMs } from './audio';
 import {
-	clockCentisecondsAtMs,
+	elapsedCentisecondsAtMs,
 	previewBeat,
 	previewCycleFraction,
 	previewShowBeat,
@@ -14,15 +14,16 @@ import { scheduleLiveTones } from './tone-schedule';
 const FPS_SAMPLE_MS = 200;
 
 /**
- * Web preview picture clock.
+ * Preview clock.
  * `elapsedSeconds` is time since playback started. The frame counter lives on
- * the session and is not derived from this clock. `previewFps` is the rounded
+ * the session and does not set this clock. `previewFps` is the rounded
  * rate of the latest closed 200ms sample, or null until that sample closes.
  * The displayed rate stays put until the next sample closes.
  */
 export type CanvasPicture = {
 	elapsedSeconds: number;
-	clockCentiseconds: number;
+	/** Elapsed centiseconds taken from the preview clock. */
+	elapsedCentiseconds: number;
 	/** `elapsedSeconds % 1`, the fraction of the current second. */
 	cycleFraction: number;
 	/** Previous cycle fraction. Null until the first published sample. */
@@ -35,7 +36,7 @@ export type CanvasPicture = {
 export function createCanvasPicture(): CanvasPicture {
 	return {
 		elapsedSeconds: 0,
-		clockCentiseconds: 0,
+		elapsedCentiseconds: 0,
 		cycleFraction: 0,
 		previousCycleFraction: null,
 		beat: 'bip',
@@ -44,7 +45,7 @@ export function createCanvasPicture(): CanvasPicture {
 	};
 }
 
-/** Live Bip/Bop bursts while the canvas clock is running. */
+/** Live Bip/Bop bursts while the preview clock is running. */
 export type CanvasAudio = {
 	start(elapsedMs: number, getElapsed: () => number, onReady: () => void): void;
 	stop(): void;
@@ -67,7 +68,7 @@ function reportedOutputLatencyMs(context: AudioContext): number {
 	return latency * 1000;
 }
 
-export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
+export function liveCanvasAudio(scheduler: Scheduler): CanvasAudio {
 	let audio: AudioContext | null = null;
 	let active = false;
 	let generation = 0;
@@ -106,21 +107,21 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 			const run = (elapsedNow: number) => {
 				if (!current()) return;
 				cancelTones();
-				// Rebase the picture clock before reading outputLatency into the cue,
+				// Rebase the preview clock before reading outputLatency into the cue,
 				// so the opening hold is measured from this instant.
 				onReady();
 				const stop = scheduleLiveTones({
 					context,
 					elapsedMs: elapsedNow,
 					getElapsed,
-					clock,
+					scheduler,
 					active: current
 				});
 				pictureShiftMs = stop.pictureShiftMs;
 				cancelTones = stop;
 			};
 			// A 16ms burst scheduled while outputLatency is still 0 ends before
-			// the context clock jumps, so the opening Bip never reaches the speakers.
+			// the context time jumps, so the opening Bip never reaches the speakers.
 			const begin = () => {
 				if (!current()) return;
 				if (reportedOutputLatencyMs(context) > 0) {
@@ -132,7 +133,7 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 				let waiting = true;
 				const stopWaiting = () => {
 					waiting = false;
-					clock.cancelFrame(frameId);
+					scheduler.cancelFrame(frameId);
 					frameId = 0;
 				};
 				cancelLatencyWait = stopWaiting;
@@ -145,9 +146,9 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 						run(elapsedMs);
 						return;
 					}
-					frameId = clock.requestFrame(step);
+					frameId = scheduler.requestFrame(step);
 				};
-				frameId = clock.requestFrame(step);
+				frameId = scheduler.requestFrame(step);
 			};
 			const resumeAndBegin = () => {
 				if (!current()) return;
@@ -202,13 +203,13 @@ export function liveCanvasAudio(clock: PlaybackClock): CanvasAudio {
 }
 
 /**
- * Canvas clock adapter. Tones follow the wall clock. The picture waits out the opening burst.
+ * Canvas scheduler adapter. Tones follow the preview clock. The picture waits out the opening burst.
  * Each animation frame adds one to the frame counter. Elapsed time is time since
  * playback started, not `frame / fps`.
  */
 export function canvasPlayback(
-	clock: PlaybackClock,
-	audio: CanvasAudio = liveCanvasAudio(clock),
+	scheduler: Scheduler,
+	audio: CanvasAudio = liveCanvasAudio(scheduler),
 	picture: CanvasPicture = createCanvasPicture()
 ): (host: PlaybackHost) => PlaybackAdapter {
 	return (host) => {
@@ -223,7 +224,7 @@ export function canvasPlayback(
 		let disposed = false;
 
 		function elapsedNow(): number {
-			return clock.now() - startedAt;
+			return scheduler.now() - startedAt;
 		}
 
 		function publish(elapsedMs: number, previewFps: number | null): void {
@@ -234,7 +235,7 @@ export function canvasPlayback(
 			picture.cycleFraction = cycleFraction;
 			picture.beat = previewBeat(elapsedSeconds);
 			picture.elapsedSeconds = elapsedSeconds;
-			picture.clockCentiseconds = clockCentisecondsAtMs(elapsedMs);
+			picture.elapsedCentiseconds = elapsedCentisecondsAtMs(elapsedMs);
 			if (previewFps !== null) picture.previewFps = previewFps;
 		}
 
@@ -266,7 +267,7 @@ export function canvasPlayback(
 			}
 			sampledFrames = 0;
 			sampleStartedAt = null;
-			clock.cancelFrame(rafId);
+			scheduler.cancelFrame(rafId);
 			rafId = 0;
 			running = false;
 			audio.stop();
@@ -274,7 +275,7 @@ export function canvasPlayback(
 
 		function tick() {
 			if (disposed || !running) return;
-			const previewFps = sampleFps(clock.now());
+			const previewFps = sampleFps(scheduler.now());
 			frameCount += 1;
 			const pictureMs = bipBopPreviewPictureMs(
 				elapsedNow(),
@@ -285,20 +286,20 @@ export function canvasPlayback(
 			publish(pictureMs, previewFps);
 			host.advance(frameCount);
 			if (disposed || !running) return;
-			rafId = clock.requestFrame(tick);
+			rafId = scheduler.requestFrame(tick);
 		}
 
 		function arm(frame: number) {
 			stopClock();
 			frameCount = frame;
 			startElapsedMs = pictureElapsedMs;
-			startedAt = clock.now() - pictureElapsedMs;
+			startedAt = scheduler.now() - pictureElapsedMs;
 			running = true;
 			audio.start(pictureElapsedMs, elapsedNow, () => {
 				if (disposed || !running) return;
-				startedAt = clock.now() - pictureElapsedMs;
-				clock.cancelFrame(rafId);
-				rafId = clock.requestFrame(tick);
+				startedAt = scheduler.now() - pictureElapsedMs;
+				scheduler.cancelFrame(rafId);
+				rafId = scheduler.requestFrame(tick);
 			});
 		}
 

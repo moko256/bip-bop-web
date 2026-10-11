@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-import type { PlaybackClock } from '$lib/playback/clock';
+import type { Scheduler } from '$lib/playback/scheduler';
 import {
 	canvasPlayback,
 	createCanvasPicture,
@@ -8,14 +8,14 @@ import {
 	type CanvasAudio,
 	type CanvasPicture
 } from './canvas-playback';
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './timeline';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from './frames';
 
-function manualClock() {
+function manualScheduler() {
 	let now = 0;
 	let nextId = 1;
 	const frames = new Map<number, () => void>();
 	const delays = new Map<number, { at: number; callback: () => void }>();
-	const clock: PlaybackClock = {
+	const scheduler: Scheduler = {
 		now: () => now,
 		requestFrame(callback) {
 			const id = nextId++;
@@ -35,7 +35,7 @@ function manualClock() {
 		}
 	};
 	return {
-		clock,
+		scheduler,
 		flush() {
 			const due = [...delays.entries()].filter(([, timer]) => timer.at <= now);
 			for (const [id, timer] of due) {
@@ -145,8 +145,8 @@ describe('live canvas audio', () => {
 
 	it('schedules the opening Bip only after outputLatency is reported', () => {
 		useLatencyContext();
-		const time = manualClock();
-		const audio = liveCanvasAudio(time.clock);
+		const time = manualScheduler();
+		const audio = liveCanvasAudio(time.scheduler);
 		audio.start(
 			0,
 			() => 0,
@@ -168,8 +168,8 @@ describe('live canvas audio', () => {
 
 	it('does not play the opening Bip when playback stops before outputLatency is reported', () => {
 		useLatencyContext();
-		const time = manualClock();
-		const audio = liveCanvasAudio(time.clock);
+		const time = manualScheduler();
+		const audio = liveCanvasAudio(time.scheduler);
 		audio.start(
 			0,
 			() => 0,
@@ -187,8 +187,8 @@ describe('live canvas audio', () => {
 
 	it('suspends one AudioContext on pause and resumes it on the next play', async () => {
 		useLatencyContext();
-		const time = manualClock();
-		const audio = liveCanvasAudio(time.clock);
+		const time = manualScheduler();
+		const audio = liveCanvasAudio(time.scheduler);
 		audio.start(
 			0,
 			() => 0,
@@ -218,9 +218,9 @@ describe('live canvas audio', () => {
 
 	it('plays one burst on resume, not the queued second and a new start burst', async () => {
 		useLatencyContext();
-		const time = manualClock();
+		const time = manualScheduler();
 		let elapsed = 0;
-		const audio = liveCanvasAudio(time.clock);
+		const audio = liveCanvasAudio(time.scheduler);
 		audio.start(
 			0,
 			() => elapsed,
@@ -262,13 +262,13 @@ describe('live canvas audio', () => {
 
 describe('canvas playback', () => {
 	function playingSession(options?: { maxFrame?: number; picture?: CanvasPicture }) {
-		const time = manualClock();
+		const time = manualScheduler();
 		const audio = recordingAudio();
 		const picture = options?.picture ?? createCanvasPicture();
 		const session = new PlaybackSession({
 			maxFrame: options?.maxFrame,
 			fps: BIP_BOP_FPS,
-			connect: canvasPlayback(time.clock, audio, picture)
+			connect: canvasPlayback(time.scheduler, audio, picture)
 		});
 		return { time, audio, picture, session };
 	}
@@ -282,7 +282,7 @@ describe('canvas playback', () => {
 		time.flush();
 		expect(session.frame).toBe(1);
 		expect(session.playing).toBe(true);
-		expect(picture.clockCentiseconds).toBe(0);
+		expect(picture.elapsedCentiseconds).toBe(0);
 		expect(picture.cycleFraction).toBe(0);
 		expect(picture.beat).toBe('bip');
 		expect(picture.showBeat).toBe(true);
@@ -291,7 +291,7 @@ describe('canvas playback', () => {
 		time.advance(500);
 		expect(session.frame).toBe(2);
 		expect(picture.elapsedSeconds).toBe(0.5);
-		expect(picture.clockCentiseconds).toBe(50);
+		expect(picture.elapsedCentiseconds).toBe(50);
 		expect(picture.cycleFraction).toBeCloseTo(0.5);
 		expect(picture.showBeat).toBe(false);
 		expect(picture.previewFps).toBe(4);
@@ -299,7 +299,7 @@ describe('canvas playback', () => {
 		time.advance(500);
 		expect(session.frame).toBe(3);
 		expect(session.playing).toBe(false);
-		expect(picture.clockCentiseconds).toBe(100);
+		expect(picture.elapsedCentiseconds).toBe(100);
 		expect(picture.cycleFraction).toBe(0);
 		expect(picture.beat).toBe('bop');
 		expect(picture.showBeat).toBe(true);
@@ -307,23 +307,23 @@ describe('canvas playback', () => {
 		expect(audio.events.at(-1)).toBe('stop');
 	});
 
-	it('moves the frame counter without rebasing the picture clock', () => {
+	it('moves the frame counter without rebasing the preview clock', () => {
 		const { time, audio, picture, session } = playingSession();
 		session.setPlaying(true);
 		time.flush();
 		time.advance(1000);
 		expect(session.frame).toBe(2);
-		expect(picture.clockCentiseconds).toBe(100);
+		expect(picture.elapsedCentiseconds).toBe(100);
 
 		session.seek(120);
 		expect(session.frame).toBe(120);
-		expect(picture.clockCentiseconds).toBe(100);
+		expect(picture.elapsedCentiseconds).toBe(100);
 		expect(audio.events).toEqual(['stop', 'start:0']);
 
 		time.flush();
 		expect(session.playing).toBe(true);
 		expect(session.frame).toBe(121);
-		expect(picture.clockCentiseconds).toBe(100);
+		expect(picture.elapsedCentiseconds).toBe(100);
 		expect(audio.events).toEqual(['stop', 'start:0']);
 	});
 
@@ -333,12 +333,12 @@ describe('canvas playback', () => {
 		session.setPlaying(true);
 		time.advance(10_000);
 		expect(session.frame).toBe(1);
-		expect(picture.clockCentiseconds).toBe(1000);
+		expect(picture.elapsedCentiseconds).toBe(1000);
 		expect(session.playing).toBe(true);
 
 		time.advance(1000);
 		expect(session.frame).toBe(2);
-		expect(picture.clockCentiseconds).toBe(1100);
+		expect(picture.elapsedCentiseconds).toBe(1100);
 		expect(picture.previewFps).toBe(2);
 		expect(session.playing).toBe(true);
 	});
@@ -363,35 +363,35 @@ describe('canvas playback', () => {
 		expect(picture.previewFps).toBe(10);
 	});
 
-	it('continues the picture clock after a pause and drops the paused gap from fps', () => {
+	it('continues the preview clock after a pause and drops the paused gap from fps', () => {
 		const { time, audio, picture, session } = playingSession();
 
 		session.setPlaying(true);
 		time.flush();
 		time.advance(200);
 		expect(picture.previewFps).toBe(10);
-		expect(picture.clockCentiseconds).toBe(20);
+		expect(picture.elapsedCentiseconds).toBe(20);
 
 		session.setPlaying(false);
 		time.advance(5000);
 		expect(session.frame).toBe(2);
 		expect(picture.previewFps).toBe(10);
-		expect(picture.clockCentiseconds).toBe(20);
+		expect(picture.elapsedCentiseconds).toBe(20);
 
 		session.setPlaying(true);
 		expect(audio.events.at(-1)).toBe('start:200');
 		time.flush();
 		expect(session.frame).toBe(3);
 		expect(picture.previewFps).toBe(10);
-		expect(picture.clockCentiseconds).toBe(20);
+		expect(picture.elapsedCentiseconds).toBe(20);
 
 		time.advance(200);
 		expect(session.frame).toBe(4);
 		expect(picture.previewFps).toBe(10);
-		expect(picture.clockCentiseconds).toBe(40);
+		expect(picture.elapsedCentiseconds).toBe(40);
 	});
 
-	it('keeps a paused seek on the frame without starting audio or the clock', () => {
+	it('keeps a paused seek on the frame without starting audio or the preview clock', () => {
 		const { time, audio, picture, session } = playingSession({
 			maxFrame: BIP_BOP_MAX_FRAME
 		});
@@ -402,7 +402,7 @@ describe('canvas playback', () => {
 		expect(session.playing).toBe(false);
 		expect(session.frame).toBe(120);
 		expect(picture.elapsedSeconds).toBe(0);
-		expect(picture.clockCentiseconds).toBe(0);
+		expect(picture.elapsedCentiseconds).toBe(0);
 		expect(audio.events).toEqual([]);
 	});
 });

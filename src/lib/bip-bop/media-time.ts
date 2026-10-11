@@ -1,4 +1,4 @@
-import { BIP_BOP_FPS } from './timeline';
+import { BIP_BOP_FPS } from './frames';
 
 /** Even seconds are Bip. Odd seconds are Bop. */
 export type PictureBeat = 'bip' | 'bop';
@@ -9,7 +9,8 @@ export type PictureBeat = 'bip' | 'bop';
  */
 export type FramePicture = {
 	frame: number;
-	clockCentiseconds: number;
+	/** Corner digits. A video uses the frame. The web preview uses the preview clock. */
+	elapsedCentiseconds: number;
 	/**
 	 * Fraction of the current second, in the same units as {@link FramePicture.cycleLength}.
 	 * `cycleFraction / cycleLength` runs from 0 at the start of the second up to,
@@ -47,18 +48,18 @@ export function elapsedSecondsAtFrame(frame: number, fps: number): number {
 }
 
 /**
- * Corner-clock centiseconds for one video frame.
+ * Elapsed centiseconds for one video frame.
  * At 60 fps the count is `floor(frame * 100 / 60)`. Any other rate uses
  * `floor((frame / fps) * 100)`.
  */
-export function clockCentisecondsAtFrame(frame: number, fps: number): number {
+export function elapsedCentisecondsAtFrame(frame: number, fps: number): number {
 	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
 	if (fps === BIP_BOP_FPS) return Math.floor((Math.trunc(frame) * 100) / BIP_BOP_FPS);
 	return Math.max(0, Math.floor((frame / fps) * 100));
 }
 
-/** Corner-clock centiseconds for a live clock. Truncates; does not round. */
-export function clockCentisecondsAtMs(elapsedMs: number): number {
+/** Elapsed centiseconds from the preview clock. Truncates; does not round. */
+export function elapsedCentisecondsAtMs(elapsedMs: number): number {
 	if (!Number.isFinite(elapsedMs) || elapsedMs <= 0) return 0;
 	return Math.floor(elapsedMs / 10);
 }
@@ -78,7 +79,7 @@ export function beatAtSecond(second: number): PictureBeat {
 /**
  * Picture timing for one video frame.
  * The cycle fraction is {@link videoCycleFraction}. The label is drawn when that
- * fraction is 0. Elapsed time on the clock stays `frame / fps`.
+ * fraction is 0. Elapsed time stays `frame / fps`.
  */
 export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	const index = Number.isFinite(frame) ? frame : 0;
@@ -87,7 +88,7 @@ export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	const second = index > 0 ? Math.floor(index / rate) : 0;
 	return {
 		frame: index,
-		clockCentiseconds: clockCentisecondsAtFrame(index, rate),
+		elapsedCentiseconds: elapsedCentisecondsAtFrame(index, rate),
 		cycleFraction,
 		cycleLength: rate,
 		beat: beatAtSecond(second),
@@ -95,7 +96,7 @@ export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	};
 }
 
-/** Fractional second of a live clock. `elapsedSeconds % 1`. */
+/** Fractional second of the preview clock. `elapsedSeconds % 1`. */
 export function previewCycleFraction(elapsedSeconds: number): number {
 	if (!Number.isFinite(elapsedSeconds) || elapsedSeconds <= 0) return 0;
 	return elapsedSeconds % 1;

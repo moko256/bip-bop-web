@@ -11,13 +11,13 @@
 		fps: number;
 	} = $props();
 
-	let clock = $derived(formatPlaybackTime(frame, maxFrame, fps));
+	let time = $derived(formatPlaybackTime(frame, maxFrame, fps));
 </script>
 
-<span class="clock">{clock}</span>
+<span class="time">{time}</span>
 
 <style>
-	.clock {
+	.time {
 		flex: 0 0 auto;
 		margin: 0;
 		font-family: monospace;

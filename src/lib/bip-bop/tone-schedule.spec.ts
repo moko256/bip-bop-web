@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { scheduleLiveTones, type ToneClock } from './tone-schedule';
+import { scheduleLiveTones, type DelaySource } from './tone-schedule';
 
 type StartedTone = {
 	frequencyHz: number;
@@ -40,11 +40,11 @@ class FakeAudioContext {
 	}
 }
 
-function manualClock() {
+function manualScheduler() {
 	let now = 0;
 	let nextId = 1;
 	const delays = new Map<number, { at: number; callback: () => void }>();
-	const clock: ToneClock = {
+	const scheduler: DelaySource = {
 		delay(ms, callback) {
 			const id = nextId++;
 			delays.set(id, { at: now + ms, callback });
@@ -55,7 +55,7 @@ function manualClock() {
 		}
 	};
 	return {
-		clock,
+		scheduler,
 		advance(ms: number) {
 			now += ms;
 			const due = [...delays.entries()].filter(([, timer]) => timer.at <= now);
@@ -69,14 +69,14 @@ function manualClock() {
 
 describe('scheduleLiveTones', () => {
 	it('plays Bip immediately and Bop on the next second', () => {
-		const time = manualClock();
+		const time = manualScheduler();
 		const context = new FakeAudioContext();
 		let elapsed = 0;
 		scheduleLiveTones({
 			context: context as unknown as AudioContext,
 			elapsedMs: 0,
 			getElapsed: () => elapsed,
-			clock: time.clock,
+			scheduler: time.scheduler,
 			active: () => true
 		});
 
@@ -94,13 +94,13 @@ describe('scheduleLiveTones', () => {
 		expect((next?.stop ?? 0) - (next?.start ?? 0)).toBeCloseTo(0.016);
 	});
 
-	it('schedules the following even second when the clock is already past a burst', () => {
+	it('schedules the following even second when the preview clock is already past a burst', () => {
 		const context = new FakeAudioContext();
 		scheduleLiveTones({
 			context: context as unknown as AudioContext,
 			elapsedMs: 1016,
 			getElapsed: () => 1016,
-			clock: manualClock().clock,
+			scheduler: manualScheduler().scheduler,
 			active: () => true
 		});
 
@@ -109,7 +109,7 @@ describe('scheduleLiveTones', () => {
 	});
 
 	it('plays the opening burst one outputLatency ahead and holds the next wait', () => {
-		const time = manualClock();
+		const time = manualScheduler();
 		const context = new FakeAudioContext();
 		context.outputLatency = 0.04;
 		let elapsed = 0;
@@ -117,7 +117,7 @@ describe('scheduleLiveTones', () => {
 			context: context as unknown as AudioContext,
 			elapsedMs: 0,
 			getElapsed: () => elapsed,
-			clock: time.clock,
+			scheduler: time.scheduler,
 			active: () => true
 		});
 
@@ -136,13 +136,13 @@ describe('scheduleLiveTones', () => {
 	});
 
 	it('cancels the wait for the next burst', () => {
-		const time = manualClock();
+		const time = manualScheduler();
 		const context = new FakeAudioContext();
 		const stop = scheduleLiveTones({
 			context: context as unknown as AudioContext,
 			elapsedMs: 0,
 			getElapsed: () => 16,
-			clock: time.clock,
+			scheduler: time.scheduler,
 			active: () => true
 		});
 

@@ -31,7 +31,7 @@ describe('planBipBopTone', () => {
 		});
 	});
 
-	it('uses the current second when the clock is already on its boundary', () => {
+	it('uses the current second when the preview clock is already on a whole second', () => {
 		expect(planBipBopTone(2000).frequencyHz).toBe(1500);
 		expect(planBipBopTone(2000).delayMs).toBe(0);
 	});

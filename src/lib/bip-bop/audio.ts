@@ -54,7 +54,7 @@ export type BipBopPreviewCue = {
 	/** Milliseconds from now until the graph starts the burst. Never sooner than the output lead. */
 	delayMs: number;
 	frequencyHz: number;
-	/** Milliseconds from now until this burst's second has finished on the picture clock. */
+	/** Milliseconds from now until this burst's second has finished on the preview clock. */
 	waitMs: number;
 	/**
 	 * Milliseconds the picture waits at playback start.

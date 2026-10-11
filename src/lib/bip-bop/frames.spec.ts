@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BIP_BOP_MAX_FRAME, frameAtElapsedMs, frameAtSeconds, secondsAtFrame } from './timeline';
+import { BIP_BOP_MAX_FRAME, frameAtElapsedMs, frameAtSeconds, secondsAtFrame } from './frames';
 
 describe('frameAtElapsedMs', () => {
 	it('counts 60 frames per second, truncating a partial frame', () => {

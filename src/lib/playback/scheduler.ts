@@ -1,5 +1,5 @@
-/** Time source for a playback adapter. Production uses the browser. Tests move time themselves. */
-export type PlaybackClock = {
+/** Browser scheduler for a playback adapter. Production uses the browser. Tests move time themselves. */
+export type Scheduler = {
 	now(): number;
 	requestFrame(callback: () => void): number;
 	cancelFrame(id: number): void;
@@ -7,7 +7,7 @@ export type PlaybackClock = {
 	cancelDelay(id: number): void;
 };
 
-export function browserPlaybackClock(): PlaybackClock {
+export function browserScheduler(): Scheduler {
 	return {
 		now: () => Date.now(),
 		requestFrame: (callback) => requestAnimationFrame(() => callback()),

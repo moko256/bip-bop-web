@@ -154,9 +154,9 @@ describe('createBipBopDimensions', () => {
 		expect(dimensions.frameCountY).toBe(557);
 		expect(dimensions.labelFontSize).toBe(90);
 		expect(dimensions.labelY).toBe(523);
-		expect(dimensions.clockFontSize).toBe(68);
-		expect(dimensions.clockX).toBe(34);
-		expect(dimensions.clockY).toBe(34);
+		expect(dimensions.elapsedFontSize).toBe(68);
+		expect(dimensions.elapsedX).toBe(34);
+		expect(dimensions.elapsedY).toBe(34);
 		expect(dimensions.colorBarSize).toBe(68);
 		expect(dimensions.colorBarX).toBe(34);
 		expect(dimensions.colorBarY).toBe(978);
@@ -175,8 +175,8 @@ describe('createBipBopDimensions', () => {
 		expect(portrait.frameCountY).toBe(651);
 		expect(portrait.labelFontSize).toBe(60);
 		expect(portrait.labelY).toBe(629);
-		expect(portrait.clockX).toBe(23);
-		expect(portrait.clockY).toBe(23);
+		expect(portrait.elapsedX).toBe(23);
+		expect(portrait.elapsedY).toBe(23);
 		expect(portrait.colorBarSize).toBe(45);
 		expect(portrait.colorBarX).toBe(23);
 		expect(portrait.colorBarY).toBe(1212);
@@ -197,9 +197,9 @@ describe('createBipBopDimensions', () => {
 			frameCountY: 1017,
 			labelFontSize: 84,
 			labelY: 985,
-			clockFontSize: 63,
-			clockX: 31,
-			clockY: 31,
+			elapsedFontSize: 63,
+			elapsedX: 31,
+			elapsedY: 31,
 			overlayFontSize: 32,
 			colorBarSize: 63,
 			colorBarX: 31,
@@ -220,9 +220,9 @@ describe('createBipBopDimensions', () => {
 			frameCountY: 41,
 			labelFontSize: 7,
 			labelY: 39,
-			clockFontSize: 5,
-			clockX: 3,
-			clockY: 3,
+			elapsedFontSize: 5,
+			elapsedX: 3,
+			elapsedY: 3,
 			overlayFontSize: 3,
 			colorBarSize: 5,
 			colorBarX: 3,
@@ -354,7 +354,7 @@ describe('BipBopRenderer', () => {
 		expect(atOneTwenty[1]?.fill).toBe('#000000');
 	});
 
-	it('ping-pongs field and clock colors, and switches circle and sector colors each second', () => {
+	it('ping-pongs field and elapsed-text colors, and switches circle and sector colors each second', () => {
 		const atHalf = draw(30);
 		const atSecond = draw(60);
 		const atNextHalf = draw(90);
@@ -371,14 +371,14 @@ describe('BipBopRenderer', () => {
 		expect(atReturn.context.texts.find((text) => text.align === 'left')?.fill).toBe('#ffffff');
 	});
 
-	it('draws the counter, the labels, the clock, and the corner in JetBrains Mono', () => {
+	it('draws the counter, the labels, the elapsed centiseconds, and the corner in JetBrains Mono', () => {
 		const { context, dimensions } = draw(0);
 		const counter = `${dimensions.frameFontSize}px "JetBrains Mono", monospace`;
 		const label = `${dimensions.labelFontSize}px "JetBrains Mono", monospace`;
-		const clock = `${dimensions.clockFontSize}px "JetBrains Mono", monospace`;
+		const elapsed = `${dimensions.elapsedFontSize}px "JetBrains Mono", monospace`;
 		const corner = `${dimensions.overlayFontSize}px "JetBrains Mono", monospace`;
 
-		expect(context.fonts).toEqual([counter, label, clock, corner]);
+		expect(context.fonts).toEqual([counter, label, elapsed, corner]);
 	});
 
 	it('requests the font subset as one precomposed string', () => {
@@ -415,16 +415,16 @@ describe('BipBopRenderer', () => {
 
 	it('draws elapsed time at the top-left as HH:MM:SS.CC', () => {
 		const { context, dimensions } = draw(0);
-		const clock = context.texts.find((text) => text.align === 'left');
+		const elapsed = context.texts.find((text) => text.align === 'left');
 
-		expect(clock).toEqual({
+		expect(elapsed).toEqual({
 			text: '00:00:00.00',
 			baseline: 'top',
 			align: 'left',
 			fill: '#ffffff',
-			x: dimensions.clockX,
-			y: dimensions.clockY,
-			font: `${dimensions.clockFontSize}px "JetBrains Mono", monospace`
+			x: dimensions.elapsedX,
+			y: dimensions.elapsedY,
+			font: `${dimensions.elapsedFontSize}px "JetBrains Mono", monospace`
 		});
 		expect(draw(1).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.01');
 		expect(draw(30).context.texts.find((text) => text.align === 'left')?.text).toBe('00:00:00.50');
@@ -444,8 +444,8 @@ describe('BipBopRenderer', () => {
 				baseline: 'top',
 				align: 'right',
 				fill: '#ffffff',
-				x: 1920 - landscape.dimensions.clockX,
-				y: landscape.dimensions.clockY,
+				x: 1920 - landscape.dimensions.elapsedX,
+				y: landscape.dimensions.elapsedY,
 				font: '34px "JetBrains Mono", monospace'
 			}
 		]);
@@ -455,8 +455,8 @@ describe('BipBopRenderer', () => {
 				baseline: 'top',
 				align: 'right',
 				fill: '#ffffff',
-				x: 720 - portrait.dimensions.clockX,
-				y: portrait.dimensions.clockY,
+				x: 720 - portrait.dimensions.elapsedX,
+				y: portrait.dimensions.elapsedY,
 				font: '23px "JetBrains Mono", monospace'
 			}
 		]);
@@ -476,8 +476,8 @@ describe('BipBopRenderer', () => {
 			baseline: 'top' as const,
 			align: 'right' as const,
 			fill: '#000000',
-			x: 1920 - dimensions.clockX,
-			y: dimensions.clockY + dimensions.overlayFontSize * index,
+			x: 1920 - dimensions.elapsedX,
+			y: dimensions.elapsedY + dimensions.overlayFontSize * index,
 			font: '34px "JetBrains Mono", monospace'
 		});
 
@@ -538,9 +538,9 @@ describe('BipBopRenderer', () => {
 				frameCountY: 45.6,
 				labelFontSize: 12.5,
 				labelY: 30.2,
-				clockFontSize: 10.4,
-				clockX: 3.5,
-				clockY: 3.4,
+				elapsedFontSize: 10.4,
+				elapsedX: 3.5,
+				elapsedY: 3.4,
 				overlayFontSize: 5.5,
 				colorBarSize: 10.6,
 				colorBarX: 3.5,
@@ -566,10 +566,10 @@ describe('BipBopRenderer', () => {
 		expect(context.rects[2]).toMatchObject({ x: 15, y: 66, w: 11, h: 11 });
 	});
 
-	it('draws the supplied clock and leaves the frame counter out of the motion', () => {
+	it('draws the supplied elapsed centiseconds and leaves the frame counter out of the motion', () => {
 		const half = drawSample({
 			frame: 12,
-			clockCentiseconds: 150,
+			elapsedCentiseconds: 150,
 			cycleFraction: 0.5,
 			cycleLength: 1,
 			beat: 'bop',
@@ -577,17 +577,17 @@ describe('BipBopRenderer', () => {
 		});
 		const sameMotion = drawSample({
 			frame: 999999,
-			clockCentiseconds: 150,
+			elapsedCentiseconds: 150,
 			cycleFraction: 0.5,
 			cycleLength: 1,
 			beat: 'bop',
 			showBeat: false
 		});
-		const clock = half.context.texts.find((text) => text.align === 'left');
+		const elapsed = half.context.texts.find((text) => text.align === 'left');
 
 		expect(half.context.texts.map((text) => text.text)).toContain('000012');
 		expect(half.context.texts.map((text) => text.text)).not.toContain('Bop!');
-		expect(clock?.text).toBe('00:00:01.50');
+		expect(elapsed?.text).toBe('00:00:01.50');
 		expect(half.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
 		expect(sameMotion.context.arcs[1]?.start).toBeCloseTo(radiansFromTop(181));
 		expect(sameMotion.context.fills.slice(0, 3)).toEqual(half.context.fills.slice(0, 3));
@@ -597,7 +597,7 @@ describe('BipBopRenderer', () => {
 	it('draws Bip or Bop only when the caller asks, on the supplied beat', () => {
 		const hidden = drawSample({
 			frame: 0,
-			clockCentiseconds: 0,
+			elapsedCentiseconds: 0,
 			cycleFraction: 0,
 			cycleLength: 1,
 			beat: 'bip',
@@ -605,7 +605,7 @@ describe('BipBopRenderer', () => {
 		});
 		const bop = drawSample({
 			frame: 4,
-			clockCentiseconds: 100,
+			elapsedCentiseconds: 100,
 			cycleFraction: 0,
 			cycleLength: 1,
 			beat: 'bop',
@@ -620,7 +620,7 @@ describe('BipBopRenderer', () => {
 	it('draws the rounded preview frame rate under the resolution', () => {
 		const { context, dimensions } = drawSample({
 			frame: 4,
-			clockCentiseconds: 20,
+			elapsedCentiseconds: 20,
 			cycleFraction: 0.2,
 			cycleLength: 1,
 			beat: 'bip',
@@ -631,8 +631,8 @@ describe('BipBopRenderer', () => {
 
 		expect(corner.map((text) => text.text)).toEqual(['1920x1080', '59FPS']);
 		expect(corner[1]).toMatchObject({
-			x: 1920 - dimensions.clockX,
-			y: dimensions.clockY + dimensions.overlayFontSize
+			x: 1920 - dimensions.elapsedX,
+			y: dimensions.elapsedY + dimensions.overlayFontSize
 		});
 	});
 

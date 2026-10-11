@@ -1,32 +1,32 @@
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/timeline';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/frames';
 import { untrack } from 'svelte';
-import type { PlaybackClock } from './clock';
+import type { Scheduler } from './scheduler';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
 
-export type VideoPlaybackTimeline = {
+export type PlaybackBounds = {
 	fps: number;
 	maxFrame: number;
 };
 
 /**
- * Video element adapter. The element owns the clock.
+ * Video element adapter. The element owns currentTime.
  * `attach` binds whichever element the page mounted.
  */
 export function videoPlayback(
-	clock: PlaybackClock,
-	timeline: VideoPlaybackTimeline = { fps: BIP_BOP_FPS, maxFrame: BIP_BOP_MAX_FRAME }
+	scheduler: Scheduler,
+	bounds: PlaybackBounds = { fps: BIP_BOP_FPS, maxFrame: BIP_BOP_MAX_FRAME }
 ): {
 	connect: (host: PlaybackHost) => PlaybackAdapter;
 	attach: (video: HTMLVideoElement) => () => void;
 } {
 	function frameAt(seconds: number): number {
 		if (!Number.isFinite(seconds) || seconds <= 0) return 0;
-		return Math.min(timeline.maxFrame, Math.floor((seconds * 1000 * timeline.fps) / 1000));
+		return Math.min(bounds.maxFrame, Math.floor((seconds * 1000 * bounds.fps) / 1000));
 	}
 
 	function secondsAt(frame: number): number {
 		if (!Number.isFinite(frame) || frame <= 0) return 0;
-		return frame / timeline.fps;
+		return frame / bounds.fps;
 	}
 	let element: HTMLVideoElement | undefined;
 	let detachListeners = () => {};
@@ -35,7 +35,7 @@ export function videoPlayback(
 	let host: PlaybackHost | undefined;
 
 	function stopRaf() {
-		clock.cancelFrame(raf);
+		scheduler.cancelFrame(raf);
 		raf = 0;
 	}
 
@@ -44,13 +44,13 @@ export function videoPlayback(
 		if (!video || !host || !running) return;
 		host.advance(frameAt(video.currentTime));
 		if (!running) return;
-		raf = clock.requestFrame(tick);
+		raf = scheduler.requestFrame(tick);
 	}
 
 	function startRaf() {
 		stopRaf();
 		if (!running) return;
-		raf = clock.requestFrame(tick);
+		raf = scheduler.requestFrame(tick);
 	}
 
 	return {

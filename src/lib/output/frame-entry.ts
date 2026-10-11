@@ -12,15 +12,16 @@ export function maxFrameCountForFps(fps: number): number {
 
 /**
  * The frame count the user entered, the fps at that moment, and the fps shown now.
+ * The shown count keeps the Timeline when the fps changes.
  * Switching back to the entry fps restores the entered count without rounding.
  */
-export type FrameTimeline = {
+export type FrameEntry = {
 	enteredFrameCount: number;
 	entryFps: number;
 	currentFps: number;
 };
 
-export function initialFrameTimeline(): FrameTimeline {
+export function initialFrameEntry(): FrameEntry {
 	return {
 		enteredFrameCount: DEFAULT_FRAME_COUNT,
 		entryFps: DEFAULT_FPS,
@@ -28,27 +29,27 @@ export function initialFrameTimeline(): FrameTimeline {
 	};
 }
 
-/** Frame count shown for this timeline. Not clamped to the one-hour field max. */
-export function displayedFrameCount(timeline: FrameTimeline): number {
-	if (timeline.currentFps === timeline.entryFps) return timeline.enteredFrameCount;
-	return Math.round((timeline.enteredFrameCount * timeline.currentFps) / timeline.entryFps);
+/** Frame count shown for this entry. Not clamped to the one-hour field max. */
+export function displayedFrameCount(entry: FrameEntry): number {
+	if (entry.currentFps === entry.entryFps) return entry.enteredFrameCount;
+	return Math.round((entry.enteredFrameCount * entry.currentFps) / entry.entryFps);
 }
 
 /** Keep the entered count and move the current fps. */
-export function withCurrentFps(timeline: FrameTimeline, fps: number): FrameTimeline {
-	if (fps === timeline.currentFps) return timeline;
-	return { ...timeline, currentFps: fps };
+export function withCurrentFps(entry: FrameEntry, fps: number): FrameEntry {
+	if (fps === entry.currentFps) return entry;
+	return { ...entry, currentFps: fps };
 }
 
 /**
  * A user-entered frame count becomes the new baseline at the current fps.
  * The same count as the one on screen leaves the baseline alone.
  */
-export function withEnteredFrameCount(timeline: FrameTimeline, frameCount: number): FrameTimeline {
-	if (frameCount === displayedFrameCount(timeline)) return timeline;
+export function withEnteredFrameCount(entry: FrameEntry, frameCount: number): FrameEntry {
+	if (frameCount === displayedFrameCount(entry)) return entry;
 	return {
 		enteredFrameCount: frameCount,
-		entryFps: timeline.currentFps,
-		currentFps: timeline.currentFps
+		entryFps: entry.currentFps,
+		currentFps: entry.currentFps
 	};
 }

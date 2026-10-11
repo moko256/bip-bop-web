@@ -14,11 +14,23 @@ _Avoid_: output mode, media type
 
 **Timeline**:
 Media time of an exported video: the frame count divided by the frame rate.
-_Avoid_: duration, runtime, play time
+_Avoid_: duration, runtime, play time, frame entry, playback bounds
+
+**Frame entry**:
+The frame count the user typed, remembered with the frame rate of that entry. A later frame rate shows the count that keeps the same Timeline.
+_Avoid_: timeline, duration
+
+**Playback bounds**:
+The last frame and the frame rate of the video in Playback.
+_Avoid_: timeline, duration
 
 **Preview clock**:
 Time since web preview playback started. The frame counter counts animation frames and does not set this clock.
-_Avoid_: frame time, media time
+_Avoid_: frame time, media time, scheduler, elapsed centiseconds, playback time
+
+**Elapsed centiseconds**:
+Centiseconds of elapsed time drawn in the corner of the picture. A video takes them from the frame and the frame rate. The web preview takes them from the preview clock.
+_Avoid_: clock, playback time
 
 **Cycle fraction**:
 How far the picture is through the current second. Zero at the start of that second, approaching one at the end. A video takes it from the frame count modulo the frame rate. The web preview takes it from the preview clock modulo one second.
@@ -26,7 +38,7 @@ _Avoid_: coefficient, phase, progress
 
 **Playback**:
 The time position the user plays, pauses, and seeks in the page preview and the exported video.
-_Avoid_: player, transport
+_Avoid_: player, transport, clock
 
 **Bip**:
 The sound at the start of each even second.

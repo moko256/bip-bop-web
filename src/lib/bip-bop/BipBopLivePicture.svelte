@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { browserPlaybackClock } from '$lib/playback/clock';
+	import { browserScheduler } from '$lib/playback/scheduler';
 	import type { PlaybackContent, PlaybackContentProps } from '$lib/playback/playback-content';
 	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
@@ -8,7 +8,7 @@
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
 	import * as m from '$lib/paraglide/messages';
-	import { BIP_BOP_FPS } from './timeline';
+	import { BIP_BOP_FPS } from './frames';
 
 	/**
 	 * The one live picture. The page preview and the fullscreen page both draw here.
@@ -42,11 +42,11 @@
 		>;
 	} = $props();
 
-	const playbackClock = browserPlaybackClock();
+	const scheduler = browserScheduler();
 	const picture = createCanvasPicture();
 	const session = new PlaybackSession({
 		fps: BIP_BOP_FPS,
-		connect: canvasPlayback(playbackClock, liveCanvasAudio(playbackClock), picture)
+		connect: canvasPlayback(scheduler, liveCanvasAudio(scheduler), picture)
 	});
 
 	function setPlaying(next: boolean) {
@@ -122,7 +122,7 @@
 	function previewSample(frame: number): BipBopSample {
 		return {
 			frame,
-			clockCentiseconds: picture.clockCentiseconds,
+			elapsedCentiseconds: picture.elapsedCentiseconds,
 			cycleFraction: picture.cycleFraction,
 			cycleLength: 1,
 			beat: picture.beat,
