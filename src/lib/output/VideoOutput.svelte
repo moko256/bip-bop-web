@@ -91,7 +91,7 @@
 	<button
 		type="submit"
 		class="action"
-		disabled={pending || !run.encodeCheck.encodable}
+		disabled={pending || downloadUrl !== null || !run.encodeCheck.encodable}
 		aria-busy={run.encodeCheck.checking ? 'true' : undefined}>{m.generate()}</button
 	>
 	{#if !run.encodeCheck.checking && !run.encodeCheck.encodable}

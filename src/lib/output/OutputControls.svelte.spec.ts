@@ -357,7 +357,22 @@ describe('OutputControls', () => {
 		expect(transport.getBoundingClientRect().height).toBeCloseTo(seekBarPadding, 0);
 		const video = page.getByLabelText(m.generated_video_aria()).element() as HTMLVideoElement;
 		expect(video.hasAttribute('controls')).toBe(false);
+		await expect.element(page.getByRole('button', { name: m.generate() })).toBeDisabled();
+	});
+
+	it('disables generate after success until a setting changes', async () => {
+		generateVideoUrl.mockResolvedValue(videoUrl());
+		render(OutputControls);
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+		await page.getByRole('button', { name: m.generate() }).click();
+		await expect.element(page.getByLabelText(m.generated_video_aria())).toBeVisible();
+		await expect.element(page.getByRole('button', { name: m.generate() })).toBeDisabled();
+
+		await page.getByRole('combobox', { name: m.video_quality() }).selectOptions('medium');
+
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
+		await expect.element(page.getByLabelText(m.generated_video_aria())).not.toBeInTheDocument();
 	});
 
 	it('fills the progress bar and returns to the placeholder when generation stops', async () => {
