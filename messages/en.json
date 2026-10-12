@@ -31,7 +31,6 @@
 	"error_audio_codec_unavailable_in_container": "This audio codec is not available in the container",
 	"error_audio_codec_cannot_encode": "This audio codec cannot be encoded",
 	"error_video_generation_aborted": "Video generation was aborted",
-	"error_unknown_resolution": "Unknown resolution: {value}",
 	"error_audio_codec_unavailable": "Audio codec is unavailable",
 	"error_encode_unsupported": "This codec and quality cannot be encoded",
 	"footer_source_link_title": "Source code",

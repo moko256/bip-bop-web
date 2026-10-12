@@ -2,7 +2,7 @@
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { loadVideoOutput } from './load-video-output';
-	import { isVideoOutputType, outputTypeLabel, outputTypes, type OutputType } from './output';
+	import { isVideoOutputType, outputTypes, type OutputType } from './output';
 	import PageOutput from './PageOutput.svelte';
 	import VideoOutputPending from './VideoOutputPending.svelte';
 
@@ -12,6 +12,19 @@
 	function loadEncoder() {
 		videoOutput ??= loadVideoOutput();
 		return videoOutput;
+	}
+
+	function outputTypeLabel(type: OutputType): string {
+		switch (type) {
+			case 'page':
+				return m.output_type_page();
+			case 'mp4':
+				return 'mp4';
+			case 'webm':
+				return 'webm';
+			case 'fullscreen-url':
+				return m.output_type_fullscreen_url();
+		}
 	}
 </script>
 

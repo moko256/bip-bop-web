@@ -69,7 +69,7 @@ describe('parseResolution', () => {
 	});
 
 	it('rejects values that are not in the catalog', () => {
-		expect(() => parseResolution('720x480' as '1920x1080')).toThrow();
+		expect(() => parseResolution('720x480' as '1920x1080')).toThrow('Unknown resolution: 720x480');
 	});
 });
 
