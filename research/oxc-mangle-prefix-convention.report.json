@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-12T16:29:49.607Z",
+  "generatedAt": "2026-10-12T16:29:54.400Z",
   "oxcMinifyVersion": "0.153.0",
   "viteDefault": "Vite 8 uses Oxc identifier mangle by default; property mangle (mangleProps) is opt-in.",
   "microBenchmarks": [
@@ -40,6 +40,7 @@
     "Module-scoped const/function names (including $foo) are already shortened by identifier mangle; $ prefix alone does not unlock extra shrinking unless you also enable mangleProps on $-prefixed *properties*.",
     "TypeScript `private` erases to plain property names in emit, so today’s class privates are not matched by mangleProps /^_/ until you rename to _field or use # hard private.",
     "mangleProps.include /^_/ materially shrinks classes that expose long _prefixed fields; # fields cannot be property-mangled and keep #name in output.",
-    "Enable via build.rolldownOptions.output.minify.mangleProps in Vite; verify runtime Oxc version supports mangleProps (oxc-minify >= 0.14x)."
+    "Enable via build.rolldownOptions.output.minify.mangleProps in Vite; property mangling requires a recent Oxc (mangleProps is absent in the oxc-minify 0.136 API surface bundled with some Rolldown releases—confirm on a production build artifact).",
+    "Replacing # hard private with _fields + mangleProps trades language-level encapsulation for bytes; keep reserved/exclude for host/DOM/public API property names."
   ]
 }
