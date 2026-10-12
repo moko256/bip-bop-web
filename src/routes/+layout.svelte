@@ -1,8 +1,8 @@
 <script lang="ts">
 	import icon_svg from '#lib/assets/icons/icon.svg';
 	import { asset } from '$app/paths';
-	import { applyDocumentLocale } from '#lib/html-lang';
-	import { getLocale } from '#lib/paraglide/runtime';
+	import { applyDocumentLocale } from '#lib/html-lang.js';
+	import { getLocale } from '#lib/paraglide/runtime.js';
 	import { page } from '$app/state';
 
 	let { children } = $props();

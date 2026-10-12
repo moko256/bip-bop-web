@@ -1,4 +1,4 @@
-import { deLocalizeUrl } from '#lib/paraglide/runtime';
+import { deLocalizeUrl } from '#lib/paraglide/runtime.js';
 import { siteBase } from '../../../site-url';
 
 const localizedFullscreen = new RegExp(`^${siteBase}/(?:en|ja)/fullscreen/?$`);

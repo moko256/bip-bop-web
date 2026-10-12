@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlaybackSession } from './PlaybackSession.svelte';
 import type { Scheduler } from './scheduler';
 import { videoPlayback } from './video-playback';
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '#lib/bip-bop/frames';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '#lib/bip-bop/frames.js';
 
 function manualScheduler() {
 	let now = 0;

@@ -1,10 +1,10 @@
 <script lang="ts">
 	import BipBopPreview from '#lib/bip-bop/BipBopPreview.svelte';
-	import { fullscreenPageUrl } from '#lib/fullscreen/fullscreen-url';
-	import { currentPageAbsoluteUrl } from '#lib/site-url-resolver';
+	import { fullscreenPageUrl } from '#lib/fullscreen/fullscreen-url.js';
+	import { currentPageAbsoluteUrl } from '#lib/site-url-resolver.js';
 	import type { OutputLayoutPlace } from './output-layout';
 	import { parseResolution, resolutionGroups, type Resolution } from './output';
-	import * as m from '#lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let { layout }: { layout: OutputLayoutPlace } = $props();
 

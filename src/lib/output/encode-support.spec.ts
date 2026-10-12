@@ -1,4 +1,4 @@
-import { BIP_BOP_AUDIO_SAMPLE_RATE } from '#lib/bip-bop/audio';
+import { BIP_BOP_AUDIO_SAMPLE_RATE } from '#lib/bip-bop/audio.js';
 import { Quality, canEncodeAudio, canEncodeVideo } from 'mediabunny';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { canEncodeSelection } from './encode-support';

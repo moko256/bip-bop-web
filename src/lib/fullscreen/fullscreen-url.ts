@@ -1,4 +1,4 @@
-import type { ResolutionBitmap } from '#lib/output/output';
+import type { ResolutionBitmap } from '#lib/output/output.js';
 import { siteBase } from '../../../site-url';
 
 /** Absolute fullscreen page URL. A resolution adds `?resolution=`. The current path, query, and hash are dropped. */

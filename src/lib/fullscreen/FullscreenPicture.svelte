@@ -1,7 +1,7 @@
 <script lang="ts">
 	import BipBopLivePicture from '#lib/bip-bop/BipBopLivePicture.svelte';
 	import PlaybackOverlay from '#lib/playback/PlaybackOverlay.svelte';
-	import type { ResolutionBitmap } from '#lib/output/output';
+	import type { ResolutionBitmap } from '#lib/output/output.js';
 
 	let { bitmap }: { bitmap: ResolutionBitmap | null } = $props();
 

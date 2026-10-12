@@ -2,10 +2,10 @@
 	import type { Attachment } from 'svelte/attachments';
 	import BipBopStill from '#lib/bip-bop/BipBopStill.svelte';
 	import type { Snippet } from 'svelte';
-	import type { PlaybackContentProps } from '#lib/playback/playback-content';
+	import type { PlaybackContentProps } from '#lib/playback/playback-content.js';
 	import PlaybackControls from '#lib/playback/PlaybackControls.svelte';
-	import { seekReserveHeight } from '#lib/playback/seek-bar';
-	import { stoppedVeilColor } from '#lib/playback/veil';
+	import { seekReserveHeight } from '#lib/playback/seek-bar.js';
+	import { stoppedVeilColor } from '#lib/playback/veil.js';
 	import { FPS_PRESETS } from './frame-entry';
 	import type { OutputLayoutPlace } from './output-layout';
 	import ResolutionSelect from './ResolutionSelect.svelte';
@@ -13,7 +13,7 @@
 	import { videoQualityLevels } from './video-quality';
 	import { VideoOutputRun } from './VideoOutputRun.svelte';
 	import { videoGenerationMessage } from './video-generation-message';
-	import * as m from '#lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let {
 		outputType,

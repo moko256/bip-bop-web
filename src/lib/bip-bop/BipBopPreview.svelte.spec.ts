@@ -1,4 +1,4 @@
-import * as m from '#lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 import { page } from 'vitest/browser';
 import { afterEach, describe, expect, it } from 'vitest';
 import { render } from 'vitest-browser-svelte';

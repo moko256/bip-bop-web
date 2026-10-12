@@ -4,7 +4,7 @@
 	import LocaleAnchor from '#lib/components/LocaleAnchor.svelte';
 	import NoScript from '#lib/components/NoScript.svelte';
 	import OutputControls from '#lib/output/OutputControls.svelte';
-	import { m } from '#lib/paraglide/messages';
+	import { m } from '#lib/paraglide/messages.js';
 	import Footer from '#lib/top/Footer.svelte';
 </script>
 
@@ -31,7 +31,7 @@
 
 <style>
 	@import 'kiso.css';
-	@import '#lib/styles/pico.scss';
+	@import '../lib/styles/pico.scss';
 
 	.main-container {
 		display: grid;

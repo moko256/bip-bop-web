@@ -1,6 +1,6 @@
 <script lang="ts">
 	import BipBopPreview from '#lib/bip-bop/BipBopPreview.svelte';
-	import { m } from '#lib/paraglide/messages';
+	import { m } from '#lib/paraglide/messages.js';
 	import type { OutputLayoutPlace } from './output-layout';
 
 	let { layout }: { layout: OutputLayoutPlace } = $props();
