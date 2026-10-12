@@ -2,6 +2,7 @@ import type { AudioCodec, VideoCodec } from 'mediabunny';
 import { browserScheduler } from '$lib/playback/scheduler';
 import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
 import { videoPlayback } from '$lib/playback/video-playback';
+import { EncodableCodecLists, encodableCodecLists } from './EncodableCodecLists.svelte';
 import { EncodeCheck } from './EncodeCheck.svelte';
 import { canEncodeSelection, type CanEncodeSelection } from './encode-support';
 import {
@@ -31,6 +32,7 @@ export type VideoOutputRunOptions = {
 	generate?: GenerateVideoUrl;
 	canEncode?: CanEncodeSelection;
 	audioCodec?: (type: VideoOutputType) => Promise<AudioCodec | null>;
+	codecLists?: EncodableCodecLists;
 };
 
 /**
@@ -50,6 +52,7 @@ export class VideoOutputRun {
 	readonly attachVideo: (video: HTMLVideoElement) => () => void;
 
 	private readonly readOutputType: () => VideoOutputType;
+	private readonly codecLists: EncodableCodecLists;
 	private videoCodecChoice = $state<VideoCodec | null>(null);
 	private audioCodecChoice = $state<AudioCodec | null>(null);
 	private seenOutputType: VideoOutputType | undefined;
@@ -57,6 +60,7 @@ export class VideoOutputRun {
 
 	constructor(options: VideoOutputRunOptions) {
 		this.readOutputType = options.outputType;
+		this.codecLists = options.codecLists ?? encodableCodecLists;
 		this.generation = new VideoGeneration(
 			options.generate ?? generateVideoUrl,
 			options.audioCodec ?? preferredAudioCodec
@@ -96,35 +100,54 @@ export class VideoOutputRun {
 		return videoOutputFormat(this.outputType).mimeType;
 	}
 
+	/** True while this OutputType's encodable codec lists are still loading. */
+	get codecsLoading(): boolean {
+		return this.codecLists.loading(this.outputType);
+	}
+
 	get videoCodecs(): VideoCodec[] {
-		return supportedVideoCodecs(this.outputType);
+		return this.codecLists.videoCodecs(this.outputType);
 	}
 
 	get audioCodecs(): AudioCodec[] {
-		return supportedAudioCodecs(this.outputType);
+		return this.codecLists.audioCodecs(this.outputType);
 	}
 
 	get videoCodec(): VideoCodec {
 		const choice = this.videoCodecChoice;
 		const codecs = this.videoCodecs;
-		if (choice !== null && codecs.includes(choice)) return choice;
-		return codecs[0];
+		if (codecs.length > 0) {
+			if (choice !== null && codecs.includes(choice)) return choice;
+			return codecs[0];
+		}
+		const supported = supportedVideoCodecs(this.outputType);
+		if (choice !== null && supported.includes(choice)) return choice;
+		return supported[0];
 	}
 
 	get audioCodec(): AudioCodec {
 		const choice = this.audioCodecChoice;
+		const preferred = this.generation.defaultAudioCodec;
 		const codecs = this.audioCodecs;
-		if (choice !== null && codecs.includes(choice)) return choice;
-		return this.generation.defaultAudioCodec ?? codecs[0];
+		if (codecs.length > 0) {
+			if (choice !== null && codecs.includes(choice)) return choice;
+			if (preferred !== null && codecs.includes(preferred)) return preferred;
+			return codecs[0];
+		}
+		const supported = supportedAudioCodecs(this.outputType);
+		if (choice !== null && supported.includes(choice)) return choice;
+		if (preferred !== null && supported.includes(preferred)) return preferred;
+		return supported[0];
 	}
 
 	get frameCountMax(): number {
 		return maxFrameCountForFps(this.frameEntry.currentFps);
 	}
 
-	/** Probe the default audio codec, and drop a video when the OutputType changes. */
+	/** Probe codecs for this OutputType, and drop a video when it changes. */
 	noteOutputType(): void {
 		const type = this.outputType;
+		this.codecLists.ensure(type);
 		void this.generation.loadDefaultAudioCodec(type);
 		if (this.seenOutputType === undefined) {
 			this.seenOutputType = type;

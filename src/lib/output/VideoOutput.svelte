@@ -158,7 +158,7 @@
 			<ResolutionSelect bind:value={run.resolution} />
 			<label>
 				{m.video_codec()}
-				<select value={run.videoCodec} onchange={onVideoCodecChange}>
+				<select value={run.videoCodec} onchange={onVideoCodecChange} disabled={run.codecsLoading}>
 					{#each run.videoCodecs as videoCodecOption (videoCodecOption)}
 						<option value={videoCodecOption}>{videoCodecOption}</option>
 					{/each}
@@ -166,7 +166,7 @@
 			</label>
 			<label>
 				{m.audio_codec()}
-				<select value={run.audioCodec} onchange={onAudioCodecChange}>
+				<select value={run.audioCodec} onchange={onAudioCodecChange} disabled={run.codecsLoading}>
 					{#each run.audioCodecs as audioCodecOption (audioCodecOption)}
 						<option value={audioCodecOption}>{audioCodecOption}</option>
 					{/each}
