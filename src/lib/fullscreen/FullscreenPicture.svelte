@@ -1,9 +1,9 @@
 <script lang="ts">
 	import BipBopLivePicture from '$lib/bip-bop/BipBopLivePicture.svelte';
 	import PlaybackOverlay from '$lib/playback/PlaybackOverlay.svelte';
-	import type { FullscreenBitmap } from './fullscreen-url';
+	import type { ResolutionBitmap } from '$lib/output/output';
 
-	let { bitmap }: { bitmap: FullscreenBitmap | null } = $props();
+	let { bitmap }: { bitmap: ResolutionBitmap | null } = $props();
 
 	function requestPageFullscreen() {
 		const request = document.documentElement.requestFullscreen;

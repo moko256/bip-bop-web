@@ -11,6 +11,10 @@
 	let outputType = $state<OutputType>('page');
 	let videoOutput: ReturnType<typeof loadVideoOutput> | undefined;
 
+	function unexpectedOutputType(type: never): never {
+		throw new Error(`Unknown output type: ${String(type)}`);
+	}
+
 	function loadEncoder() {
 		videoOutput ??= loadVideoOutput();
 		return videoOutput;
@@ -66,8 +70,10 @@
 	{/await}
 {:else if outputType === 'fullscreen-url'}
 	<FullscreenUrlOutput {layout} />
-{:else}
+{:else if outputType === 'page'}
 	<PageOutput {layout} />
+{:else}
+	{unexpectedOutputType(outputType)}
 {/if}
 
 <style>

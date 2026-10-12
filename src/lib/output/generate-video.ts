@@ -16,10 +16,28 @@ import {
 	type QualityLevel,
 	type VideoCodec
 } from 'mediabunny';
-import * as m from '$lib/paraglide/messages';
 import { parseResolution, type Resolution, type VideoOutputType } from './output';
 import type { VideoQualityLevel } from './video-quality';
 import { supportedAudioCodecs, videoOutputFormat } from './video-container';
+
+export const videoGenerationFailures = [
+	'audio-codec-unavailable-in-container',
+	'audio-codec-cannot-encode',
+	'video-generation-failed'
+] as const;
+
+export type VideoGenerationFailure = (typeof videoGenerationFailures)[number];
+
+/** A video OutputType failed before an object URL existed. The message is the failure code. */
+export class VideoGenerationError extends Error {
+	readonly failure: VideoGenerationFailure;
+
+	constructor(failure: VideoGenerationFailure) {
+		super(failure);
+		this.name = 'VideoGenerationError';
+		this.failure = failure;
+	}
+}
 
 export async function generateBipBopVideo(options: {
 	outputType: VideoOutputType;
@@ -39,14 +57,14 @@ export async function generateBipBopVideo(options: {
 
 	const format = videoOutputFormat(options.outputType);
 	if (!format.getSupportedAudioCodecs().includes(options.audioCodec)) {
-		throw new Error(m.error_audio_codec_unavailable_in_container());
+		throw new VideoGenerationError('audio-codec-unavailable-in-container');
 	}
 	const encodable = await canEncodeAudio(options.audioCodec, {
 		numberOfChannels: 1,
 		sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,
 		quality: new Quality('high')
 	});
-	if (!encodable) throw new Error(m.error_audio_codec_cannot_encode());
+	if (!encodable) throw new VideoGenerationError('audio-codec-cannot-encode');
 	if (options.signal?.aborted) throw aborted();
 
 	const canvas = new OffscreenCanvas(options.width, options.height);
@@ -136,7 +154,7 @@ export async function generateBipBopVideo(options: {
 		throw error;
 	}
 
-	if (!target.buffer) throw new Error(m.error_video_generation_failed());
+	if (!target.buffer) throw new VideoGenerationError('video-generation-failed');
 	return new Blob([target.buffer], { type: format.mimeType });
 }
 
@@ -179,7 +197,7 @@ export async function generateVideoUrl(options: {
 }
 
 function aborted(): DOMException {
-	return new DOMException(m.error_video_generation_aborted(), 'AbortError');
+	return new DOMException('The operation was aborted.', 'AbortError');
 }
 
 async function cancelOutput(output: Output): Promise<void> {
