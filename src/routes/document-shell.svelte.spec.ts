@@ -1,4 +1,4 @@
-import { getLocale, getTextDirection } from '$lib/paraglide/runtime';
+import { getLocale, getTextDirection } from '#lib/paraglide/runtime.js';
 import { createRawSnippet } from 'svelte';
 import { page } from 'vitest/browser';
 import { describe, expect, it } from 'vitest';

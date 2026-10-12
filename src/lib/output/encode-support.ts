@@ -1,4 +1,4 @@
-import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
+import { BIP_BOP_AUDIO_SAMPLE_RATE } from '#lib/bip-bop/audio.js';
 import {
 	canEncodeAudio,
 	canEncodeVideo,

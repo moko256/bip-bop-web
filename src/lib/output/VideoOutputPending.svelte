@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { seekReserveHeight } from '$lib/playback/seek-bar';
-	import * as m from '$lib/paraglide/messages';
+	import { seekReserveHeight } from '#lib/playback/seek-bar.js';
+	import * as m from '#lib/paraglide/messages.js';
 	import type { OutputLayoutPlace } from './output-layout';
 	import { defaultResolution, parseResolution } from './output';
 

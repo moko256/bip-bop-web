@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { resolutionGroups, type Resolution } from './output';
-	import * as m from '$lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages.js';
 
 	let {
 		value = $bindable()

@@ -34,7 +34,7 @@ const BOP_LABEL = 'Bop!';
 const CLOCK_TIME_SEPARATOR = ':';
 const CLOCK_FRACTION_SEPARATOR = '.';
 
-/** Family for every canvas and video label. Subset files live in `$lib/fonts`. */
+/** Family for every canvas and video label. Subset files live in `#lib/fonts`. */
 export const BIP_BOP_FONT_FAMILY = 'JetBrains Mono';
 
 /**

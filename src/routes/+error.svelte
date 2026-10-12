@@ -1,5 +1,5 @@
 <script lang="ts">
-	import ThemeColor from '$lib/components/ThemeColor.svelte';
+	import ThemeColor from '#lib/components/ThemeColor.svelte';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 
@@ -7,7 +7,7 @@
 	// follow that import onto /fullscreen, so load the sheets only when this
 	// page is shown.
 	void import('kiso.css');
-	void import('$lib/styles/pico.scss');
+	void import('#lib/styles/pico.scss');
 </script>
 
 <ThemeColor light="#ffffff" dark="#13171f" />

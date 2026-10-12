@@ -10,9 +10,11 @@ Try it on!: https://moko256.github.io/bip-bop-web/
 ## Acknowledgment
 
 This project is inspired by:
+
 - [Bip Bop stream (Advanced stream for tvOS - HTTP Live Streaming Examples - Apple Developer)](https://developer.apple.com/streaming/examples/advanced-stream-hevc.html)
 
 Similar implementations:
+
 - [DummyVideoCapturer (Sora Android SDK サンプルアプリケーション - Shiguredo)](https://github.com/shiguredo/sora-android-sdk-samples)
 - [Fake Capture Device (WebRTC Load Testing Tool Zakuro - Shiguredo)](https://github.com/shiguredo/zakuro)
 
