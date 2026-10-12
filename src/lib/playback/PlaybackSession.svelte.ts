@@ -4,13 +4,15 @@ import { clampFrame } from './time';
 export type PlaybackHost = {
 	advance(frame: number): void;
 	halt(): void;
+	/** Last frame and frame rate. A preview counter leaves `maxFrame` unset. */
+	bounds(): { fps: number; maxFrame?: number };
 };
 
 /**
  * What the session asks an adapter to do.
- * `place` moves the underlying position. While running, the preview clock rebases
- * and the video element seeks. `atEnd` is true when the video has finished
- * before the frame count says so.
+ * `place` sets the frame the adapter holds. The preview clock stays where it is.
+ * A video element seeks to that frame. A paused canvas ignores `place` until the next start.
+ * `atEnd` is true when the video has finished before the frame count says so.
  */
 export type PlaybackAdapter = {
 	start(frame: number): void;
@@ -51,7 +53,8 @@ export class PlaybackSession {
 		this.fps = options.fps;
 		this.adapter = options.connect({
 			advance: (frame) => this.advance(frame),
-			halt: () => this.halt()
+			halt: () => this.halt(),
+			bounds: () => ({ fps: this.fps, maxFrame: this.maxFrame })
 		});
 	}
 

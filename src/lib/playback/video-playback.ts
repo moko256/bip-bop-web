@@ -1,37 +1,37 @@
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/frames';
 import { frameAtSeconds, secondsAtFrame } from '$lib/bip-bop/media-time';
 import { untrack } from 'svelte';
 import type { Scheduler } from './scheduler';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
 
-export type PlaybackBounds = {
-	fps: number;
-	maxFrame: number;
-};
-
 /**
  * Video element adapter. The element owns currentTime.
+ * Frame conversion reads playback bounds from the session.
  * `attach` binds whichever element the page mounted.
  */
-export function videoPlayback(
-	scheduler: Scheduler,
-	bounds: PlaybackBounds = { fps: BIP_BOP_FPS, maxFrame: BIP_BOP_MAX_FRAME }
-): {
+export function videoPlayback(scheduler: Scheduler): {
 	connect: (host: PlaybackHost) => PlaybackAdapter;
 	attach: (video: HTMLVideoElement) => () => void;
 } {
+	let host: PlaybackHost | undefined;
+
+	function readBounds(): { fps: number; maxFrame?: number } {
+		return host?.bounds() ?? { fps: 0 };
+	}
+
 	function frameAt(seconds: number): number {
-		return Math.min(bounds.maxFrame, frameAtSeconds(seconds, bounds.fps));
+		const { fps, maxFrame } = readBounds();
+		const frame = frameAtSeconds(seconds, fps);
+		if (maxFrame === undefined) return frame;
+		return Math.min(maxFrame, frame);
 	}
 
 	function secondsAt(frame: number): number {
-		return secondsAtFrame(frame, bounds.fps);
+		return secondsAtFrame(frame, readBounds().fps);
 	}
 	let element: HTMLVideoElement | undefined;
 	let detachListeners = () => {};
 	let running = false;
 	let raf = 0;
-	let host: PlaybackHost | undefined;
 
 	function stopRaf() {
 		scheduler.cancelFrame(raf);
