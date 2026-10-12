@@ -4,6 +4,7 @@ import {
 	isVideoOutputType,
 	outputCategory,
 	parseResolution,
+	parseResolutionBitmap,
 	resolutionCatalog,
 	resolutionGroups
 } from './output';
@@ -59,6 +60,38 @@ describe('videoOutputFormat', () => {
 			'pcm-f64be'
 		]);
 		expect(supportedAudioCodecs('webm')).toEqual(['opus', 'vorbis']);
+	});
+});
+
+describe('parseResolutionBitmap', () => {
+	it('reads width and height when both sides are from 1 through 8000', () => {
+		expect(parseResolutionBitmap('1920x1080')).toEqual({ width: 1920, height: 1080 });
+		expect(parseResolutionBitmap('1x1')).toEqual({ width: 1, height: 1 });
+		expect(parseResolutionBitmap('8000x8000')).toEqual({ width: 8000, height: 8000 });
+		expect(parseResolutionBitmap('8000x1')).toEqual({ width: 8000, height: 1 });
+		expect(parseResolutionBitmap('1x8000')).toEqual({ width: 1, height: 8000 });
+	});
+
+	it('returns null when the value is missing or outside the rule', () => {
+		expect(parseResolutionBitmap(null)).toBeNull();
+		expect(parseResolutionBitmap('')).toBeNull();
+		expect(parseResolutionBitmap('8001x100')).toBeNull();
+		expect(parseResolutionBitmap('100x8001')).toBeNull();
+		expect(parseResolutionBitmap('0x100')).toBeNull();
+		expect(parseResolutionBitmap('1920X1080')).toBeNull();
+		expect(parseResolutionBitmap('1920.5x1080')).toBeNull();
+		expect(parseResolutionBitmap('01920x1080')).toBeNull();
+		expect(parseResolutionBitmap('1920x1080extra')).toBeNull();
+		expect(parseResolutionBitmap(' 1920x1080')).toBeNull();
+	});
+
+	it('reads every catalog value as the same bitmap', () => {
+		for (const entry of resolutionCatalog) {
+			expect(parseResolutionBitmap(entry.value)).toEqual({
+				width: entry.width,
+				height: entry.height
+			});
+		}
 	});
 });
 

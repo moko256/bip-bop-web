@@ -12,6 +12,7 @@
 	import type { VideoOutputType } from './output';
 	import { videoQualityLevels } from './video-quality';
 	import { VideoOutputRun } from './VideoOutputRun.svelte';
+	import { videoGenerationMessage } from './video-generation-message';
 	import * as m from '$lib/paraglide/messages';
 
 	let {
@@ -51,11 +52,6 @@
 		const form = event.currentTarget;
 		if (!(form instanceof HTMLFormElement) || !form.checkValidity()) return;
 		run.submit();
-	}
-
-	function errorMessage(error: unknown): string {
-		if (error instanceof Error && error.message !== '') return error.message;
-		return m.error_video_generation_failed();
 	}
 
 	const release: Attachment<HTMLDivElement> = () => {
@@ -152,7 +148,7 @@
 					{@render actions(false, url)}
 				{:catch error}
 					{@render actions(false, null)}
-					<p role="alert">{errorMessage(error)}</p>
+					<p role="alert">{videoGenerationMessage(error)}</p>
 				{/await}
 			{:else}
 				{@render actions(false, null)}
