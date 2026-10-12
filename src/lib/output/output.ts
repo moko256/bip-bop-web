@@ -1,4 +1,3 @@
-import * as m from '$lib/paraglide/messages';
 import {
 	defaultResolution,
 	resolutionCatalog,
@@ -42,19 +41,6 @@ export function isVideoOutputType(type: OutputType): type is VideoOutputType {
 	return outputCategory(type) === 'video';
 }
 
-export function outputTypeLabel(type: OutputType): string {
-	switch (type) {
-		case 'page':
-			return m.output_type_page();
-		case 'mp4':
-			return 'mp4';
-		case 'webm':
-			return 'webm';
-		case 'fullscreen-url':
-			return m.output_type_fullscreen_url();
-	}
-}
-
 const resolutionByValue = new Map(resolutionCatalog.map((entry) => [entry.value, entry] as const));
 
 export function resolutionPixelLabel(value: Resolution): string {
@@ -65,6 +51,6 @@ export function resolutionPixelLabel(value: Resolution): string {
 
 export function parseResolution(value: Resolution): { width: number; height: number } {
 	const entry = resolutionByValue.get(value);
-	if (!entry) throw new Error(m.error_unknown_resolution({ value }));
+	if (!entry) throw new Error(`Unknown resolution: ${value}`);
 	return { width: entry.width, height: entry.height };
 }
