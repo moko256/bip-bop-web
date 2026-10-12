@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-12T16:29:49.607Z",
+  "oxcMinifyVersion": "0.153.0",
+  "viteDefault": "Vite 8 uses Oxc identifier mangle by default; property mangle (mangleProps) is opt-in.",
+  "microBenchmarks": [
+    {
+      "label": "class fields with _ prefix",
+      "bytes_baseline_mangle": 291,
+      "bytes_mangleProps_underscore": 133,
+      "bytes_mangleProps_dollar": 291,
+      "saved_by_mangleProps_underscore": 158
+    },
+    {
+      "label": "class fields with # hard private",
+      "bytes_baseline_mangle": 145,
+      "bytes_mangleProps_underscore": 145,
+      "bytes_mangleProps_dollar": 145,
+      "saved_by_mangleProps_underscore": 0
+    },
+    {
+      "label": "module helpers with $ prefix (exported API unchanged)",
+      "bytes_baseline_mangle": 72,
+      "bytes_mangleProps_underscore": 72,
+      "bytes_mangleProps_dollar": 72,
+      "saved_by_mangleProps_underscore": 0
+    }
+  ],
+  "projectSrcLib": {
+    "fileCount": 39,
+    "transformedFiles": 39,
+    "privateMemberDeclarations": 26,
+    "bytes_js_emit_total": 72693,
+    "bytes_minify_per_file_sum_default": 35498,
+    "bytes_minify_per_file_sum_after_underscore_emit": 35636,
+    "bytes_minify_per_file_sum_underscore_emit_plus_mangleProps": 34761,
+    "bytes_minify_per_file_sum_mangleProps_on_current_emit": 35498,
+    "saved_by_convention_and_mangleProps": 737
+  },
+  "conclusions": [
+    "Module-scoped const/function names (including $foo) are already shortened by identifier mangle; $ prefix alone does not unlock extra shrinking unless you also enable mangleProps on $-prefixed *properties*.",
+    "TypeScript `private` erases to plain property names in emit, so today’s class privates are not matched by mangleProps /^_/ until you rename to _field or use # hard private.",
+    "mangleProps.include /^_/ materially shrinks classes that expose long _prefixed fields; # fields cannot be property-mangled and keep #name in output.",
+    "Enable via build.rolldownOptions.output.minify.mangleProps in Vite; verify runtime Oxc version supports mangleProps (oxc-minify >= 0.14x)."
+  ]
+}
