@@ -1,11 +1,8 @@
-/** `MM:SS` or `HH:MM:SS` for one side of the playback time. */
-function wholeSeconds(frame: number, fps: number): number {
-	if (!Number.isFinite(frame) || !Number.isFinite(fps) || fps <= 0 || frame <= 0) return 0;
-	return Math.floor(frame / fps);
-}
+import { wholeSecondsAtFrame } from '$lib/bip-bop/media-time';
 
+/** `MM:SS` or `HH:MM:SS` for one side of the playback time. */
 function formatPart(frame: number, fps: number, withHours: boolean): string {
-	const total = wholeSeconds(frame, fps);
+	const total = wholeSecondsAtFrame(frame, fps);
 	const seconds = total % 60;
 	const minutes = Math.floor(total / 60) % 60;
 	const hours = Math.floor(total / 3600);
@@ -23,7 +20,8 @@ function pad2(value: number): string {
  * Hours appear on both sides once either side reaches one hour.
  */
 export function formatPlaybackTime(frame: number, maxFrame: number, fps: number): string {
-	const withHours = Math.max(wholeSeconds(frame, fps), wholeSeconds(maxFrame, fps)) >= 3600;
+	const withHours =
+		Math.max(wholeSecondsAtFrame(frame, fps), wholeSecondsAtFrame(maxFrame, fps)) >= 3600;
 	return `${formatPart(frame, fps, withHours)} / ${formatPart(maxFrame, fps, withHours)}`;
 }
 

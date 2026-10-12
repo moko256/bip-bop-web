@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { BIP_BOP_FPS } from './frames';
 import {
 	elapsedCentisecondsAtFrame,
 	elapsedCentisecondsAtMs,
-	elapsedSecondsAtFrame,
+	frameAtSeconds,
 	previewBeat,
 	previewCycleFraction,
 	previewShowBeat,
+	secondsAtFrame,
 	toneSecondAtFrame,
 	videoCycleFraction,
 	videoPictureAtFrame
@@ -30,11 +32,27 @@ describe('toneSecondAtFrame', () => {
 
 describe('elapsed time at a frame', () => {
 	it('divides the frame count by the frame rate', () => {
-		expect(elapsedSecondsAtFrame(0, 60)).toBe(0);
-		expect(elapsedSecondsAtFrame(90, 60)).toBe(1.5);
-		expect(elapsedSecondsAtFrame(12, 24)).toBe(0.5);
-		expect(elapsedSecondsAtFrame(24, 23.976)).toBeCloseTo(24 / 23.976);
-		expect(elapsedSecondsAtFrame(-5, 60)).toBe(0);
+		expect(secondsAtFrame(0, 60)).toBe(0);
+		expect(secondsAtFrame(90, 60)).toBe(1.5);
+		expect(secondsAtFrame(12, 24)).toBe(0.5);
+		expect(secondsAtFrame(24, 23.976)).toBeCloseTo(24 / 23.976);
+		expect(secondsAtFrame(600, BIP_BOP_FPS)).toBe(10);
+		expect(secondsAtFrame(-5, 60)).toBe(0);
+	});
+
+	it('truncates a partial frame when reading a Timeline position', () => {
+		expect(frameAtSeconds(0, 60)).toBe(0);
+		expect(frameAtSeconds(16 / 1000, 60)).toBe(0);
+		expect(frameAtSeconds(1 / 60, 60)).toBe(1);
+		expect(frameAtSeconds(0.999, 60)).toBe(59);
+		expect(frameAtSeconds(1, 60)).toBe(60);
+		expect(frameAtSeconds(1.016, 60)).toBe(60);
+		expect(frameAtSeconds(1.5, 60)).toBe(90);
+		expect(frameAtSeconds(2, 60)).toBe(120);
+		expect(frameAtSeconds(10.5, 60)).toBe(630);
+		expect(frameAtSeconds(0.5, 24)).toBe(12);
+		expect(frameAtSeconds(-10, 60)).toBe(0);
+		expect(frameAtSeconds(Number.NaN, 60)).toBe(0);
 	});
 
 	it('truncates elapsed centiseconds the same way at 60 fps and at other rates', () => {

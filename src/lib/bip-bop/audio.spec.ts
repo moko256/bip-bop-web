@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { bipBopPreviewPictureMs, planBipBopPreviewCue, planBipBopTone } from './audio';
+import {
+	BIP_FREQUENCY_HZ,
+	BOP_FREQUENCY_HZ,
+	bipBopFrequencyHz,
+	bipBopPreviewPictureMs,
+	planBipBopPreviewCue,
+	planBipBopTone
+} from './audio';
+
+describe('bipBopFrequencyHz', () => {
+	it('follows the beat: Bip on even seconds, Bop on odd seconds', () => {
+		expect(bipBopFrequencyHz(0)).toBe(BIP_FREQUENCY_HZ);
+		expect(bipBopFrequencyHz(1)).toBe(BOP_FREQUENCY_HZ);
+		expect(bipBopFrequencyHz(2)).toBe(BIP_FREQUENCY_HZ);
+		expect(bipBopFrequencyHz(-1)).toBe(BOP_FREQUENCY_HZ);
+	});
+});
 
 describe('planBipBopTone', () => {
 	it('plays Bip immediately at the start, then waits out the 16ms burst', () => {

@@ -1,4 +1,5 @@
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/frames';
+import { frameAtSeconds, secondsAtFrame } from '$lib/bip-bop/media-time';
 import { untrack } from 'svelte';
 import type { Scheduler } from './scheduler';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
@@ -20,13 +21,11 @@ export function videoPlayback(
 	attach: (video: HTMLVideoElement) => () => void;
 } {
 	function frameAt(seconds: number): number {
-		if (!Number.isFinite(seconds) || seconds <= 0) return 0;
-		return Math.min(bounds.maxFrame, Math.floor((seconds * 1000 * bounds.fps) / 1000));
+		return Math.min(bounds.maxFrame, frameAtSeconds(seconds, bounds.fps));
 	}
 
 	function secondsAt(frame: number): number {
-		if (!Number.isFinite(frame) || frame <= 0) return 0;
-		return frame / bounds.fps;
+		return secondsAtFrame(frame, bounds.fps);
 	}
 	let element: HTMLVideoElement | undefined;
 	let detachListeners = () => {};

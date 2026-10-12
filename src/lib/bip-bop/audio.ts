@@ -1,3 +1,5 @@
+import { beatAtSecond, type PictureBeat } from './media-time';
+
 /** Even seconds. Matches the `Bip!` label. */
 export const BIP_FREQUENCY_HZ = 1500;
 /** Odd seconds. Matches the `Bop!` label. */
@@ -26,10 +28,14 @@ export type BipBopTonePlan = {
 	waitMs: number;
 };
 
-/** Even seconds are Bip. Odd seconds are Bop. */
+/** Hertz for a Bip or Bop label. */
+export function frequencyHzForBeat(beat: PictureBeat): number {
+	return beat === 'bip' ? BIP_FREQUENCY_HZ : BOP_FREQUENCY_HZ;
+}
+
+/** Hertz for the beat on `second`. Even seconds are Bip. Odd seconds are Bop. */
 export function bipBopFrequencyHz(second: number): number {
-	const index = Math.floor(second);
-	return index % 2 === 0 ? BIP_FREQUENCY_HZ : BOP_FREQUENCY_HZ;
+	return frequencyHzForBeat(beatAtSecond(second));
 }
 
 /**

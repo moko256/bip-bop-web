@@ -1,4 +1,4 @@
-import { BIP_BOP_AUDIO_SAMPLE_RATE, bipBopFrequencyHz } from './audio';
+import { BIP_BOP_AUDIO_SAMPLE_RATE, frequencyHzForBeat } from './audio';
 import { formatFpsOverlay } from './fps-text';
 import type { FramePicture } from './media-time';
 import { BIP_BOP_FPS } from './frames';
@@ -310,7 +310,7 @@ export function BipBopRenderer(
 			width,
 			toneAxisY + 0.5,
 			toneAmplitude,
-			bipBopFrequencyHz(marks.bip ? 0 : 1),
+			frequencyHzForBeat(sample.beat),
 			mixColor(RGB_WHITE, RGB_BLACK, marks.towardMidpoint, CYCLE_FRAMES)
 		);
 	}

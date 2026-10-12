@@ -23,22 +23,39 @@ export type FramePicture = {
 };
 
 /**
+ * Timeline seconds at the start of `frame`.
+ * 0 when the frame or the rate cannot be placed.
+ */
+export function secondsAtFrame(frame: number, fps: number): number {
+	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
+	return frame / fps;
+}
+
+/** Whole Timeline seconds at the start of `frame`. */
+export function wholeSecondsAtFrame(frame: number, fps: number): number {
+	return Math.floor(secondsAtFrame(frame, fps));
+}
+
+/**
+ * Frame index at a Timeline position. Partial frames are truncated.
+ * 0 when the position or the rate cannot be placed.
+ */
+export function frameAtSeconds(seconds: number, fps: number): number {
+	if (!Number.isFinite(seconds) || seconds <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
+	return Math.floor((seconds * 1000 * fps) / 1000);
+}
+
+/**
  * Integer second at which a tone is placed for this frame, or null when this
  * frame does not cross a second boundary.
  * At 60 fps that is every frame whose index is divisible by 60.
  */
 export function toneSecondAtFrame(frame: number, fps: number): number | null {
 	if (frame === 0) return 0;
-	const second = Math.floor(frame / fps);
-	const previous = Math.floor((frame - 1) / fps);
+	const second = wholeSecondsAtFrame(frame, fps);
+	const previous = wholeSecondsAtFrame(frame - 1, fps);
 	if (second === previous) return null;
 	return second;
-}
-
-/** Seconds from the start of the picture to this frame. `frame / fps`. */
-export function elapsedSecondsAtFrame(frame: number, fps: number): number {
-	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
-	return frame / fps;
 }
 
 /**
@@ -49,7 +66,7 @@ export function elapsedSecondsAtFrame(frame: number, fps: number): number {
 export function elapsedCentisecondsAtFrame(frame: number, fps: number): number {
 	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
 	if (fps === BIP_BOP_FPS) return Math.floor((Math.trunc(frame) * 100) / BIP_BOP_FPS);
-	return Math.max(0, Math.floor((frame / fps) * 100));
+	return Math.floor(secondsAtFrame(frame, fps) * 100);
 }
 
 /** Elapsed centiseconds from the preview clock. Truncates; does not round. */
@@ -63,8 +80,8 @@ export function elapsedCentisecondsAtMs(elapsedMs: number): number {
  * 0 at a whole second, approaching 1 at the next. 0 when that sample cannot be placed.
  */
 export function videoCycleFraction(frame: number, fps: number): number {
-	if (!Number.isFinite(frame) || frame <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
-	return (frame % fps) / fps;
+	const seconds = secondsAtFrame(frame, fps);
+	return seconds - Math.floor(seconds);
 }
 
 /** Even whole seconds are Bip. Odd whole seconds are Bop. */
@@ -76,13 +93,13 @@ export function beatAtSecond(second: number): PictureBeat {
 /**
  * Picture timing for one video frame.
  * The cycle fraction is {@link videoCycleFraction}. The label is drawn when that
- * fraction is 0. Elapsed time stays `frame / fps`.
+ * fraction is 0. Elapsed time stays {@link secondsAtFrame}.
  */
 export function videoPictureAtFrame(frame: number, fps: number): FramePicture {
 	const index = Number.isFinite(frame) ? frame : 0;
 	const rate = Number.isFinite(fps) && fps > 0 ? fps : BIP_BOP_FPS;
 	const cycleFraction = videoCycleFraction(index, rate);
-	const second = index > 0 ? Math.floor(index / rate) : 0;
+	const second = wholeSecondsAtFrame(index, rate);
 	return {
 		frame: index,
 		elapsedCentiseconds: elapsedCentisecondsAtFrame(index, rate),
