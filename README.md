@@ -1,42 +1,23 @@
-# sv
+# Bip Bop Web
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Generate test videos at multiple resolutions and codecs, including seconds, frames, and animation.
 
-## Creating a project
+Try it on!: https://moko256.github.io/bip-bop-web/
 
-If you're seeing this, you've probably already done this step. Congrats!
+![Light mode](./assets/screenshot-light.png)
+![Dark mode](./assets/screenshot-dark.png)
 
-```sh
-# create a new project
-pnpx sv create my-app
-```
+## Acknowledgment
 
-To recreate this project with the same configuration:
+This project is inspired by:
+- [Bip Bop stream (Advanced stream for tvOS - HTTP Live Streaming Examples - Apple Developer)](https://developer.apple.com/streaming/examples/advanced-stream-hevc.html)
 
-```sh
-# recreate this project
-pnpm dlx sv@0.17.1 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright sveltekit-adapter="adapter:static" paraglide="languageTags:en, ja+demo:no" ai-tools="ide:cursor+tools:svelte-core-bestpractices,svelte-file-editor,svelte-code-writer,mcp+mcpSetup:local" --install pnpm bip-bop-web
-```
+Similar implementations:
+- [DummyVideoCapturer (Sora Android SDK サンプルアプリケーション - Shiguredo)](https://github.com/shiguredo/sora-android-sdk-samples)
+- [Fake Capture Device (WebRTC Load Testing Tool Zakuro - Shiguredo)](https://github.com/shiguredo/zakuro)
 
-## Developing
+## License
 
-Once you've created a project and installed dependencies with `pnpm install`, start a development server:
+GNU Affero General Public License v3.0 or later
 
-```sh
-pnpm run dev
-
-# or start the server and open the app in a new browser tab
-pnpm run dev --open
-```
-
-## Building
-
-To create a production version of your app:
-
-```sh
-pnpm run build
-```
-
-You can preview the production build with `pnpm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+`AGPL-3.0-or-later`
