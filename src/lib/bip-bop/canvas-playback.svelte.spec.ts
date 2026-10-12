@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-import type { Scheduler } from '$lib/playback/scheduler';
+import { PlaybackSession } from '#lib/playback/PlaybackSession.svelte';
+import type { Scheduler } from '#lib/playback/scheduler';
 import {
 	canvasPlayback,
 	createCanvasPicture,

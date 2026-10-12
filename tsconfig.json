@@ -1,5 +1,5 @@
 {
-	"extends": "./.svelte-kit/tsconfig.json",
+	"extends": "$app/tsconfig",
 	"compilerOptions": {
 		"rewriteRelativeImportExtensions": true,
 		"allowJs": true,
@@ -10,11 +10,18 @@
 		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
-		"moduleResolution": "bundler"
-	}
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
+		"moduleResolution": "bundler",
+		"paths": {
+			"#lib": ["./src/lib/index.ts"],
+			"#lib/*": ["./src/lib/*"]
+		}
+	},
+	// #lib is also declared in package.json "imports" for Vite.
+	// TypeScript needs these paths to resolve extensionless #lib imports.
+	// https://svelte.dev/docs/kit/$lib
 	//
 	// To make changes to top-level options such as include and exclude, we recommend extending
 	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
+	"include": ["src", "test", "*"],
+	"exclude": ["src/service-worker"]
 }

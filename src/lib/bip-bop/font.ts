@@ -1,4 +1,4 @@
-import jetbrainsMono from '$lib/fonts/jetbrains-mono-0.woff2?inline';
+import jetbrainsMono from '#lib/fonts/jetbrains-mono-0.woff2?inline';
 import { BIP_BOP_FONT_FAMILY, BIP_BOP_FONT_TEXT } from './renderer';
 
 let pending: Promise<void> | undefined;

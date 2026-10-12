@@ -1,9 +1,9 @@
 <script lang="ts">
-	import ThemeColor from '$lib/components/ThemeColor.svelte';
-	import FullscreenPicture from '$lib/fullscreen/FullscreenPicture.svelte';
-	import { fullscreenDocumentTitle } from '$lib/fullscreen/fullscreen-url';
-	import { parseResolutionBitmap, type ResolutionBitmap } from '$lib/output/output';
-	import { m } from '$lib/paraglide/messages';
+	import ThemeColor from '#lib/components/ThemeColor.svelte';
+	import FullscreenPicture from '#lib/fullscreen/FullscreenPicture.svelte';
+	import { fullscreenDocumentTitle } from '#lib/fullscreen/fullscreen-url';
+	import { parseResolutionBitmap, type ResolutionBitmap } from '#lib/output/output';
+	import { m } from '#lib/paraglide/messages';
 	import { page } from '$app/state';
 	import { onMount } from 'svelte';
 

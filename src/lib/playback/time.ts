@@ -1,4 +1,4 @@
-import { wholeSecondsAtFrame } from '$lib/bip-bop/media-time';
+import { wholeSecondsAtFrame } from '#lib/bip-bop/media-time';
 
 /** `MM:SS` or `HH:MM:SS` for one side of the playback time. */
 function formatPart(frame: number, fps: number, withHours: boolean): string {

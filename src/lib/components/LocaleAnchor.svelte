@@ -1,6 +1,6 @@
 <script>
 	import { page } from '$app/state';
-	import { locales, localizeHref } from '$lib/paraglide/runtime';
+	import { locales, localizeHref } from '#lib/paraglide/runtime';
 </script>
 
 <div data-sveltekit-reload class="locale-anchor">

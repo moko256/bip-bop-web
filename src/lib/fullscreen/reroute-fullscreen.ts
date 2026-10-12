@@ -1,7 +1,7 @@
-import { base } from '$app/paths';
-import { deLocalizeUrl } from '$lib/paraglide/runtime';
+import { deLocalizeUrl } from '#lib/paraglide/runtime';
+import { siteBase } from '../../../site-url';
 
-const localizedFullscreen = new RegExp(`^${base}/(?:en|ja)/fullscreen/?$`);
+const localizedFullscreen = new RegExp(`^${siteBase}/(?:en|ja)/fullscreen/?$`);
 
 /** Localized fullscreen paths stay unmatched so the router shows the error page. */
 export function reroutePathname(url: URL): string {

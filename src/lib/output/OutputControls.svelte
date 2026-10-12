@@ -1,7 +1,7 @@
 <script lang="ts">
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
 	import type { Snippet } from 'svelte';
-	import * as m from '$lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages';
 	import { loadVideoOutput } from './load-video-output';
 	import { isVideoOutputType, outputTypes, type OutputType } from './output';
 	import OutputLayout from './OutputLayout.svelte';

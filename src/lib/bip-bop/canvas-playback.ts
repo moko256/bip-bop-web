@@ -1,5 +1,5 @@
-import type { PlaybackAdapter, PlaybackHost } from '$lib/playback/PlaybackSession.svelte';
-import type { Scheduler } from '$lib/playback/scheduler';
+import type { PlaybackAdapter, PlaybackHost } from '#lib/playback/PlaybackSession.svelte';
+import type { Scheduler } from '#lib/playback/scheduler';
 import { bipBopPreviewPictureMs } from './audio';
 import {
 	elapsedCentisecondsAtMs,

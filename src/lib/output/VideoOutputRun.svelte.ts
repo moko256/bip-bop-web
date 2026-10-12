@@ -1,7 +1,7 @@
 import type { AudioCodec, VideoCodec } from 'mediabunny';
-import { browserScheduler } from '$lib/playback/scheduler';
-import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-import { videoPlayback } from '$lib/playback/video-playback';
+import { browserScheduler } from '#lib/playback/scheduler';
+import { PlaybackSession } from '#lib/playback/PlaybackSession.svelte';
+import { videoPlayback } from '#lib/playback/video-playback';
 import { EncodableCodecLists, encodableCodecLists } from './EncodableCodecLists.svelte';
 import { EncodeCheck } from './EncodeCheck.svelte';
 import { canEncodeSelection, type CanEncodeSelection } from './encode-support';

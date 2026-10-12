@@ -1,4 +1,4 @@
-import { formatFpsFilenameToken } from '$lib/bip-bop/fps-text';
+import { formatFpsFilenameToken } from '#lib/bip-bop/fps-text';
 
 export function videoDownloadName(options: {
 	width: number;

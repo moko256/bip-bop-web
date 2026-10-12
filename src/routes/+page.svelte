@@ -1,11 +1,11 @@
 <script lang="ts">
-	import ThemeColor from '$lib/components/ThemeColor.svelte';
-	import HeadUrlLinks from '$lib/components/HeadUrlLinks.svelte';
-	import LocaleAnchor from '$lib/components/LocaleAnchor.svelte';
-	import NoScript from '$lib/components/NoScript.svelte';
-	import OutputControls from '$lib/output/OutputControls.svelte';
-	import { m } from '$lib/paraglide/messages';
-	import Footer from '$lib/top/Footer.svelte';
+	import ThemeColor from '#lib/components/ThemeColor.svelte';
+	import HeadUrlLinks from '#lib/components/HeadUrlLinks.svelte';
+	import LocaleAnchor from '#lib/components/LocaleAnchor.svelte';
+	import NoScript from '#lib/components/NoScript.svelte';
+	import OutputControls from '#lib/output/OutputControls.svelte';
+	import { m } from '#lib/paraglide/messages';
+	import Footer from '#lib/top/Footer.svelte';
 </script>
 
 <svelte:head>
@@ -31,7 +31,7 @@
 
 <style>
 	@import 'kiso.css';
-	@import '$lib/styles/pico.scss';
+	@import '#lib/styles/pico.scss';
 
 	.main-container {
 		display: grid;

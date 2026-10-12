@@ -1,4 +1,4 @@
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages';
 import { describe, expect, it } from 'vitest';
 import { VideoGenerationError } from './generate-video';
 import { videoGenerationMessage } from './video-generation-message';

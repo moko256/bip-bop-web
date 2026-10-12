@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { browserScheduler } from '$lib/playback/scheduler';
-	import type { PlaybackContent, PlaybackContentProps } from '$lib/playback/playback-content';
-	import { PlaybackSession, type PlaybackPosition } from '$lib/playback/PlaybackSession.svelte';
+	import { browserScheduler } from '#lib/playback/scheduler';
+	import type { PlaybackContent, PlaybackContentProps } from '#lib/playback/playback-content';
+	import { PlaybackSession, type PlaybackPosition } from '#lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { Snippet } from 'svelte';
 	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
 	import { loadBipBopFont } from './font';
 	import { BipBopRenderer, createBipBopDimensions, type BipBopSample } from './renderer';
-	import * as m from '$lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages';
 	import { BIP_BOP_FPS } from './frames';
 
 	/**
