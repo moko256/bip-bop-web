@@ -1,10 +1,17 @@
 import * as m from '$lib/paraglide/messages';
+import {
+	getEncodableAudioCodecs,
+	getEncodableVideoCodecs,
+	type AudioCodec,
+	type VideoCodec
+} from 'mediabunny';
 import { page } from 'vitest/browser';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import OutputControls from './OutputControls.svelte';
 import { preferredAudioCodec } from './generate-video';
-import { supportedAudioCodecs, supportedVideoCodecs } from './video-container';
+import type { VideoOutputType } from './output';
+import { supportedAudioCodecs, supportedVideoCodecs, videoOutputFormat } from './video-container';
 
 const currentPage = vi.hoisted(() => new URL('https://moko256.github.io/bip-bop-web/ja/foo?x=1#y'));
 
@@ -133,7 +140,7 @@ describe('OutputControls', () => {
 		);
 	});
 
-	it('shows a 16:9 placeholder and the container codecs for mp4 and webm', async () => {
+	it('shows a 16:9 placeholder and the encodable codecs for mp4 and webm', async () => {
 		render(OutputControls);
 
 		await page.getByRole('button', { name: 'mp4' }).click();
@@ -151,20 +158,16 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('combobox', { name: m.resolution() }))
 			.toHaveValue('1920x1080');
-		await expect.element(page.getByRole('combobox', { name: m.video_codec() })).toHaveValue('avc');
-		for (const videoCodec of supportedVideoCodecs('mp4')) {
-			await expect
-				.element(page.getByRole('option', { name: videoCodec, exact: true }))
-				.toBeInTheDocument();
-		}
-		await expect
-			.element(page.getByRole('combobox', { name: m.audio_codec() }))
-			.toHaveValue(defaultMp4AudioCodec);
-		for (const audioCodec of supportedAudioCodecs('mp4')) {
-			await expect
-				.element(page.getByRole('option', { name: audioCodec, exact: true }))
-				.toBeInTheDocument();
-		}
+		const mp4Video = await encodableCodecOptions('mp4', 'video');
+		const mp4Audio = await encodableCodecOptions('mp4', 'audio');
+		const videoCodec = page.getByRole('combobox', { name: m.video_codec() });
+		const audioCodec = page.getByRole('combobox', { name: m.audio_codec() });
+		await expect.element(videoCodec).toBeEnabled();
+		await expect.element(audioCodec).toBeEnabled();
+		await expect.element(videoCodec).toHaveValue(mp4Video[0]);
+		await expect.element(audioCodec).toHaveValue(defaultMp4AudioCodec);
+		expect(selectOptionValues(m.video_codec())).toEqual(mp4Video);
+		expect(selectOptionValues(m.audio_codec())).toEqual(mp4Audio);
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeEnabled();
 		const stop = page.getByRole('button', { name: m.stop() });
 		await expect.element(stop).toBeDisabled();
@@ -209,11 +212,19 @@ describe('OutputControls', () => {
 		await expect
 			.element(page.getByRole('button', { name: 'webm' }))
 			.toHaveAttribute('aria-current', 'true');
-		await expect
-			.element(page.getByRole('combobox', { name: m.video_codec() }))
-			.toHaveValue(supportedVideoCodecs('webm')[0]);
+		const webmVideo = await encodableCodecOptions('webm', 'video');
+		await expect.element(videoCodec).toBeEnabled();
+		await expect.element(videoCodec).toHaveValue(webmVideo[0]);
+		expect(selectOptionValues(m.video_codec())).toEqual(webmVideo);
 		await expect.element(page.getByRole('button', { name: m.generate() })).toBeInTheDocument();
 		await expect.element(page.getByRole('button', { name: m.open() })).not.toBeInTheDocument();
+
+		await page.getByRole('button', { name: 'mp4' }).click();
+
+		await expect.element(videoCodec).toBeEnabled();
+		await expect.element(videoCodec).toHaveValue(mp4Video[0]);
+		expect(selectOptionValues(m.video_codec())).toEqual(mp4Video);
+		expect(selectOptionValues(m.audio_codec())).toEqual(mp4Audio);
 	});
 
 	it('centers progress in the video area while the encoder loads', async () => {
@@ -785,6 +796,28 @@ describe('OutputControls', () => {
 		await expect.element(frames).toHaveValue(12);
 	});
 });
+
+async function encodableCodecOptions(type: VideoOutputType, kind: 'video'): Promise<VideoCodec[]>;
+async function encodableCodecOptions(type: VideoOutputType, kind: 'audio'): Promise<AudioCodec[]>;
+async function encodableCodecOptions(
+	type: VideoOutputType,
+	kind: 'video' | 'audio'
+): Promise<string[]> {
+	if (kind === 'video') {
+		const supported = videoOutputFormat(type).getSupportedVideoCodecs();
+		const encodable = new Set(await getEncodableVideoCodecs(supported));
+		return supportedVideoCodecs(type).filter((codec) => encodable.has(codec));
+	}
+	const supported = videoOutputFormat(type).getSupportedAudioCodecs();
+	const encodable = new Set(await getEncodableAudioCodecs(supported));
+	return supportedAudioCodecs(type).filter((codec) => encodable.has(codec));
+}
+
+function selectOptionValues(name: string): string[] {
+	return [...page.getByRole('combobox', { name }).element().querySelectorAll('option')].map(
+		(option) => (option as HTMLOptionElement).value
+	);
+}
 
 function previewCanvas(): HTMLCanvasElement {
 	const canvas = page.getByLabelText(m.bip_bop_preview_aria()).element();

@@ -1,4 +1,6 @@
 import {
+	getEncodableAudioCodecs,
+	getEncodableVideoCodecs,
 	Mp4OutputFormat,
 	WebMOutputFormat,
 	type AudioCodec,
@@ -62,4 +64,14 @@ export function supportedAudioCodecs(type: VideoOutputType): AudioCodec[] {
 		case 'webm':
 			return sortCodecsByPreference(codecs, webmAudioCodecOrder);
 	}
+}
+
+/** Container video codecs this browser can encode, in preference order. */
+export function encodableVideoCodecs(type: VideoOutputType): Promise<VideoCodec[]> {
+	return getEncodableVideoCodecs(supportedVideoCodecs(type));
+}
+
+/** Container audio codecs this browser can encode, in preference order. */
+export function encodableAudioCodecs(type: VideoOutputType): Promise<AudioCodec[]> {
+	return getEncodableAudioCodecs(supportedAudioCodecs(type));
 }

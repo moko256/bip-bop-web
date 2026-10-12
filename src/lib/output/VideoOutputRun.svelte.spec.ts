@@ -1,5 +1,7 @@
+import type { AudioCodec, VideoCodec } from 'mediabunny';
 import type { VideoOutputType } from './output';
 import { describe, expect, it, vi } from 'vitest';
+import { EncodableCodecLists } from './EncodableCodecLists.svelte';
 import type { GenerateVideoUrl } from './VideoGeneration.svelte';
 import { VideoOutputRun } from './VideoOutputRun.svelte';
 
@@ -104,4 +106,87 @@ describe('VideoOutputRun', () => {
 		expect(run.session.frame).toBe(0);
 		expect(run.downloadName).toBeNull();
 	});
+
+	it('reuses encodable codecs when the OutputType returns', async () => {
+		const pending = {
+			webm: {
+				video: deferred<VideoCodec[]>(),
+				audio: deferred<AudioCodec[]>()
+			},
+			mp4: {
+				video: deferred<VideoCodec[]>(),
+				audio: deferred<AudioCodec[]>()
+			}
+		};
+		const calls: string[] = [];
+		const codecLists = new EncodableCodecLists(
+			(type) => {
+				calls.push(`video:${type}`);
+				return pending[type].video.promise;
+			},
+			(type) => {
+				calls.push(`audio:${type}`);
+				return pending[type].audio.promise;
+			}
+		);
+		let outputType: VideoOutputType = 'webm';
+		const run = new VideoOutputRun({
+			outputType: () => outputType,
+			generate: () => Promise.resolve('blob:video'),
+			canEncode: () => Promise.resolve(true),
+			audioCodec: async () => 'opus',
+			codecLists
+		});
+
+		expect(run.codecsLoading).toBe(true);
+		expect(run.videoCodecs).toEqual([]);
+		expect(run.audioCodecs).toEqual([]);
+		expect(run.videoCodec).toBe('av1');
+
+		pending.webm.video.resolve(['vp9', 'vp8']);
+		pending.webm.audio.resolve(['opus', 'vorbis']);
+		await vi.waitFor(() => {
+			expect(run.codecsLoading).toBe(false);
+		});
+		expect(run.videoCodecs).toEqual(['vp9', 'vp8']);
+		expect(run.audioCodecs).toEqual(['opus', 'vorbis']);
+		expect(run.videoCodec).toBe('vp9');
+		run.chooseVideoCodec('vp8');
+
+		outputType = 'mp4';
+		run.noteOutputType();
+
+		expect(run.codecsLoading).toBe(true);
+		expect(run.videoCodecs).toEqual([]);
+		expect(run.videoCodec).toBe('vp8');
+
+		outputType = 'webm';
+		run.noteOutputType();
+
+		expect(run.codecsLoading).toBe(false);
+		expect(run.videoCodecs).toEqual(['vp9', 'vp8']);
+		expect(run.videoCodec).toBe('vp8');
+		expect(calls).toEqual(['video:webm', 'audio:webm', 'video:mp4', 'audio:mp4']);
+
+		run.dispose();
+		const again = new VideoOutputRun({
+			outputType: () => 'webm' as const,
+			generate: () => Promise.resolve('blob:video'),
+			canEncode: () => Promise.resolve(true),
+			audioCodec: async () => 'opus',
+			codecLists
+		});
+		expect(again.codecsLoading).toBe(false);
+		expect(again.videoCodecs).toEqual(['vp9', 'vp8']);
+		expect(calls).toEqual(['video:webm', 'audio:webm', 'video:mp4', 'audio:mp4']);
+		again.dispose();
+	});
 });
+
+function deferred<T>() {
+	let resolve: (value: T) => void = () => {};
+	const promise = new Promise<T>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
