@@ -108,14 +108,13 @@ describe('video playback', () => {
 		expect(session.playing).toBe(false);
 	});
 
-	it('seeks with the bounds rate passed to the adapter', () => {
+	it('seeks with the session playback bounds', () => {
 		const time = manualScheduler();
 		const element = fakeVideo();
-		const bounds = { fps: 24, maxFrame: 240 };
-		const side = videoPlayback(time.scheduler, bounds);
+		const side = videoPlayback(time.scheduler);
 		const session = new PlaybackSession({
-			maxFrame: bounds.maxFrame,
-			fps: bounds.fps,
+			maxFrame: 240,
+			fps: 24,
 			connect: side.connect
 		});
 		side.attach(element as unknown as HTMLVideoElement);
@@ -123,6 +122,28 @@ describe('video playback', () => {
 		session.seek(12);
 
 		expect(element.currentTime).toBeCloseTo(0.5);
+		expect(session.frame).toBe(12);
+	});
+
+	it('seeks and reads currentTime with bounds set after the adapter connected', () => {
+		const time = manualScheduler();
+		const element = fakeVideo();
+		const side = videoPlayback(time.scheduler);
+		const session = new PlaybackSession({
+			maxFrame: BIP_BOP_MAX_FRAME,
+			fps: BIP_BOP_FPS,
+			connect: side.connect
+		});
+		side.attach(element as unknown as HTMLVideoElement);
+
+		session.setBounds(240, 24);
+		session.seek(12);
+		expect(element.currentTime).toBeCloseTo(0.5);
+		expect(session.frame).toBe(12);
+
+		session.setPlaying(true);
+		element.currentTime = 0.5;
+		time.flush();
 		expect(session.frame).toBe(12);
 	});
 

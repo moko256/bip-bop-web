@@ -1,7 +1,7 @@
 import type { AudioCodec, VideoCodec } from 'mediabunny';
 import { browserScheduler } from '$lib/playback/scheduler';
 import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
-import { videoPlayback, type PlaybackBounds } from '$lib/playback/video-playback';
+import { videoPlayback } from '$lib/playback/video-playback';
 import { EncodeCheck } from './EncodeCheck.svelte';
 import { canEncodeSelection, type CanEncodeSelection } from './encode-support';
 import {
@@ -35,7 +35,7 @@ export type VideoOutputRunOptions = {
 
 /**
  * Settings, encode check, generation, and playback for one video output.
- * `applyPlaybackBounds` writes the length for the transport and the video element together.
+ * `setBounds` writes the playback bounds the transport and the video element both read.
  */
 export class VideoOutputRun {
 	resolution = $state<Resolution>(defaultResolution);
@@ -52,10 +52,6 @@ export class VideoOutputRun {
 	private readonly readOutputType: () => VideoOutputType;
 	private videoCodecChoice = $state<VideoCodec | null>(null);
 	private audioCodecChoice = $state<AudioCodec | null>(null);
-	private readonly bounds: PlaybackBounds = {
-		fps: DEFAULT_FPS,
-		maxFrame: DEFAULT_FRAME_COUNT
-	};
 	private seenOutputType: VideoOutputType | undefined;
 	private stopWatch = () => {};
 
@@ -66,11 +62,11 @@ export class VideoOutputRun {
 			options.audioCodec ?? preferredAudioCodec
 		);
 		this.encodeCheck = new EncodeCheck(options.canEncode ?? canEncodeSelection);
-		const playback = videoPlayback(browserScheduler(), this.bounds);
+		const playback = videoPlayback(browserScheduler());
 		this.attachVideo = playback.attach;
 		this.session = new PlaybackSession({
-			maxFrame: this.bounds.maxFrame,
-			fps: this.bounds.fps,
+			maxFrame: DEFAULT_FRAME_COUNT,
+			fps: DEFAULT_FPS,
 			connect: playback.connect
 		});
 		this.stopWatch = $effect.root(() => {
@@ -195,7 +191,7 @@ export class VideoOutputRun {
 			videoQuality: this.videoQuality,
 			extension: outputType
 		});
-		this.applyPlaybackBounds(frameCount, fps);
+		this.session.setBounds(frameCount, fps);
 		this.session.reset();
 		this.generation.start({
 			outputType,
@@ -235,11 +231,5 @@ export class VideoOutputRun {
 		this.session.dispose();
 		this.generation.dispose();
 		this.encodeCheck.dispose();
-	}
-
-	private applyPlaybackBounds(maxFrame: number, fps: number): void {
-		this.bounds.fps = fps;
-		this.bounds.maxFrame = maxFrame;
-		this.session.setBounds(maxFrame, fps);
 	}
 }
