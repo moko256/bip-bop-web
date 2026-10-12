@@ -126,11 +126,6 @@ export class VideoOutputRun {
 		return maxFrameCountForFps(this.frameEntry.currentFps);
 	}
 
-	/** Length currently shown in the transport. */
-	get maxFrame(): number {
-		return this.session.maxFrame ?? this.bounds.maxFrame;
-	}
-
 	/** Probe the default audio codec, and drop a video when the OutputType changes. */
 	noteOutputType(): void {
 		const type = this.outputType;
