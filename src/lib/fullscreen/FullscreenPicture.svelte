@@ -1,14 +1,9 @@
 <script lang="ts">
 	import BipBopLivePicture from '$lib/bip-bop/BipBopLivePicture.svelte';
-	import OverlayPlayback from '$lib/playback/OverlayPlayback.svelte';
+	import PlaybackOverlay from '$lib/playback/PlaybackOverlay.svelte';
 	import type { FullscreenBitmap } from './fullscreen-url';
 
 	let { bitmap }: { bitmap: FullscreenBitmap | null } = $props();
-
-	function onplaybackchange(next: boolean, setPlaying: (playing: boolean) => void) {
-		if (next) requestPageFullscreen();
-		setPlaying(next);
-	}
 
 	function requestPageFullscreen() {
 		const request = document.documentElement.requestFullscreen;
@@ -25,10 +20,13 @@
 		style:--bitmap-height={bitmap?.height}
 	>
 		<BipBopLivePicture {bitmap} fill>
-			{#snippet view({ playing, setPlaying, canvas })}
-				<OverlayPlayback
-					{playing}
-					onplaybackchange={(next) => onplaybackchange(next, setPlaying)}
+			{#snippet view({ session, canvas })}
+				<PlaybackOverlay
+					playing={session.playing}
+					onplaybackchange={(next) => {
+						if (next) requestPageFullscreen();
+						session.setPlaying(next);
+					}}
 					content={canvas}
 				/>
 			{/snippet}

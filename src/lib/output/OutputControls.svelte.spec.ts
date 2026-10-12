@@ -104,6 +104,14 @@ describe('OutputControls', () => {
 					.querySelectorAll('button')
 			].map((button) => button.textContent)
 		).toEqual([m.output_type_page(), m.output_type_fullscreen_url(), 'mp4', 'webm']);
+		const outputTypeGroup = page
+			.getByRole('group', { name: m.output_type_group_aria_label() })
+			.element();
+		expect(getComputedStyle(outputTypeGroup).display).toBe('flex');
+		const outputTypeButton = outputTypeGroup.querySelector('button');
+		if (!(outputTypeButton instanceof HTMLElement))
+			throw new Error('Expected an OutputType button');
+		expect(getComputedStyle(outputTypeButton).flexGrow).toBe('1');
 		const settings = page
 			.getByRole('heading', { level: 1, name: m.site_title() })
 			.element().parentElement;

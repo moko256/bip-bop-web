@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PlaybackContent } from './playback-content';
+	import type { PlaybackPosition } from './PlaybackSession.svelte';
 	import PlaybackTime from './PlaybackTime.svelte';
 	import PlaybackFrameField from './PlaybackFrameField.svelte';
 	import PlaybackSeekBar from './PlaybackSeekBar.svelte';
@@ -8,35 +9,38 @@
 	import { seekReserveHeight } from './seek-bar';
 
 	let {
-		playing,
-		frame,
-		maxFrame,
-		fps,
-		onplaybackchange,
-		onframechange,
+		session,
 		content
 	}: {
-		playing: boolean;
-		frame: number;
-		maxFrame: number;
-		fps: number;
-		onplaybackchange: (playing: boolean) => void;
-		onframechange: (frame: number) => void;
+		session: PlaybackPosition;
 		content: PlaybackContent;
 	} = $props();
+
+	let length = $derived(session.maxFrame);
 </script>
 
 {#snippet transport()}
-	<PlaybackToggle {playing} {onplaybackchange} />
-	<PlaybackSeekBar {frame} {maxFrame} {onframechange} />
-	<PlaybackTime {frame} {maxFrame} {fps} />
-	<PlaybackFrameField {frame} {maxFrame} {playing} {onframechange} />
+	<PlaybackToggle playing={session.playing} onplaybackchange={(next) => session.setPlaying(next)} />
+	{#if length !== undefined}
+		<PlaybackSeekBar
+			frame={session.frame}
+			maxFrame={length}
+			onframechange={(next) => session.seek(next)}
+		/>
+		<PlaybackTime frame={session.frame} maxFrame={length} fps={session.fps} />
+	{/if}
+	<PlaybackFrameField
+		frame={session.frame}
+		maxFrame={length}
+		playing={session.playing}
+		onframechange={(next) => session.seek(next)}
+	/>
 {/snippet}
 
 <PlaybackShell
-	{playing}
-	{onplaybackchange}
+	playing={session.playing}
+	onplaybackchange={(next) => session.setPlaying(next)}
 	{transport}
 	{content}
-	transportMinHeight={seekReserveHeight}
+	transportMinHeight={length === undefined ? undefined : seekReserveHeight}
 />

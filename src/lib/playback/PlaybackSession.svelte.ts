@@ -20,6 +20,19 @@ export type PlaybackAdapter = {
 	dispose(): void;
 };
 
+/**
+ * What the transport shows.
+ * A preview counter leaves `maxFrame` unset. A video sets it to the length.
+ */
+export type PlaybackPosition = {
+	playing: boolean;
+	frame: number;
+	maxFrame?: number;
+	fps: number;
+	setPlaying(next: boolean): void;
+	seek(next: number): void;
+};
+
 /** Play, pause, and seek. Canvas and video are adapters behind this. */
 export class PlaybackSession {
 	playing = $state(false);

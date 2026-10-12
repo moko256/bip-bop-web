@@ -1,5 +1,5 @@
 <script lang="ts">
-	import UnlimitedPlaybackControls from '$lib/playback/UnlimitedPlaybackControls.svelte';
+	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
 	import BipBopLivePicture from './BipBopLivePicture.svelte';
 
 	let {
@@ -16,13 +16,7 @@
 </script>
 
 <BipBopLivePicture {bitmap} {aspectRatio}>
-	{#snippet view({ playing, frame, setPlaying, seek, canvas })}
-		<UnlimitedPlaybackControls
-			{playing}
-			{frame}
-			onplaybackchange={setPlaying}
-			onframechange={seek}
-			content={canvas}
-		/>
+	{#snippet view({ session, canvas })}
+		<PlaybackControls {session} content={canvas} />
 	{/snippet}
 </BipBopLivePicture>

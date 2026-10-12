@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browserScheduler } from '$lib/playback/scheduler';
 	import type { PlaybackContent, PlaybackContentProps } from '$lib/playback/playback-content';
-	import { PlaybackSession } from '$lib/playback/PlaybackSession.svelte';
+	import { PlaybackSession, type PlaybackPosition } from '$lib/playback/PlaybackSession.svelte';
 	import type { Attachment } from 'svelte/attachments';
 	import type { Snippet } from 'svelte';
 	import { canvasPlayback, createCanvasPicture, liveCanvasAudio } from './canvas-playback';
@@ -32,10 +32,7 @@
 		view: Snippet<
 			[
 				{
-					playing: boolean;
-					frame: number;
-					setPlaying: (playing: boolean) => void;
-					seek: (frame: number) => void;
+					session: PlaybackPosition;
 					canvas: PlaybackContent;
 				}
 			]
@@ -48,14 +45,6 @@
 		fps: BIP_BOP_FPS,
 		connect: canvasPlayback(scheduler, liveCanvasAudio(scheduler), picture)
 	});
-
-	function setPlaying(next: boolean) {
-		session.setPlaying(next);
-	}
-
-	function seek(next: number) {
-		session.seek(next);
-	}
 
 	function bitmapSize(host: HTMLElement): { width: number; height: number } | null {
 		const dpr = window.devicePixelRatio || 1;
@@ -148,7 +137,7 @@
 	></div>
 {/snippet}
 
-{@render view({ playing: session.playing, frame: session.frame, setPlaying, seek, canvas })}
+{@render view({ session, canvas })}
 
 <style>
 	.host {

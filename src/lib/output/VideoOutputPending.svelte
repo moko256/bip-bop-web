@@ -1,29 +1,27 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
 	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import * as m from '$lib/paraglide/messages';
-	import OutputLayout from './OutputLayout.svelte';
+	import type { OutputLayoutPlace } from './output-layout';
 	import { defaultResolution, parseResolution } from './output';
 
-	let { outputTypeSelector }: { outputTypeSelector: Snippet } = $props();
+	let { layout }: { layout: OutputLayoutPlace } = $props();
 
 	const bitmap = parseResolution(defaultResolution);
 	const videoAspectRatio = `${bitmap.width} / ${bitmap.height}`;
 </script>
 
-<OutputLayout>
-	{#snippet media()}
-		<div class="stage">
-			<div class="viewport" style:aspect-ratio={videoAspectRatio}>
-				<progress aria-label={m.loading_video_output_aria()}></progress>
-			</div>
-			<div class="seek-reserve" style:height={seekReserveHeight} aria-hidden="true"></div>
+{#snippet media()}
+	<div class="stage">
+		<div class="viewport" style:aspect-ratio={videoAspectRatio}>
+			<progress aria-label={m.loading_video_output_aria()}></progress>
 		</div>
-	{/snippet}
-	{#snippet settings()}
-		{@render outputTypeSelector()}
-	{/snippet}
-</OutputLayout>
+		<div class="seek-reserve" style:height={seekReserveHeight} aria-hidden="true"></div>
+	</div>
+{/snippet}
+
+{#snippet settings()}{/snippet}
+
+{@render layout(media, settings)}
 
 <style>
 	.stage {

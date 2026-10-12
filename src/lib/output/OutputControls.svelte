@@ -1,8 +1,10 @@
 <script lang="ts">
 	import FullscreenUrlOutput from './FullscreenUrlOutput.svelte';
+	import type { Snippet } from 'svelte';
 	import * as m from '$lib/paraglide/messages';
 	import { loadVideoOutput } from './load-video-output';
 	import { isVideoOutputType, outputTypes, type OutputType } from './output';
+	import OutputLayout from './OutputLayout.svelte';
 	import PageOutput from './PageOutput.svelte';
 	import VideoOutputPending from './VideoOutputPending.svelte';
 
@@ -28,35 +30,44 @@
 	}
 </script>
 
-{#snippet outputTypeSelector()}
-	<h1>{m.site_title()}</h1>
+{#snippet layout(picture: Snippet, fields: Snippet)}
+	<OutputLayout>
+		{#snippet media()}
+			{@render picture()}
+		{/snippet}
+		{#snippet settings()}
+			<h1>{m.site_title()}</h1>
 
-	<div class="output-type-switcher" role="group" aria-label={m.output_type_group_aria_label()}>
-		{#each outputTypes as type (type)}
-			<button
-				type="button"
-				class={outputType === type ? undefined : 'outline'}
-				aria-current={outputType === type ? true : undefined}
-				onclick={() => {
-					outputType = type;
-				}}
-			>
-				{outputTypeLabel(type)}
-			</button>
-		{/each}
-	</div>
+			<div class="output-type-switcher" role="group" aria-label={m.output_type_group_aria_label()}>
+				{#each outputTypes as type (type)}
+					<button
+						type="button"
+						class={outputType === type ? undefined : 'outline'}
+						aria-current={outputType === type ? true : undefined}
+						onclick={() => {
+							outputType = type;
+						}}
+					>
+						{outputTypeLabel(type)}
+					</button>
+				{/each}
+			</div>
+
+			{@render fields()}
+		{/snippet}
+	</OutputLayout>
 {/snippet}
 
 {#if isVideoOutputType(outputType)}
 	{#await loadEncoder()}
-		<VideoOutputPending {outputTypeSelector} />
+		<VideoOutputPending {layout} />
 	{:then { default: VideoOutput }}
-		<VideoOutput {outputType} {outputTypeSelector} />
+		<VideoOutput {outputType} {layout} />
 	{/await}
 {:else if outputType === 'fullscreen-url'}
-	<FullscreenUrlOutput {outputTypeSelector} />
+	<FullscreenUrlOutput {layout} />
 {:else}
-	<PageOutput {outputTypeSelector} />
+	<PageOutput {layout} />
 {/if}
 
 <style>

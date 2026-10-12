@@ -7,7 +7,7 @@
 	import { seekReserveHeight } from '$lib/playback/seek-bar';
 	import { stoppedVeilColor } from '$lib/playback/veil';
 	import { FPS_PRESETS } from './frame-entry';
-	import OutputLayout from './OutputLayout.svelte';
+	import type { OutputLayoutPlace } from './output-layout';
 	import ResolutionSelect from './ResolutionSelect.svelte';
 	import type { VideoOutputType } from './output';
 	import { videoQualityLevels } from './video-quality';
@@ -16,10 +16,10 @@
 
 	let {
 		outputType,
-		outputTypeSelector
+		layout
 	}: {
 		outputType: VideoOutputType;
-		outputTypeSelector: Snippet;
+		layout: OutputLayoutPlace;
 	} = $props();
 
 	const run = new VideoOutputRun({
@@ -114,119 +114,111 @@
 	>
 {/snippet}
 
-<OutputLayout>
-	{#snippet media()}
-		<div {@attach release}>
+{#snippet media()}
+	<div {@attach release}>
+		{#if run.generation.videoUrl}
+			{#await run.generation.videoUrl}
+				{@render placeholderViewport(loadingOverlay)}
+			{:then url}
+				{#snippet content({ onclick }: PlaybackContentProps)}
+					<!-- svelte-ignore a11y_media_has_caption -->
+					<video
+						class="media viewport"
+						style:aspect-ratio={run.aspectRatio}
+						src={url}
+						playsinline
+						aria-label={m.generated_video_aria()}
+						{onclick}
+						{@attach run.attachVideo}
+					></video>
+				{/snippet}
+				<PlaybackControls session={run.session} {content} />
+			{:catch}
+				{@render placeholderViewport()}
+			{/await}
+		{:else}
+			{@render placeholderViewport()}
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet settings()}
+	<form class="settings-form" onsubmit={onSubmit} onchange={() => run.invalidate()}>
+		<div class="settings-actions">
 			{#if run.generation.videoUrl}
 				{#await run.generation.videoUrl}
-					{@render placeholderViewport(loadingOverlay)}
+					{@render actions(true, null)}
 				{:then url}
-					{#snippet content({ onclick }: PlaybackContentProps)}
-						<!-- svelte-ignore a11y_media_has_caption -->
-						<video
-							class="media viewport"
-							style:aspect-ratio={run.aspectRatio}
-							src={url}
-							playsinline
-							aria-label={m.generated_video_aria()}
-							{onclick}
-							{@attach run.attachVideo}
-						></video>
-					{/snippet}
-					<PlaybackControls
-						playing={run.session.playing}
-						frame={run.session.frame}
-						maxFrame={run.maxFrame}
-						fps={run.session.fps}
-						onplaybackchange={(next) => run.session.setPlaying(next)}
-						onframechange={(next) => run.session.seek(next)}
-						{content}
-					/>
-				{:catch}
-					{@render placeholderViewport()}
+					{@render actions(false, url)}
+				{:catch error}
+					{@render actions(false, null)}
+					<p role="alert">{errorMessage(error)}</p>
 				{/await}
 			{:else}
-				{@render placeholderViewport()}
+				{@render actions(false, null)}
 			{/if}
 		</div>
-	{/snippet}
-	{#snippet settings()}
-		<form class="settings-form" onsubmit={onSubmit} onchange={() => run.invalidate()}>
-			{@render outputTypeSelector()}
-			<div class="settings-actions">
-				{#if run.generation.videoUrl}
-					{#await run.generation.videoUrl}
-						{@render actions(true, null)}
-					{:then url}
-						{@render actions(false, url)}
-					{:catch error}
-						{@render actions(false, null)}
-						<p role="alert">{errorMessage(error)}</p>
-					{/await}
-				{:else}
-					{@render actions(false, null)}
-				{/if}
-			</div>
-			<div class="output-fields">
-				<ResolutionSelect bind:value={run.resolution} />
-				<label>
-					{m.video_codec()}
-					<select value={run.videoCodec} onchange={onVideoCodecChange}>
-						{#each run.videoCodecs as videoCodecOption (videoCodecOption)}
-							<option value={videoCodecOption}>{videoCodecOption}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					{m.audio_codec()}
-					<select value={run.audioCodec} onchange={onAudioCodecChange}>
-						{#each run.audioCodecs as audioCodecOption (audioCodecOption)}
-							<option value={audioCodecOption}>{audioCodecOption}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					{m.video_quality()}
-					<select bind:value={run.videoQuality}>
-						{#each videoQualityLevels as level (level)}
-							<option value={level}>{level}</option>
-						{/each}
-					</select>
-				</label>
-				<label>
-					{m.frame_count()}
-					<input
-						type="number"
-						min="1"
-						step="1"
-						max={run.frameCountMax}
-						required
-						value={run.frameCountText}
-						oninput={onFrameCountInput}
-					/>
-				</label>
-				<label>
-					{m.fps()}
-					<input
-						type="number"
-						min="1"
-						max="240"
-						step="any"
-						required
-						list="fps-presets"
-						value={run.fpsText}
-						oninput={onFpsInput}
-					/>
-					<datalist id="fps-presets">
-						{#each FPS_PRESETS as preset (preset)}
-							<option value={preset}></option>
-						{/each}
-					</datalist>
-				</label>
-			</div>
-		</form>
-	{/snippet}
-</OutputLayout>
+		<div class="output-fields">
+			<ResolutionSelect bind:value={run.resolution} />
+			<label>
+				{m.video_codec()}
+				<select value={run.videoCodec} onchange={onVideoCodecChange}>
+					{#each run.videoCodecs as videoCodecOption (videoCodecOption)}
+						<option value={videoCodecOption}>{videoCodecOption}</option>
+					{/each}
+				</select>
+			</label>
+			<label>
+				{m.audio_codec()}
+				<select value={run.audioCodec} onchange={onAudioCodecChange}>
+					{#each run.audioCodecs as audioCodecOption (audioCodecOption)}
+						<option value={audioCodecOption}>{audioCodecOption}</option>
+					{/each}
+				</select>
+			</label>
+			<label>
+				{m.video_quality()}
+				<select bind:value={run.videoQuality}>
+					{#each videoQualityLevels as level (level)}
+						<option value={level}>{level}</option>
+					{/each}
+				</select>
+			</label>
+			<label>
+				{m.frame_count()}
+				<input
+					type="number"
+					min="1"
+					step="1"
+					max={run.frameCountMax}
+					required
+					value={run.frameCountText}
+					oninput={onFrameCountInput}
+				/>
+			</label>
+			<label>
+				{m.fps()}
+				<input
+					type="number"
+					min="1"
+					max="240"
+					step="any"
+					required
+					list="fps-presets"
+					value={run.fpsText}
+					oninput={onFpsInput}
+				/>
+				<datalist id="fps-presets">
+					{#each FPS_PRESETS as preset (preset)}
+						<option value={preset}></option>
+					{/each}
+				</datalist>
+			</label>
+		</div>
+	</form>
+{/snippet}
+
+{@render layout(media, settings)}
 
 {#snippet loadingOverlay()}
 	<div class="loading">
@@ -309,7 +301,7 @@
 		flex-direction: column;
 		gap: var(--pico-spacing, 1rem);
 		flex: 1;
-		min-height: 100%;
+		min-height: 0;
 		margin: 0;
 	}
 

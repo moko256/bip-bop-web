@@ -1,19 +1,17 @@
 <script lang="ts">
 	import BipBopPreview from '$lib/bip-bop/BipBopPreview.svelte';
 	import { m } from '$lib/paraglide/messages';
-	import OutputLayout from './OutputLayout.svelte';
-	import type { Snippet } from 'svelte';
+	import type { OutputLayoutPlace } from './output-layout';
 
-	let { outputTypeSelector }: { outputTypeSelector: Snippet } = $props();
+	let { layout }: { layout: OutputLayoutPlace } = $props();
 </script>
 
-<OutputLayout>
-	{#snippet media()}
-		<BipBopPreview />
-	{/snippet}
-	{#snippet settings()}
-		{@render outputTypeSelector()}
+{#snippet media()}
+	<BipBopPreview />
+{/snippet}
 
-		<p>{m.site_description()}</p>
-	{/snippet}
-</OutputLayout>
+{#snippet settings()}
+	<p>{m.site_description()}</p>
+{/snippet}
+
+{@render layout(media, settings)}
