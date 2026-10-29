@@ -1,0 +1,1 @@
+import{C as e,G as t,M as n,U as r,ct as i,it as a,ut as o}from"./BYofduRm.js";var s=t(`<meta name="theme-color" media="(prefers-color-scheme: light)"/> <meta name="theme-color" media="(prefers-color-scheme: dark)"/>`,1);function c(t,c){n(`3los1k`,t=>{var n=s(),l=i(n),u=o(l,2);a(()=>{e(l,`content`,c.light),e(u,`content`,c.dark)}),r(t,n)})}export{c as t};

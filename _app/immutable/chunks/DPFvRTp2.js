@@ -1,0 +1,1 @@
+var e=`https`,t=`moko256.github.io`,n=`/bip-bop-web`;export{t as n,e as r,n as t};
