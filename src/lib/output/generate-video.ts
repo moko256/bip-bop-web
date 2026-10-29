@@ -1,9 +1,9 @@
-import { BIP_BOP_AUDIO_SAMPLE_RATE } from '$lib/bip-bop/audio';
-import { loadBipBopFont } from '$lib/bip-bop/font';
-import { BipBopRenderer, createBipBopDimensions } from '$lib/bip-bop/renderer';
-import { toneSecondAtFrame, videoPictureAtFrame } from '$lib/bip-bop/media-time';
-import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '$lib/bip-bop/frames';
-import { placeBipBopTone } from '$lib/bip-bop/video-tone';
+import { BIP_BOP_AUDIO_SAMPLE_RATE } from '#lib/bip-bop/audio.js';
+import { loadBipBopFont } from '#lib/bip-bop/font.js';
+import { BipBopRenderer, createBipBopDimensions } from '#lib/bip-bop/renderer.js';
+import { toneSecondAtFrame, videoPictureAtFrame } from '#lib/bip-bop/media-time.js';
+import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '#lib/bip-bop/frames.js';
+import { placeBipBopTone } from '#lib/bip-bop/video-tone.js';
 import {
 	AudioSampleSource,
 	BufferTarget,

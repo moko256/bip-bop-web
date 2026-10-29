@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Attachment } from 'svelte/attachments';
-	import * as m from '$lib/paraglide/messages';
+	import * as m from '#lib/paraglide/messages.js';
 	import { seekBarHeight } from './seek-bar';
 	import { clampFrame } from './time';
 

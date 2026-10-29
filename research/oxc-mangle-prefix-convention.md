@@ -1,6 +1,6 @@
 # Oxc mangle と `$` / `_` プレフィックス規約の検証
 
-検証日: 2026-10-12
+検証日: 2026-10-29
 
 ## 結論（要約）
 
@@ -54,12 +54,33 @@
   "fileCount": 39,
   "transformedFiles": 39,
   "privateMemberDeclarations": 26,
-  "bytes_js_emit_total": 72693,
-  "bytes_minify_per_file_sum_default": 35498,
-  "bytes_minify_per_file_sum_after_underscore_emit": 35636,
-  "bytes_minify_per_file_sum_underscore_emit_plus_mangleProps": 34761,
-  "bytes_minify_per_file_sum_mangleProps_on_current_emit": 35498,
+  "bytes_js_emit_total": 72771,
+  "bytes_minify_per_file_sum_default": 35559,
+  "bytes_minify_per_file_sum_after_underscore_emit": 35697,
+  "bytes_minify_per_file_sum_underscore_emit_plus_mangleProps": 34822,
+  "bytes_minify_per_file_sum_mangleProps_on_current_emit": 35559,
   "saved_by_convention_and_mangleProps": 737
+}
+```
+
+## 本番 `pnpm build`（adapter-static の `build/` 配下 JS 合計）
+
+現行ソースのまま、デフォルト minify と `BENCHMARK_MANGLE_PROPS=1`（`mangleProps: /^_/`）を比較。
+
+```json
+{
+  "baseline_default_minify": {
+    "jsFileCount": 20,
+    "bytes": 446861,
+    "gzipBytes": 140957
+  },
+  "mangleProps_include_underscore_full_build": {
+    "ok": false,
+    "error": "Rolldown rejects mangleProps when the build emits multiple JS chunks (SvelteKit code-splitting)."
+  },
+  "saved_bytes": null,
+  "saved_gzip_bytes": null,
+  "note": "Full-app comparison uses adapter-static build/ JS totals. mangleProps in vite.config is blocked for this app until Rolldown supports it with code splitting."
 }
 ```
 

@@ -9,6 +9,7 @@ import { siteBase, siteHost, siteProtocol } from './site-url.ts';
 export default defineConfig(({ command }) => {
 	const isRelease = command === 'build';
 	const isE2E = process.env.E2E === '1';
+	const benchmarkMangleProps = process.env.BENCHMARK_MANGLE_PROPS === '1';
 
 	return {
 		css: {
@@ -21,7 +22,20 @@ export default defineConfig(({ command }) => {
 			}
 		},
 		build: {
-			cssMinify: 'lightningcss'
+			cssMinify: 'lightningcss',
+			...(benchmarkMangleProps
+				? {
+						rolldownOptions: {
+							output: {
+								minify: {
+									compress: true,
+									mangle: true,
+									mangleProps: { include: /^_/ }
+								}
+							}
+						}
+					}
+				: {})
 		},
 		plugins: [
 			sveltekit({

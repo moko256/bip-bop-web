@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-12T16:29:54.400Z",
+  "generatedAt": "2026-10-29T11:58:56.282Z",
   "oxcMinifyVersion": "0.153.0",
   "viteDefault": "Vite 8 uses Oxc identifier mangle by default; property mangle (mangleProps) is opt-in.",
   "microBenchmarks": [
@@ -29,18 +29,33 @@
     "fileCount": 39,
     "transformedFiles": 39,
     "privateMemberDeclarations": 26,
-    "bytes_js_emit_total": 72693,
-    "bytes_minify_per_file_sum_default": 35498,
-    "bytes_minify_per_file_sum_after_underscore_emit": 35636,
-    "bytes_minify_per_file_sum_underscore_emit_plus_mangleProps": 34761,
-    "bytes_minify_per_file_sum_mangleProps_on_current_emit": 35498,
+    "bytes_js_emit_total": 72771,
+    "bytes_minify_per_file_sum_default": 35559,
+    "bytes_minify_per_file_sum_after_underscore_emit": 35697,
+    "bytes_minify_per_file_sum_underscore_emit_plus_mangleProps": 34822,
+    "bytes_minify_per_file_sum_mangleProps_on_current_emit": 35559,
     "saved_by_convention_and_mangleProps": 737
+  },
+  "productionBuild": {
+    "baseline_default_minify": {
+      "jsFileCount": 20,
+      "bytes": 446861,
+      "gzipBytes": 140957
+    },
+    "mangleProps_include_underscore_full_build": {
+      "ok": false,
+      "error": "Rolldown rejects mangleProps when the build emits multiple JS chunks (SvelteKit code-splitting)."
+    },
+    "saved_bytes": null,
+    "saved_gzip_bytes": null,
+    "note": "Full-app comparison uses adapter-static build/ JS totals. mangleProps in vite.config is blocked for this app until Rolldown supports it with code splitting."
   },
   "conclusions": [
     "Module-scoped const/function names (including $foo) are already shortened by identifier mangle; $ prefix alone does not unlock extra shrinking unless you also enable mangleProps on $-prefixed *properties*.",
     "TypeScript `private` erases to plain property names in emit, so today’s class privates are not matched by mangleProps /^_/ until you rename to _field or use # hard private.",
     "mangleProps.include /^_/ materially shrinks classes that expose long _prefixed fields; # fields cannot be property-mangled and keep #name in output.",
-    "Enable via build.rolldownOptions.output.minify.mangleProps in Vite; property mangling requires a recent Oxc (mangleProps is absent in the oxc-minify 0.136 API surface bundled with some Rolldown releases—confirm on a production build artifact).",
+    "Rolldown (Vite 8.3.4 / rolldown 1.2.14) rejects output.minify.mangleProps when the build emits multiple JS chunks — SvelteKit production builds cannot enable it today.",
+    "Enable via build.rolldownOptions.output.minify.mangleProps only for single-chunk bundles; otherwise savings require future Rolldown support or a different bundling shape.",
     "Replacing # hard private with _fields + mangleProps trades language-level encapsulation for bytes; keep reserved/exclude for host/DOM/public API property names."
   ]
 }

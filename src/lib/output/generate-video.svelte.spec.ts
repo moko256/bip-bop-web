@@ -1,5 +1,5 @@
 import { AudioBufferSink, BlobSource, Input, MP4 } from 'mediabunny';
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 import { describe, expect, it } from 'vitest';
 import { generateBipBopVideo, preferredAudioCodec } from './generate-video';
 

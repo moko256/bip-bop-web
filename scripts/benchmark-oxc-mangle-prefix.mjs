@@ -4,13 +4,32 @@
  *
  * Run: node scripts/benchmark-oxc-mangle-prefix.mjs
  */
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { join, relative } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { minifySync } from 'oxc-minify';
-import { transformSync } from '../node_modules/.pnpm/rolldown@1.2.11/node_modules/rolldown/dist/utils-index.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+
+function resolveRolldownUtils() {
+	const nested = join(root, 'node_modules/vite/node_modules/rolldown/dist/utils-index.mjs');
+	if (existsSync(nested)) return nested;
+	for (const entry of readdirSync(join(root, 'node_modules/.pnpm'))) {
+		if (!entry.startsWith('vite@')) continue;
+		const candidate = join(
+			root,
+			'node_modules/.pnpm',
+			entry,
+			'node_modules/rolldown/dist/utils-index.mjs'
+		);
+		if (existsSync(candidate)) return candidate;
+	}
+	throw new Error('Could not locate rolldown/dist/utils-index.mjs (is vite installed?)');
+}
+
+const { transformSync } = await import(pathToFileURL(resolveRolldownUtils()).href);
 
 const MANGLE_PROPS_UNDERSCORE = { include: /^_/ };
 const MANGLE_PROPS_DOLLAR = { include: /^\$/ };
@@ -151,6 +170,77 @@ export function exported() {
 	return rows;
 }
 
+function walkJsFiles(dir, out = []) {
+	for (const entry of readdirSync(dir)) {
+		const path = join(dir, entry);
+		const st = statSync(path);
+		if (st.isDirectory()) {
+			walkJsFiles(path, out);
+			continue;
+		}
+		if (entry.endsWith('.js')) out.push(path);
+	}
+	return out;
+}
+
+function measureBuildOutput(buildDir) {
+	const files = walkJsFiles(buildDir);
+	let bytes = 0;
+	let gzipBytes = 0;
+	for (const file of files) {
+		const code = readFileSync(file);
+		bytes += code.length;
+		gzipBytes += gzipSync(code).length;
+	}
+	return { jsFileCount: files.length, bytes, gzipBytes };
+}
+
+function productionBuildBenchmark() {
+	const buildDir = join(root, 'build');
+	execSync('pnpm exec svelte-kit sync', { cwd: root, stdio: 'inherit' });
+
+	execSync('pnpm build', {
+		cwd: root,
+		stdio: 'inherit',
+		env: { ...process.env, BENCHMARK_MANGLE_PROPS: '' }
+	});
+	const baseline = measureBuildOutput(buildDir);
+
+	let manglePropsBuild;
+	try {
+		execSync('pnpm build', {
+			cwd: root,
+			stdio: 'inherit',
+			env: { ...process.env, BENCHMARK_MANGLE_PROPS: '1' }
+		});
+		manglePropsBuild = {
+			ok: true,
+			...measureBuildOutput(buildDir)
+		};
+	} catch (error) {
+		manglePropsBuild = {
+			ok: false,
+			error:
+				'Rolldown rejects mangleProps when the build emits multiple JS chunks (SvelteKit code-splitting).'
+		};
+	}
+
+	return {
+		baseline_default_minify: baseline,
+		mangleProps_include_underscore_full_build: manglePropsBuild,
+		saved_bytes:
+			manglePropsBuild.ok && manglePropsBuild.bytes != null
+				? baseline.bytes - manglePropsBuild.bytes
+				: null,
+		saved_gzip_bytes:
+			manglePropsBuild.ok && manglePropsBuild.gzipBytes != null
+				? baseline.gzipBytes - manglePropsBuild.gzipBytes
+				: null,
+		note:
+			'Full-app comparison uses adapter-static build/ JS totals. mangleProps in vite.config is blocked for this app until Rolldown supports it with code splitting.'
+	};
+}
+
 function projectBenchmark() {
 	const files = walkTsFiles(join(root, 'src/lib'));
 	let privateNameCount = 0;
@@ -204,6 +294,8 @@ function projectBenchmark() {
 	};
 }
 
+const runProductionBuild = process.env.BENCHMARK_SKIP_BUILD !== '1';
+
 const report = {
 	generatedAt: new Date().toISOString(),
 	oxcMinifyVersion: readFileSync(join(root, 'node_modules/oxc-minify/package.json'), 'utf8')
@@ -211,11 +303,13 @@ const report = {
 	viteDefault: 'Vite 8 uses Oxc identifier mangle by default; property mangle (mangleProps) is opt-in.',
 	microBenchmarks: microBenchmarks(),
 	projectSrcLib: projectBenchmark(),
+	productionBuild: runProductionBuild ? productionBuildBenchmark() : { skipped: true },
 	conclusions: [
 		'Module-scoped const/function names (including $foo) are already shortened by identifier mangle; $ prefix alone does not unlock extra shrinking unless you also enable mangleProps on $-prefixed *properties*.',
 		'TypeScript `private` erases to plain property names in emit, so today’s class privates are not matched by mangleProps /^_/ until you rename to _field or use # hard private.',
 		'mangleProps.include /^_/ materially shrinks classes that expose long _prefixed fields; # fields cannot be property-mangled and keep #name in output.',
-		'Enable via build.rolldownOptions.output.minify.mangleProps in Vite; property mangling requires a recent Oxc (mangleProps is absent in the oxc-minify 0.136 API surface bundled with some Rolldown releases—confirm on a production build artifact).',
+		'Rolldown (Vite 8.3.4 / rolldown 1.2.14) rejects output.minify.mangleProps when the build emits multiple JS chunks — SvelteKit production builds cannot enable it today.',
+		'Enable via build.rolldownOptions.output.minify.mangleProps only for single-chunk bundles; otherwise savings require future Rolldown support or a different bundling shape.',
 		'Replacing # hard private with _fields + mangleProps trades language-level encapsulation for bytes; keep reserved/exclude for host/DOM/public API property names.'
 	]
 };
@@ -262,6 +356,14 @@ ${JSON.stringify(report.microBenchmarks, null, 2)}
 
 \`\`\`json
 ${JSON.stringify(report.projectSrcLib, null, 2)}
+\`\`\`
+
+## 本番 \`pnpm build\`（adapter-static の \`build/\` 配下 JS 合計）
+
+現行ソースのまま、デフォルト minify と \`BENCHMARK_MANGLE_PROPS=1\`（\`mangleProps: /^_/\`）を比較。
+
+\`\`\`json
+${JSON.stringify(report.productionBuild, null, 2)}
 \`\`\`
 
 ## Vite 設定例（検証用）
