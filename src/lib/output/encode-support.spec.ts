@@ -25,7 +25,10 @@ describe('canEncodeSelection', () => {
 			canEncodeSelection({ videoCodec: 'vp9', audioCodec: 'opus', videoQuality: 'low' })
 		).resolves.toBe(true);
 
-		expect(canEncodeVideo).toHaveBeenCalledWith('vp9', { quality: expect.any(Quality) });
+		expect(canEncodeVideo).toHaveBeenCalledWith('vp9', {
+			quality: expect.any(Quality),
+			contentHint: 'text'
+		});
 		expect(canEncodeAudio).toHaveBeenCalledWith('opus', {
 			numberOfChannels: 1,
 			sampleRate: BIP_BOP_AUDIO_SAMPLE_RATE,

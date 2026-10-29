@@ -17,6 +17,7 @@ import {
 	type VideoCodec
 } from 'mediabunny';
 import { parseResolution, type Resolution, type VideoOutputType } from './output';
+import { VIDEO_CONTENT_HINT, VIDEO_KEY_FRAME_INTERVAL_SECONDS } from './video-encoding';
 import type { VideoQualityLevel } from './video-quality';
 import { supportedAudioCodecs, videoOutputFormat } from './video-container';
 
@@ -75,7 +76,9 @@ export async function generateBipBopVideo(options: {
 	const videoQuality = options.videoQuality ?? 'high';
 	const videoSource = new CanvasSource(canvas, {
 		codec: options.videoCodec,
-		quality: new Quality(videoQuality)
+		quality: new Quality(videoQuality),
+		contentHint: VIDEO_CONTENT_HINT,
+		keyFrameInterval: VIDEO_KEY_FRAME_INTERVAL_SECONDS
 	});
 	const audioSource = new AudioSampleSource({
 		codec: options.audioCodec,
