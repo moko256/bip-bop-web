@@ -64,7 +64,7 @@ describe('FullscreenPicture', () => {
 		expect(stage().querySelector('svg')).not.toBeNull();
 	});
 
-	it('draws the requested bitmap in the center and toggles play without leaving fullscreen', async () => {
+	it('draws the requested bitmap in the center and exits fullscreen when playback stops', async () => {
 		useDevicePixelRatio(3);
 		const requestFullscreen = vi.fn().mockResolvedValue(undefined);
 		const exitFullscreen = vi.fn().mockResolvedValue(undefined);
@@ -109,6 +109,6 @@ describe('FullscreenPicture', () => {
 		await canvas.click();
 		await expect.poll(() => stage().querySelector('svg')).not.toBeNull();
 		expect(requestFullscreen).toHaveBeenCalledOnce();
-		expect(exitFullscreen).not.toHaveBeenCalled();
+		expect(exitFullscreen).toHaveBeenCalledOnce();
 	});
 });
