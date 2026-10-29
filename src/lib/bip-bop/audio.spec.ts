@@ -4,6 +4,9 @@ import {
 	BOP_FREQUENCY_HZ,
 	bipBopFrequencyHz,
 	bipBopPreviewPictureMs,
+	bipBopToneCycles,
+	bipBopToneDurationMs,
+	bipBopToneFrameCount,
 	planBipBopPreviewCue,
 	planBipBopTone
 } from './audio';
@@ -30,7 +33,7 @@ describe('planBipBopTone', () => {
 		expect(planBipBopTone(16)).toEqual({
 			delayMs: 984,
 			frequencyHz: 475,
-			waitMs: 1000
+			waitMs: 1000.8421052631579
 		});
 	});
 
@@ -38,7 +41,7 @@ describe('planBipBopTone', () => {
 		expect(planBipBopTone(1000)).toEqual({
 			delayMs: 0,
 			frequencyHz: 475,
-			waitMs: 16
+			waitMs: 16.842105263157894
 		});
 		expect(planBipBopTone(1016)).toEqual({
 			delayMs: 984,
@@ -53,12 +56,30 @@ describe('planBipBopTone', () => {
 	});
 });
 
+describe('burst length', () => {
+	it('ends each burst on a whole number of cycles', () => {
+		expect(bipBopToneCycles(BIP_FREQUENCY_HZ)).toBe(24);
+		expect(bipBopToneCycles(BOP_FREQUENCY_HZ)).toBe(8);
+		expect(bipBopToneDurationMs(BIP_FREQUENCY_HZ)).toBe(16);
+		expect(bipBopToneDurationMs(BOP_FREQUENCY_HZ)).toBeCloseTo(16.8421, 4);
+		for (const frequencyHz of [BIP_FREQUENCY_HZ, BOP_FREQUENCY_HZ]) {
+			const cycles = (bipBopToneDurationMs(frequencyHz) * frequencyHz) / 1000;
+			expect(cycles).toBeCloseTo(Math.round(cycles), 10);
+		}
+	});
+
+	it('covers the sounding samples of each burst at 48kHz', () => {
+		expect(bipBopToneFrameCount(48000, BIP_FREQUENCY_HZ)).toBe(768);
+		expect(bipBopToneFrameCount(48000, BOP_FREQUENCY_HZ)).toBe(809);
+	});
+});
+
 describe('planBipBopPreviewCue', () => {
 	it('prepares a later burst outputLatency before the picture', () => {
 		expect(planBipBopPreviewCue(500, 40, 0)).toEqual({
 			delayMs: 460,
 			frequencyHz: 475,
-			waitMs: 516,
+			waitMs: 516.8421052631579,
 			pictureShiftMs: 0
 		});
 		expect(bipBopPreviewPictureMs(500, 0, 500)).toBe(500);
@@ -83,7 +104,7 @@ describe('planBipBopPreviewCue', () => {
 		expect(planBipBopPreviewCue(16, 40, 80, false)).toEqual({
 			delayMs: 944,
 			frequencyHz: 475,
-			waitMs: 1000,
+			waitMs: 1000.8421052631579,
 			pictureShiftMs: 80
 		});
 	});
@@ -93,7 +114,7 @@ describe('planBipBopPreviewCue', () => {
 		expect(cue).toEqual({
 			delayMs: 40,
 			frequencyHz: 475,
-			waitMs: 36,
+			waitMs: 36.84210526315789,
 			pictureShiftMs: 60
 		});
 		expect(bipBopPreviewPictureMs(980, cue.pictureShiftMs, 980)).toBe(980);
@@ -106,7 +127,7 @@ describe('planBipBopPreviewCue', () => {
 		expect(planBipBopPreviewCue(980, 40, 80, false)).toEqual({
 			delayMs: 40,
 			frequencyHz: 475,
-			waitMs: 36,
+			waitMs: 36.84210526315789,
 			pictureShiftMs: 80
 		});
 	});

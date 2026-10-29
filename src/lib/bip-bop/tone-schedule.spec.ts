@@ -91,7 +91,7 @@ describe('scheduleLiveTones', () => {
 		const next = context.tones[1];
 		expect(next?.frequencyHz).toBe(475);
 		expect(next?.start).toBeCloseTo(0.984);
-		expect((next?.stop ?? 0) - (next?.start ?? 0)).toBeCloseTo(0.016);
+		expect((next?.stop ?? 0) - (next?.start ?? 0)).toBeCloseTo(0.0168421, 6);
 	});
 
 	it('schedules the following even second when the preview clock is already past a burst', () => {

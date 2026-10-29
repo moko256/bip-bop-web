@@ -198,7 +198,7 @@ describe('BipBopPreview', () => {
 			const next = audio.tones[1]!;
 			expect(next.frequencyHz).toBe(475);
 			expect(next.start).toBeCloseTo(0.984);
-			expect(next.stop - next.start).toBeCloseTo(0.016);
+			expect(next.stop - next.start).toBeCloseTo(0.0168421, 6);
 		} finally {
 			window.AudioContext = realAudioContext;
 		}

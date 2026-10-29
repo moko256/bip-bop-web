@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { BipBopAudioRenderer } from './audio';
+import { BipBopAudioRenderer, bipBopToneFrameCount } from './audio';
 
 const SAMPLE_RATE = 48000;
 const TONE_FRAMES = 768;
 
-async function renderTone(delayMs: number, frequencyHz: number): Promise<Float32Array> {
-	const context = new OfflineAudioContext(1, TONE_FRAMES * 2, SAMPLE_RATE);
+async function renderTone(
+	delayMs: number,
+	frequencyHz: number,
+	totalFrames = TONE_FRAMES * 2
+): Promise<Float32Array> {
+	const context = new OfflineAudioContext(1, totalFrames, SAMPLE_RATE);
 	BipBopAudioRenderer(context, delayMs, frequencyHz);
 	const buffer = await context.startRendering();
 	return buffer.getChannelData(0);
@@ -44,12 +48,21 @@ describe('BipBopAudioRenderer', () => {
 		expect(correlation(samples, 475, 0, TONE_FRAMES)).toBeLessThan(0.05);
 	});
 
-	it('writes a 16ms 475Hz sine that many milliseconds after currentTime', async () => {
+	it('writes a 475Hz sine that many milliseconds after currentTime', async () => {
 		const samples = await renderTone(16, 475);
 
 		expect(rms(samples, 0, TONE_FRAMES)).toBeLessThan(0.001);
 		expect(rms(samples, TONE_FRAMES, TONE_FRAMES)).toBeGreaterThan(0.5);
 		expect(correlation(samples, 475, TONE_FRAMES, TONE_FRAMES)).toBeGreaterThan(0.4);
 		expect(correlation(samples, 1500, TONE_FRAMES, TONE_FRAMES)).toBeLessThan(0.05);
+	});
+
+	it('ends a 475Hz burst on a zero crossing instead of mid-cycle', async () => {
+		const samples = await renderTone(0, 475);
+		const frameCount = bipBopToneFrameCount(SAMPLE_RATE, 475);
+
+		expect(frameCount).toBe(809);
+		expect(Math.abs(samples[frameCount - 1] ?? 0)).toBeLessThan(0.05);
+		expect(rms(samples, frameCount, TONE_FRAMES)).toBeLessThan(0.001);
 	});
 });

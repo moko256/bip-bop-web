@@ -45,4 +45,17 @@ describe('placeBipBopTone', () => {
 
 		for (const sample of [...even.samples, ...odd.samples]) sample.close();
 	});
+
+	it('ends the Bop on a cycle boundary like the Bip', async () => {
+		const odd = recordingSource();
+		await placeBipBopTone(odd.source, 1);
+
+		const bop = odd.samples[0];
+		expect(bop).toBeDefined();
+		expect(bop?.numberOfFrames).toBe(809);
+		const bopSamples = bop!.toAudioBuffer().getChannelData(0);
+		expect(Math.abs(bopSamples[bopSamples.length - 1] ?? 0)).toBeLessThan(0.05);
+
+		for (const sample of odd.samples) sample.close();
+	});
 });
