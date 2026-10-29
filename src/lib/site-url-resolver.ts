@@ -3,11 +3,12 @@ import { page } from '$app/state';
 import { siteHost, siteProtocol } from '../../site-url';
 
 export function currentPageAbsoluteUrl(): URL {
+	const url = new URL(page.url.href);
+
 	if (!building) {
-		return page.url;
+		return url;
 	}
 
-	const url = new URL(page.url);
 	url.host = siteHost;
 	url.protocol = siteProtocol;
 

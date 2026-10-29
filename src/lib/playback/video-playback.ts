@@ -1,4 +1,4 @@
-import { frameAtSeconds, secondsAtFrame } from '$lib/bip-bop/media-time';
+import { frameAtSeconds, secondsAtFrame } from '#lib/bip-bop/media-time.js';
 import { untrack } from 'svelte';
 import type { Scheduler } from './scheduler';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';

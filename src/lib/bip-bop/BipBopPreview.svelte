@@ -1,5 +1,5 @@
 <script lang="ts">
-	import PlaybackControls from '$lib/playback/PlaybackControls.svelte';
+	import PlaybackControls from '#lib/playback/PlaybackControls.svelte';
 	import BipBopLivePicture from './BipBopLivePicture.svelte';
 
 	let {

@@ -1,4 +1,4 @@
-import * as m from '$lib/paraglide/messages';
+import * as m from '#lib/paraglide/messages.js';
 import { VideoGenerationError, type VideoGenerationFailure } from './generate-video';
 
 /** Copy for a failed video OutputType. Codes stay on the error; this is the label. */
