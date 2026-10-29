@@ -10,6 +10,12 @@
 		if (typeof request !== 'function') return;
 		void request.call(document.documentElement).catch(() => {});
 	}
+
+	function exitPageFullscreen() {
+		const exit = document.exitFullscreen;
+		if (typeof exit !== 'function') return;
+		void exit.call(document).catch(() => {});
+	}
 </script>
 
 <div class="fullscreen-stage">
@@ -25,6 +31,7 @@
 					playing={session.playing}
 					onplaybackchange={(next) => {
 						if (next) requestPageFullscreen();
+						else exitPageFullscreen();
 						session.setPlaying(next);
 					}}
 					content={canvas}
