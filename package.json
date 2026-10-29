@@ -53,6 +53,6 @@
 	"dependencies": {
 		"@picocss/pico": "^2.1.1",
 		"kiso.css": "^1.2.4",
-		"mediabunny": "^1.61.6"
+		"mediabunny": "^1.63.0"
 	}
 }

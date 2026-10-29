@@ -3,11 +3,7 @@ import { loadBipBopFont } from '#lib/bip-bop/font.js';
 import { BipBopRenderer, createBipBopDimensions } from '#lib/bip-bop/renderer.js';
 import { toneSecondAtFrame, videoPictureAtFrame } from '#lib/bip-bop/media-time.js';
 import { BIP_BOP_FPS, BIP_BOP_MAX_FRAME } from '#lib/bip-bop/frames.js';
-import {
-	needsBipBopPriming,
-	placeBipBopPriming,
-	placeBipBopTone
-} from '#lib/bip-bop/video-tone.js';
+import { placeBipBopTone } from '#lib/bip-bop/video-tone.js';
 import {
 	AudioSampleSource,
 	BufferTarget,
@@ -104,10 +100,6 @@ export async function generateBipBopVideo(options: {
 		};
 
 		const writeAudioTrack = async (): Promise<void> => {
-			if (frameCount > 0 && needsBipBopPriming(options.outputType, options.audioCodec)) {
-				if (siblingFailed()) return;
-				await placeBipBopPriming(audioSource);
-			}
 			for (let frame = 0; frame < frameCount; frame += 1) {
 				const toneSecond = toneSecondAtFrame(frame, fps);
 				if (toneSecond === null) continue;
