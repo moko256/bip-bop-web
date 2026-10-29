@@ -3,11 +3,7 @@
 	"compilerOptions": {
 		"rewriteRelativeImportExtensions": true,
 		"sourceMap": true,
-		"strict": true,
-		"paths": {
-			"#lib": ["./src/lib/index.js"],
-			"#lib/*": ["./src/lib/*"]
-		}
+		"strict": true
 	},
 	"include": ["src", "test", "*"],
 	"exclude": ["src/service-worker"]
