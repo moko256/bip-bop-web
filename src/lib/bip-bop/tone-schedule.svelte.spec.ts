@@ -1,6 +1,11 @@
 import type { AudioSample, AudioSampleSource } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
-import { placeBipBopTone } from './video-tone';
+import {
+	BIP_BOP_PRIMING_FRAMES,
+	needsBipBopPriming,
+	placeBipBopPriming,
+	placeBipBopTone
+} from './video-tone';
 
 function correlation(samples: Float32Array, frequencyHz: number, sampleRate: number): number {
 	const frameCount = Math.min(samples.length, Math.round(sampleRate * 0.016));
@@ -44,5 +49,44 @@ describe('placeBipBopTone', () => {
 		expect(correlation(bopSamples, 1500, bop!.sampleRate)).toBeLessThan(0.05);
 
 		for (const sample of [...even.samples, ...odd.samples]) sample.close();
+	});
+
+	it('ends the Bop on a cycle boundary like the Bip', async () => {
+		const odd = recordingSource();
+		await placeBipBopTone(odd.source, 1);
+
+		const bop = odd.samples[0];
+		expect(bop).toBeDefined();
+		expect(bop?.numberOfFrames).toBe(809);
+		const bopSamples = bop!.toAudioBuffer().getChannelData(0);
+		expect(Math.abs(bopSamples[bopSamples.length - 1] ?? 0)).toBeLessThan(0.05);
+
+		for (const sample of odd.samples) sample.close();
+	});
+});
+
+describe('placeBipBopPriming', () => {
+	it('is used only where the container can trim it and the codec cannot', () => {
+		expect(needsBipBopPriming('mp4', 'aac')).toBe(true);
+		expect(needsBipBopPriming('mp4', 'mp3')).toBe(true);
+		expect(needsBipBopPriming('mp4', 'vorbis')).toBe(true);
+		expect(needsBipBopPriming('mp4', 'opus')).toBe(false);
+		expect(needsBipBopPriming('webm', 'opus')).toBe(false);
+		expect(needsBipBopPriming('webm', 'vorbis')).toBe(false);
+	});
+
+	it('places silence that ends at the Timeline start', async () => {
+		const recording = recordingSource();
+		await placeBipBopPriming(recording.source);
+
+		const priming = recording.samples[0];
+		expect(priming).toBeDefined();
+		expect(priming?.numberOfFrames).toBe(BIP_BOP_PRIMING_FRAMES);
+		expect(priming?.timestamp).toBeCloseTo(-0.1, 10);
+		expect(priming!.timestamp + priming!.duration).toBeCloseTo(0, 10);
+		const samples = priming!.toAudioBuffer().getChannelData(0);
+		expect(Math.max(...samples.map((sample) => Math.abs(sample)))).toBe(0);
+
+		for (const sample of recording.samples) sample.close();
 	});
 });

@@ -4,7 +4,12 @@ import { beatAtSecond, type PictureBeat } from './media-time';
 export const BIP_FREQUENCY_HZ = 1500;
 /** Odd seconds. Matches the `Bop!` label. */
 export const BOP_FREQUENCY_HZ = 475;
-/** Length of one sine burst. */
+/**
+ * Nominal length of one sine burst.
+ * The sounding length is the whole number of cycles nearest to this, so a
+ * burst ends where its sine crosses zero instead of mid-cycle.
+ * Bip is exactly 24 cycles in 16ms. Bop is 8 cycles, about 16.84ms.
+ */
 export const BIP_BOP_TONE_MS = 16;
 /** Bursts start on whole seconds, in step with the one-second label. */
 export const BIP_BOP_TONE_INTERVAL_MS = 1000;
@@ -49,11 +54,28 @@ export function planBipBopTone(elapsedMs: number): BipBopTonePlan {
 	const remainder = elapsed % interval;
 	const delayMs = remainder === 0 ? 0 : interval - remainder;
 	const second = (elapsed + delayMs) / interval;
+	const frequencyHz = bipBopFrequencyHz(second);
 	return {
 		delayMs,
-		frequencyHz: bipBopFrequencyHz(second),
-		waitMs: delayMs + BIP_BOP_TONE_MS
+		frequencyHz,
+		waitMs: delayMs + bipBopToneDurationMs(frequencyHz)
 	};
+}
+
+/** Whole cycles nearest to {@link BIP_BOP_TONE_MS} at `frequencyHz`. */
+export function bipBopToneCycles(frequencyHz: number): number {
+	if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) return 1;
+	return Math.max(1, Math.round((frequencyHz * BIP_BOP_TONE_MS) / 1000));
+}
+
+/**
+ * Sounding length of one burst in milliseconds.
+ * A whole number of cycles at `frequencyHz`, so the sine starts and ends
+ * on a zero crossing.
+ */
+export function bipBopToneDurationMs(frequencyHz: number): number {
+	if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) return BIP_BOP_TONE_MS;
+	return (bipBopToneCycles(frequencyHz) * 1000) / frequencyHz;
 }
 
 export type BipBopPreviewCue = {
@@ -119,17 +141,27 @@ export function bipBopPreviewPictureMs(
 	return Math.max(earliest, audioElapsed - shift);
 }
 
-/** Samples in one burst at `sampleRate`. */
-export function bipBopToneFrameCount(sampleRate: number): number {
-	return Math.round((sampleRate * BIP_BOP_TONE_MS) / 1000);
+/**
+ * Samples in one burst at `sampleRate`.
+ * Covers every sample the oscillator sounds, including the last one before
+ * it stops on a zero crossing.
+ */
+export function bipBopToneFrameCount(sampleRate: number, frequencyHz: number): number {
+	if (!Number.isFinite(sampleRate) || sampleRate <= 0) return 0;
+	if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) {
+		return Math.round((sampleRate * BIP_BOP_TONE_MS) / 1000);
+	}
+	const sounding = (sampleRate * bipBopToneCycles(frequencyHz)) / frequencyHz;
+	return Math.max(1, Math.ceil(sounding - 1e-6));
 }
 
 /**
  * Schedules one sine burst on `context`.
- * The burst starts `delayMs` after `context.currentTime` and lasts {@link BIP_BOP_TONE_MS}.
+ * The burst starts `delayMs` after `context.currentTime` and sounds for
+ * {@link bipBopToneDurationMs}: a whole number of cycles at `frequencyHz`.
  * The web preview passes how long until the burst should enter the graph, already
- * shifted by output latency. Video writing passes `0`: the burst is the first 16ms
- * of an offline context, and the caller places that buffer on the second it belongs to.
+ * shifted by output latency. Video writing passes `0`: the burst fills an
+ * offline context, and the caller places that buffer on the second it belongs to.
  * The returned function disconnects the burst. Pause uses it so a burst already
  * queued for a later second does not play again when playback resumes.
  */
@@ -139,7 +171,7 @@ export function BipBopAudioRenderer(
 	frequencyHz: number
 ): () => void {
 	const start = context.currentTime + delayMs / 1000;
-	const end = start + BIP_BOP_TONE_MS / 1000;
+	const end = start + bipBopToneDurationMs(frequencyHz) / 1000;
 	const oscillator = context.createOscillator();
 	oscillator.type = 'sine';
 	oscillator.frequency.value = frequencyHz;
