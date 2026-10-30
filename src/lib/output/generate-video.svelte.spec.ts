@@ -1,4 +1,11 @@
-import { AudioBufferSink, BlobSource, Input, MP4 } from 'mediabunny';
+import {
+	ALL_FORMATS,
+	AudioBufferSink,
+	BlobSource,
+	EncodedPacketSink,
+	Input,
+	MP4
+} from 'mediabunny';
 import * as m from '#lib/paraglide/messages.js';
 import { describe, expect, it } from 'vitest';
 import { generateBipBopVideo, preferredAudioCodec } from './generate-video';
@@ -72,6 +79,33 @@ describe('generateBipBopVideo', () => {
 			expect(correlation(openingSamples, 475, opening!.buffer.sampleRate)).toBeLessThan(0.05);
 			expect(correlation(secondSamples, 475, second!.buffer.sampleRate)).toBeGreaterThan(0.2);
 			expect(correlation(secondSamples, 1500, second!.buffer.sampleRate)).toBeLessThan(0.05);
+		} finally {
+			input.dispose();
+		}
+	});
+
+	it('places key frames 10 seconds apart', async () => {
+		// 61 frames at 6 fps span 10 seconds of Timeline: the second key frame
+		// is the one at 10s, not the ones mediabunny would force every 2s.
+		const blob = await generateBipBopVideo({
+			outputType: 'webm',
+			videoCodec: 'vp9',
+			audioCodec: 'opus',
+			width: 64,
+			height: 64,
+			frameCount: 61,
+			fps: 6
+		});
+		const input = new Input({ source: new BlobSource(blob), formats: ALL_FORMATS });
+		try {
+			const track = await input.getPrimaryVideoTrack();
+			expect(track).not.toBeNull();
+			const sink = new EncodedPacketSink(track!);
+			const keyTimestamps: number[] = [];
+			for await (const packet of sink.packets()) {
+				if (packet.type === 'key') keyTimestamps.push(packet.timestamp);
+			}
+			expect(keyTimestamps).toEqual([0, 10]);
 		} finally {
 			input.dispose();
 		}
