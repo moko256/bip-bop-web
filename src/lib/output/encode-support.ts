@@ -7,7 +7,7 @@ import {
 	type VideoCodec
 } from 'mediabunny';
 import { VIDEO_CONTENT_HINT } from './video-encoding';
-import type { VideoQualityLevel } from './video-quality';
+import { createVideoQuality, type VideoQualityLevel } from './video-quality';
 
 export type EncodeSelection = {
 	videoCodec: VideoCodec;
@@ -21,7 +21,7 @@ export type CanEncodeSelection = (selection: EncodeSelection) => Promise<boolean
 export async function canEncodeSelection(selection: EncodeSelection): Promise<boolean> {
 	const [videoEncodable, audioEncodable] = await Promise.all([
 		canEncodeVideo(selection.videoCodec, {
-			quality: new Quality(selection.videoQuality),
+			quality: createVideoQuality(selection.videoQuality),
 			contentHint: VIDEO_CONTENT_HINT
 		}),
 		canEncodeAudio(selection.audioCodec, {
