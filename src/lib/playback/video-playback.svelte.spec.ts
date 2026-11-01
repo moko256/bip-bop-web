@@ -125,7 +125,7 @@ describe('video playback', () => {
 		expect(session.frame).toBe(12);
 	});
 
-	it('seeks to the nearest millisecond', () => {
+	it('seeks to the next millisecond', () => {
 		const time = manualScheduler();
 		const element = fakeVideo();
 		const side = videoPlayback(time.scheduler);

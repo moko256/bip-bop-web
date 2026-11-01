@@ -60,13 +60,13 @@ describe('elapsed time at a frame', () => {
 		expect(frameAtSeconds(Number.NaN, 60)).toBe(0);
 	});
 
-	it('rounds a seek position to the nearest millisecond', () => {
+	it('raises a seek position to the next millisecond', () => {
 		expect(seekSecondsAtFrame(0, 60)).toBe(0);
 		expect(seekSecondsAtFrame(1, 60)).toBe(0.017);
-		expect(seekSecondsAtFrame(2, 60)).toBe(0.033);
+		expect(seekSecondsAtFrame(2, 60)).toBe(0.034);
 		expect(seekSecondsAtFrame(90, 60)).toBe(1.5);
 		expect(seekSecondsAtFrame(1, 23.976)).toBe(0.042);
-		expect(seekSecondsAtFrame(24, 23.976)).toBe(1.001);
+		expect(seekSecondsAtFrame(24, 23.976)).toBe(1.002);
 		expect(seekSecondsAtFrame(600, BIP_BOP_FPS)).toBe(10);
 		expect(seekSecondsAtFrame(-5, 60)).toBe(0);
 		expect(seekSecondsAtFrame(1, 0)).toBe(0);
