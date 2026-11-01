@@ -40,17 +40,21 @@ describe('elapsed time at a frame', () => {
 		expect(secondsAtFrame(-5, 60)).toBe(0);
 	});
 
-	it('truncates a partial frame when reading a Timeline position', () => {
+	it('rounds a partial frame when reading a Timeline position', () => {
 		expect(frameAtSeconds(0, 60)).toBe(0);
-		expect(frameAtSeconds(16 / 1000, 60)).toBe(0);
+		expect(frameAtSeconds(16 / 1000, 60)).toBe(1);
 		expect(frameAtSeconds(1 / 60, 60)).toBe(1);
-		expect(frameAtSeconds(0.999, 60)).toBe(59);
+		expect(frameAtSeconds(0.5 / 60, 60)).toBe(1);
+		expect(frameAtSeconds(0.999, 60)).toBe(60);
 		expect(frameAtSeconds(1, 60)).toBe(60);
-		expect(frameAtSeconds(1.016, 60)).toBe(60);
+		expect(frameAtSeconds(1.008, 60)).toBe(60);
+		expect(frameAtSeconds(1.016, 60)).toBe(61);
 		expect(frameAtSeconds(1.5, 60)).toBe(90);
 		expect(frameAtSeconds(2, 60)).toBe(120);
 		expect(frameAtSeconds(10.5, 60)).toBe(630);
 		expect(frameAtSeconds(0.5, 24)).toBe(12);
+		expect(frameAtSeconds(secondsAtFrame(11, 60), 60)).toBe(11);
+		expect(frameAtSeconds(secondsAtFrame(24, 23.976), 23.976)).toBe(24);
 		expect(frameAtSeconds(-10, 60)).toBe(0);
 		expect(frameAtSeconds(Number.NaN, 60)).toBe(0);
 	});

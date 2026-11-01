@@ -37,12 +37,13 @@ export function wholeSecondsAtFrame(frame: number, fps: number): number {
 }
 
 /**
- * Frame index at a Timeline position. Partial frames are truncated.
+ * Frame index at a Timeline position. Partial frames round to the nearest index.
+ * A midpoint rounds toward the next frame.
  * 0 when the position or the rate cannot be placed.
  */
 export function frameAtSeconds(seconds: number, fps: number): number {
 	if (!Number.isFinite(seconds) || seconds <= 0 || !Number.isFinite(fps) || fps <= 0) return 0;
-	return Math.floor((seconds * 1000 * fps) / 1000);
+	return Math.round(seconds * fps);
 }
 
 /**

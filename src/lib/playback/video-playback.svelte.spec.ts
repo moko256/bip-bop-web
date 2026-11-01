@@ -100,7 +100,7 @@ describe('video playback', () => {
 
 		element.currentTime = 1.016;
 		time.flush();
-		expect(session.frame).toBe(60);
+		expect(session.frame).toBe(61);
 
 		element.currentTime = 10;
 		time.flush();
