@@ -1,4 +1,4 @@
-import { frameAtSeconds, secondsAtFrame } from '#lib/bip-bop/media-time.js';
+import { frameAtSeconds, seekSecondsAtFrame } from '#lib/bip-bop/media-time.js';
 import { untrack } from 'svelte';
 import type { Scheduler } from './scheduler';
 import type { PlaybackAdapter, PlaybackHost } from './PlaybackSession.svelte';
@@ -26,7 +26,7 @@ export function videoPlayback(scheduler: Scheduler): {
 	}
 
 	function secondsAt(frame: number): number {
-		return secondsAtFrame(frame, readBounds().fps);
+		return seekSecondsAtFrame(frame, readBounds().fps);
 	}
 	let element: HTMLVideoElement | undefined;
 	let detachListeners = () => {};

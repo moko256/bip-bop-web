@@ -47,6 +47,16 @@ export function frameAtSeconds(seconds: number, fps: number): number {
 }
 
 /**
+ * Seek position for `frame`, in seconds.
+ * The Timeline second is raised to a whole millisecond.
+ * A fraction of a millisecond goes to the next millisecond.
+ * 0 when the frame or the rate cannot be placed.
+ */
+export function seekSecondsAtFrame(frame: number, fps: number): number {
+	return Math.ceil(secondsAtFrame(frame, fps) * 1000) / 1000;
+}
+
+/**
  * Integer second at which a tone is placed for this frame, or null when this
  * frame does not cross a second boundary.
  * At 60 fps that is every frame whose index is divisible by 60.
