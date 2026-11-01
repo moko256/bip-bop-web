@@ -125,6 +125,23 @@ describe('video playback', () => {
 		expect(session.frame).toBe(12);
 	});
 
+	it('seeks to the nearest millisecond', () => {
+		const time = manualScheduler();
+		const element = fakeVideo();
+		const side = videoPlayback(time.scheduler);
+		const session = new PlaybackSession({
+			maxFrame: 240,
+			fps: 23.976,
+			connect: side.connect
+		});
+		side.attach(element as unknown as HTMLVideoElement);
+
+		session.seek(1);
+
+		expect(element.currentTime).toBe(0.042);
+		expect(session.frame).toBe(1);
+	});
+
 	it('seeks and reads currentTime with bounds set after the adapter connected', () => {
 		const time = manualScheduler();
 		const element = fakeVideo();
