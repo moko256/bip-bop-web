@@ -24,16 +24,16 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
-		"@inlang/paraglide-js": "^2.29.1",
-		"@inlang/plugin-m-function-matcher": "^2.3.4",
-		"@inlang/plugin-message-format": "^4.5.5",
+		"@inlang/paraglide-js": "^2.29.3",
+		"@inlang/plugin-m-function-matcher": "^2.4.0",
+		"@inlang/plugin-message-format": "^4.5.6",
 		"@playwright/test": "^1.64.1",
-		"@sveltejs/adapter-static": "^4.0.0",
-		"@sveltejs/kit": "^3.1.0",
+		"@sveltejs/adapter-static": "^4.0.1",
+		"@sveltejs/kit": "^3.1.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26",
 		"@vitest/browser-playwright": "^5.0.5",
-		"eslint": "^10.13.0",
+		"eslint": "^10.14.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.23.1",
 		"globals": "^17.13.0",
@@ -41,11 +41,11 @@
 		"playwright": "^1.64.1",
 		"prettier": "^3.9.10",
 		"prettier-plugin-svelte": "^4.1.0",
-		"sass-embedded": "^1.106.1",
-		"svelte": "^5.57.2",
+		"sass-embedded": "^1.107.1",
+		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.7",
 		"typescript": "npm:@typescript/typescript6@^6.0.2",
-		"typescript-eslint": "^8.72.0",
+		"typescript-eslint": "^8.72.1",
 		"vite": "^8.3.5",
 		"vitest": "^5.0.5",
 		"vitest-browser-svelte": "^3.1.0"
@@ -53,6 +53,6 @@
 	"dependencies": {
 		"@picocss/pico": "^2.1.1",
 		"kiso.css": "^1.2.4",
-		"mediabunny": "^1.63.0"
+		"mediabunny": "^1.65.0"
 	}
 }
